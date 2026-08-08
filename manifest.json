@@ -1,0 +1,16 @@
+{
+  "background_color": "#ffffff",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "Best Excel",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "Best Excel",
+  "start_url": "/",
+  "theme_color": "#ffffff",
+  "id": "best-excel",
+  "description": "Best Excel Official App",
+  "categories": [
+    "productivity"
+  ]
+}
