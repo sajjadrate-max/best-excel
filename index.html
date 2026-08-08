@@ -6,7 +6,6 @@
 <title>Best Excel واشنگ پاؤڈر — مکمل کمپنی ریٹ لسٹ اور فارمولیشن ترتیب</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400..700&family=Noto+Naskh+Arabic:wght@400..700&family=Courier+Prime:wght@400;700&family=Anton&family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 // Loads each SDK by trying several CDN mirrors in turn — some networks
 // block one Google/CDN domain but allow another, so a single hard-coded
@@ -742,7 +741,7 @@ function buildAllTierTables(){
     const shareBtn = document.createElement('button');
     shareBtn.type = 'button';
     shareBtn.className = 'share-btn';
-    shareBtn.textContent = '📤 PDF شیئر/ڈاؤن لوڈ کریں';
+    shareBtn.textContent = '📤 تصویر شیئر/ڈاؤن لوڈ کریں';
     shareBtn.addEventListener('click', ()=> shareCardAsImage(tier, shareBtn));
     card.appendChild(shareBtn);
 
@@ -967,23 +966,11 @@ async function shareCardAsImage(tier, btn){
   btn.disabled = true;
   try{
     const canvas = renderTierCanvas(tier);
-    const imgData = canvas.toDataURL('image/png');
     const baseName = tier.title.replace(/\s+/g,'_');
 
-    let blob, fileName, mimeType;
-    if(window.jspdf && window.jspdf.jsPDF){
-      const { jsPDF } = window.jspdf;
-      const w = canvas.width / 2, h = canvas.height / 2; // canvas is 2x-scaled
-      const pdf = new jsPDF({ orientation: w > h ? 'l' : 'p', unit: 'pt', format: [w, h] });
-      pdf.addImage(imgData, 'PNG', 0, 0, w, h);
-      blob = pdf.output('blob');
-      fileName = baseName + '.pdf';
-      mimeType = 'application/pdf';
-    } else {
-      blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-      fileName = baseName + '.png';
-      mimeType = 'image/png';
-    }
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    const fileName = baseName + '.png';
+    const mimeType = 'image/png';
     if(!blob) throw new Error('no-blob');
 
     let shared = false;
