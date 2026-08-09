@@ -983,7 +983,7 @@ function loadPosterImage(){
 
 async function renderTierCanvas(tier){
   const SCALE = 2;
-  const PAD = 22; // border strip where the poster photo stays visible
+  const PAD = 46; // wider border so the poster photo (shirt/dove/BEST logo) is actually recognizable, not just a blurry sliver
   const colW = [232, 132, 100, 132, 132];   // name, weight, tpcs, price, rate
   const innerWidth = colW.reduce((a,b)=>a+b,0);
   const titleH = 40, headH = 38, rowH = 42;
@@ -1001,19 +1001,13 @@ async function renderTierCanvas(tier){
   ctx.fillStyle = '#F4EFE2';
   ctx.fillRect(0, 0, width, height);
 
-  // poster photo, cover-fit across the whole canvas, tinted subtle like
-  // the live page's card background
+  // poster photo, cover-fit across the whole canvas, drawn at full strength
+  // so it reads clearly in the border strip (no washed-out fog on top of it)
   const poster = await loadPosterImage();
   if(poster && poster.width && poster.height){
-    ctx.save();
-    ctx.globalAlpha = 0.85;
     const coverScale = Math.max(width / poster.width, height / poster.height);
     const pw = poster.width * coverScale, ph = poster.height * coverScale;
     ctx.drawImage(poster, (width - pw) / 2, (height - ph) / 2, pw, ph);
-    ctx.restore();
-    // soft cream wash so the table stays readable against the photo
-    ctx.fillStyle = 'rgba(244,239,226,0.55)';
-    ctx.fillRect(0, 0, width, height);
   }
 
   const ox = PAD, oy = PAD;
@@ -1021,20 +1015,26 @@ async function renderTierCanvas(tier){
   ctx.fillStyle = '#5C2020';
   ctx.fillRect(ox, y, innerWidth, titleH);
   ctx.fillStyle = '#fff';
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 0.5;
   ctx.font = 'bold 17px Georgia, serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('Best Excel washing powder', ox + innerWidth/2, y + titleH/2);
+  ctx.strokeText('Best Excel washing powder', ox + innerWidth/2, y + titleH/2);
   y += titleH;
 
   ctx.fillStyle = '#5C2020';
   ctx.fillRect(ox, y, innerWidth, headH);
   ctx.fillStyle = '#fff';
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 0.5;
   ctx.font = 'bold 13px Georgia, serif';
   const headers = ['Products Name','Weight gram','T.Pcs','Price CTN','Agency'];
   let x = ox;
   headers.forEach((h,i)=>{
     ctx.fillText(h, x + colW[i]/2, y + headH/2);
+    ctx.strokeText(h, x + colW[i]/2, y + headH/2);
     x += colW[i];
   });
   y += headH;
@@ -1053,11 +1053,12 @@ async function renderTierCanvas(tier){
       ctx.fillStyle = color;
       ctx.strokeStyle = color;
       ctx.font = i === 0 ? 'bold 13px Georgia, serif' : 'bold 14.5px "Courier New", monospace';
-      ctx.lineWidth = 0.6;
+      ctx.lineWidth = 0.9; // same thickness for every value, so nothing looks thinner than the rest
       const tx = x + colW[i]/2, ty = y + rowH/2;
       ctx.fillText(String(v), tx, ty);
       ctx.strokeText(String(v), tx, ty); // extra pass thickens the glyphs, matching the page's bold look
       x += colW[i];
+
     });
     y += rowH;
   });
@@ -1127,10 +1128,8 @@ async function shareCardAsImage(tier, btn){
     btn.disabled = false;
   }
 }
-
 buildAllTierTables();
-
-// ---------- COMBINED PACKAGING + COST TABLE (top of Formulation tab) ----------
+loadPosterImage(); // warm the cache now, so tapping share later has zero delay before opening the native share sheet + COST TABLE (top of Formulation tab) ----------
 // One row per product: packaging-weight columns first, cost/profit columns
 // merged onto the right of the same row (paired by position).
 // Per-COLUMN lock state — one lock per editable column (in the header row),
