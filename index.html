@@ -581,6 +581,19 @@ window.loadAuthSDKs = async function(){
     font-size:12px;
     cursor:pointer;
   }
+  #fingerprintManualBtn{
+    position:fixed;
+    top:10px; left:175px;
+    z-index:500;
+    background:#2c6e49;
+    color:#fff;
+    border:none;
+    border-radius:4px;
+    padding:6px 12px;
+    font-family:"Noto Naskh Arabic",serif;
+    font-size:12px;
+    cursor:pointer;
+  }
 </style>
 </head>
 <body>
@@ -651,6 +664,7 @@ window.loadAuthSDKs = async function(){
 
 <button type="button" id="logoutBtn" style="display:none;">لاگ آؤٹ</button>
 <button type="button" id="changePasswordBtn" style="display:none;">🔑 Password</button>
+<button type="button" id="fingerprintManualBtn" style="display:none;">👆 فنگر پرنٹ فعال کریں</button>
 
 <div id="changePasswordModal" class="hidden" style="position:fixed;inset:0;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
   <div class="auth-box" dir="ltr" style="text-align:left;">
@@ -1513,6 +1527,7 @@ const EMAILJS_TEMPLATE_ID = 'template_gct0f3o';
 const authGate = document.getElementById('authGate');
 const logoutBtn = document.getElementById('logoutBtn');
 const changePasswordBtn = document.getElementById('changePasswordBtn');
+const fingerprintManualBtn = document.getElementById('fingerprintManualBtn');
 const changePasswordModal = document.getElementById('changePasswordModal');
 const stepLogin = document.getElementById('authStep-login');
 const stepSignup = document.getElementById('authStep-signup');
@@ -1664,9 +1679,10 @@ document.getElementById('enableFingerprintBtn').addEventListener('click', async 
   try{
     await registerFingerprint();
     unlockedThisSession = true;
+    fingerprintManualBtn.style.display = 'none';
     authGate.classList.add('hidden');
   } catch(err){
-    errEl.textContent = 'فنگر پرنٹ محفوظ نہیں ہو سکا — یہ فون سپورٹ نہیں کرتا یا اجازت نہیں ملی۔';
+    errEl.textContent = 'فنگر پرنٹ محفوظ نہیں ہو سکا — یہ فون سپورٹ نہیں کرتا یا اجازت نہیں ملی۔ (' + (err && err.message ? err.message : err) + ')';
   }
 });
 document.getElementById('skipFingerprintBtn').addEventListener('click', ()=>{
@@ -1689,6 +1705,10 @@ document.getElementById('logoutInsteadLink').addEventListener('click', (e)=>{
   localStorage.removeItem(FP_FLAG_KEY);
   localStorage.removeItem(FP_CRED_KEY);
   auth.signOut();
+});
+fingerprintManualBtn.addEventListener('click', ()=>{
+  authGate.classList.remove('hidden');
+  showAuthStep('enableFingerprint');
 });
 
 document.getElementById('goToSignup').addEventListener('click', (e)=>{ e.preventDefault(); showAuthStep('signup'); });
@@ -1801,6 +1821,7 @@ auth.onAuthStateChanged(async (user)=>{
     logoutBtn.style.display = 'block';
     changePasswordBtn.style.display = 'block';
     const fpEnabled = localStorage.getItem(FP_FLAG_KEY) === '1';
+    fingerprintManualBtn.style.display = fpEnabled ? 'none' : 'block';
     if(fpEnabled && !unlockedThisSession){
       // Already signed in (session persisted), but this device wants a
       // fingerprint/screen-lock gate before showing the app each time.
@@ -1822,6 +1843,7 @@ auth.onAuthStateChanged(async (user)=>{
     authGate.classList.remove('hidden');
     logoutBtn.style.display = 'none';
     changePasswordBtn.style.display = 'none';
+    fingerprintManualBtn.style.display = 'none';
     changePasswordModal.classList.add('hidden');
     showAuthStep('login');
   }
