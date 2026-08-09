@@ -1055,7 +1055,7 @@ async function renderTierCanvas(tier){
   const poster = await loadPosterImage();
   if(poster && poster.width && poster.height){
     ctx.save();
-    ctx.globalAlpha = 0.24;
+    ctx.globalAlpha = 0.26; // matches the live page's card::before opacity exactly
     const coverScale = Math.max(width / poster.width, height / poster.height);
     const pw = poster.width * coverScale, ph = poster.height * coverScale;
     ctx.drawImage(poster, (width - pw) / 2, (height - ph) / 2, pw, ph);
@@ -1095,8 +1095,13 @@ async function renderTierCanvas(tier){
   y += headH;
 
   packs.forEach((p, idx)=>{
-    ctx.fillStyle = idx % 2 === 0 ? '#F4EFE2' : '#EAE2CF';
-    ctx.fillRect(ox, y, innerWidth, rowH);
+    // only every 2nd row gets a solid tint, same as the live page's
+    // "tr:nth-child(even)" rule — the other rows are left unpainted here
+    // so the poster photo underneath actually shows through
+    if(idx % 2 === 1){
+      ctx.fillStyle = '#FBF7EC';
+      ctx.fillRect(ox, y, innerWidth, rowH);
+    }
     ctx.strokeStyle = '#D8CFB8';
     ctx.lineWidth = 1;
     ctx.strokeRect(ox, y, innerWidth, rowH);
