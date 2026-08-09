@@ -427,14 +427,14 @@ window.loadAuthSDKs = async function(){
     border-collapse:separate;
     border-spacing:0;
   }
-  .edit-table col.col-name{width:30%;}
-  .edit-table col.col-num{width:17.5%;}
+  .edit-table col.col-name{width:38%;}
+  .edit-table col.col-num{width:15.5%;}
   .edit-table th.corner-tri{
     font-size:10.5px;
   }
   .edit-table td.edit-cell{
     text-align:center;
-    padding:2px 1px;
+    padding:1px 1px;
   }
   .edit-table tbody tr:nth-child(even) td{
     background:rgba(234,226,207,.6);
@@ -454,10 +454,10 @@ window.loadAuthSDKs = async function(){
     background:transparent;
     font-family:"Courier Prime",monospace;
     font-variant-numeric:tabular-nums;
-    font-size:16px;
+    font-size:15px;
     letter-spacing:.02em;
     text-align:center;
-    padding:2px 1px;
+    padding:1px 1px;
     border-radius:2px;
     color:var(--maroon-deep);
     font-weight:700;
@@ -473,19 +473,22 @@ window.loadAuthSDKs = async function(){
     text-align:center;
     font-family:"Noto Naskh Arabic",serif;
     font-weight:700;
-    font-size:11.5px;
+    font-size:10.5px;
     color:var(--ink);
     -webkit-text-stroke:.35px currentColor;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
   }
   .edit-table .cell-val{
     display:block;
     width:100%;
     font-family:"Courier Prime",monospace;
     font-variant-numeric:tabular-nums;
-    font-size:16px;
+    font-size:15px;
     letter-spacing:.02em;
     text-align:center;
-    padding:2px 1px;
+    padding:1px 1px;
     color:var(--maroon-deep);
     font-weight:700;
     -webkit-text-stroke:.45px currentColor;
@@ -493,9 +496,12 @@ window.loadAuthSDKs = async function(){
   .edit-table td.name-cell .cell-val{
     font-family:"Noto Naskh Arabic",serif;
     font-weight:700;
-    font-size:11.5px;
+    font-size:10.5px;
     color:var(--ink);
     -webkit-text-stroke:.35px currentColor;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
   }
 
   tr.hot td{background:#F1E3C6;}
