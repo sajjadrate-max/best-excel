@@ -1,16 +1,20 @@
 {
-  "background_color": "#ffffff",
-  "dir": "ltr",
-  "display": "standalone",
   "name": "Best Excel",
-  "orientation": "any",
-  "scope": "/",
   "short_name": "Best Excel",
-  "start_url": "/",
-  "theme_color": "#ffffff",
-  "id": "best-excel",
-  "description": "Best Excel Official App",
-  "categories": [
-    "productivity"
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#c62828",
+  "icons": [
+    {
+      "src": "launchericon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "launchericon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
   ]
 }
