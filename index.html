@@ -1614,8 +1614,16 @@ const FP_FLAG_KEY = 'bestExcelFingerprintEnabled';
 const FP_CRED_KEY = 'bestExcelFingerprintCredId';
 let unlockedThisSession = false;
 
-function webAuthnSupported(){
-  return !!(window.PublicKeyCredential && navigator.credentials && navigator.credentials.create);
+async function webAuthnSupported(){
+  if(!(window.PublicKeyCredential && navigator.credentials && navigator.credentials.create)) return false;
+  try{
+    // The mere existence of the API isn't enough — some browsers expose it
+    // without an actual fingerprint/screen-lock authenticator behind it.
+    // This is the real check Chrome recommends for "can this device do it".
+    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  } catch(e){
+    return false;
+  }
 }
 
 async function registerFingerprint(){
@@ -1788,7 +1796,7 @@ logoutBtn.addEventListener('click', ()=> {
   auth.signOut();
 });
 
-auth.onAuthStateChanged((user)=>{
+auth.onAuthStateChanged(async (user)=>{
   if(user){
     logoutBtn.style.display = 'block';
     changePasswordBtn.style.display = 'block';
@@ -1798,13 +1806,15 @@ auth.onAuthStateChanged((user)=>{
       // fingerprint/screen-lock gate before showing the app each time.
       authGate.classList.remove('hidden');
       showAuthStep('locked');
-    } else if(justAuthenticated && !fpEnabled && webAuthnSupported()){
-      // Fresh sign up/login on a device that supports it — offer to set
-      // fingerprint unlock up once, so future opens are quicker.
+    } else if(justAuthenticated && !fpEnabled && await webAuthnSupported()){
+      // A real login/signup just happened (not just reopening an already-
+      // signed-in session) on a device that actually has a fingerprint/
+      // screen-lock authenticator — offer to set unlock up once.
       justAuthenticated = false;
       authGate.classList.remove('hidden');
       showAuthStep('enableFingerprint');
     } else {
+      justAuthenticated = false;
       authGate.classList.add('hidden');
     }
   } else {
