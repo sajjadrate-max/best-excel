@@ -817,7 +817,12 @@ function buildAllTierTables(){
 
     const table = document.createElement('table');
     table.dir = 'ltr';
-    table.appendChild(Object.assign(document.createElement('colgroup'), {innerHTML:`
+    table.appendChild(Object.assign(document.createElement('colgroup'), {innerHTML: tier.slug === 'dukandar' ? `
+        <col class="col-name">
+        <col class="col-num">
+        <col class="col-num">
+        <col class="col-num">
+    ` : `
         <col class="col-name">
         <col class="col-num">
         <col class="col-num">
@@ -827,7 +832,7 @@ function buildAllTierTables(){
 
     const thead = document.createElement('thead');
     const titleRow = document.createElement('tr');
-    titleRow.innerHTML = '<th colspan="5" class="sheet-title">Best Excel washing powder</th>';
+    titleRow.innerHTML = `<th colspan="${tier.slug === 'dukandar' ? 4 : 5}" class="sheet-title">Best Excel washing powder</th>`;
     thead.appendChild(titleRow);
 
     const headRow = document.createElement('tr');
@@ -854,7 +859,12 @@ function buildAllTierTables(){
       ].forEach(([label, field])=> headRow.appendChild(makeMasterHeaderCell(label, field)));
       headRow.lastElementChild.classList.add('corner-tri');
     } else {
-      headRow.innerHTML = `
+      headRow.innerHTML = tier.slug === 'dukandar' ? `
+          <th>Products Name</th>
+          <th>Weight gram</th>
+          <th>T.Pcs</th>
+          <th class="corner-tri">Price CTN</th>
+      ` : `
           <th>Products Name</th>
           <th>Weight gram</th>
           <th>T.Pcs</th>
@@ -903,7 +913,9 @@ function fillTierTableBody(tbody, tier){
       ['tpcs','ctn','mrp'].forEach(k=>{
         tr.appendChild(makeCell(p, k, false, false));
       });
-      tr.appendChild(makeCell(p, tier.key, false, false));
+      if(tier.slug !== 'dukandar'){
+        tr.appendChild(makeCell(p, tier.key, false, false));
+      }
     }
 
     tbody.appendChild(tr);
@@ -984,7 +996,9 @@ function loadPosterImage(){
 async function renderTierCanvas(tier){
   const SCALE = 2;
   const PAD = 46; // wider border so the poster photo (shirt/dove/BEST logo) is actually recognizable, not just a blurry sliver
-  const colW = [232, 132, 100, 132, 132];   // name, weight, tpcs, price, rate
+  const colW = tier.slug === 'dukandar'
+    ? [280, 150, 120, 150]              // name, weight, tpcs, price (no separate Agency column — it's identical to Price CTN)
+    : [232, 132, 100, 132, 132];        // name, weight, tpcs, price, rate
   const innerWidth = colW.reduce((a,b)=>a+b,0);
   const titleH = 40, headH = 38, rowH = 42;
   const innerHeight = titleH + headH + rowH * packs.length + 2;
@@ -1030,7 +1044,9 @@ async function renderTierCanvas(tier){
   ctx.strokeStyle = '#fff';
   ctx.lineWidth = 0.5;
   ctx.font = 'bold 13px Georgia, serif';
-  const headers = ['Products Name','Weight gram','T.Pcs','Price CTN','Agency'];
+  const headers = tier.slug === 'dukandar'
+    ? ['Products Name','Weight gram','T.Pcs','Price CTN']
+    : ['Products Name','Weight gram','T.Pcs','Price CTN','Agency'];
   let x = ox;
   headers.forEach((h,i)=>{
     ctx.fillText(h, x + colW[i]/2, y + headH/2);
@@ -1046,7 +1062,9 @@ async function renderTierCanvas(tier){
     ctx.lineWidth = 1;
     ctx.strokeRect(ox, y, innerWidth, rowH);
 
-    const vals = [p.name, p.tpcs, p.ctn, p.mrp, p[tier.key]];
+    const vals = tier.slug === 'dukandar'
+      ? [p.name, p.tpcs, p.ctn, p.mrp]
+      : [p.name, p.tpcs, p.ctn, p.mrp, p[tier.key]];
     let x = ox;
     vals.forEach((v,i)=>{
       const color = i === 0 ? '#25302B' : '#5C2020';
