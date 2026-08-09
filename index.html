@@ -1032,8 +1032,8 @@ async function renderTierCanvas(tier){
   const SCALE = 3;   // higher-res export — fills a full mobile screen crisply instead of looking small/pixelated
   const PAD = 8;      // tighter card padding — compact edges
   const colW = tier.slug === 'dukandar'
-    ? [128, 68, 68, 68]                  // name, weight, tpcs, price (no separate Agency column — it's identical to Price CTN) — smaller boxes than before
-    : [128, 52, 52, 52, 52];             // name, weight, tpcs, price, rate — smaller boxes than before; fitFontSize below keeps every full number visible
+    ? [102, 52, 52, 52]                  // name, weight, tpcs, price (no separate Agency column — it's identical to Price CTN) — even smaller boxes; fitFontSize keeps full numbers visible
+    : [102, 40, 40, 40, 40];             // name, weight, tpcs, price, rate — even smaller boxes; fitFontSize below shrinks text just enough so nothing is ever cut off
   const innerWidth = colW.reduce((a,b)=>a+b,0);
   const titleH = 26, headH = 20, rowH = 22; // sized to match the live page's actual on-screen proportions, not stretched wide
   const innerHeight = titleH + headH + rowH * packs.length + 2;
@@ -1087,7 +1087,7 @@ async function renderTierCanvas(tier){
   let x = ox;
   headers.forEach((h,i)=>{
     const cellPad = 4;
-    fitFontSize(ctx, h, colW[i] - cellPad*2, 'Georgia, serif', 'bold', 9, 6);
+    fitFontSize(ctx, h, colW[i] - cellPad*2, 'Georgia, serif', 'bold', 9, 5.5);
     ctx.fillText(h, x + colW[i]/2, y + headH/2);
     ctx.strokeText(h, x + colW[i]/2, y + headH/2);
     x += colW[i];
@@ -1114,7 +1114,7 @@ async function renderTierCanvas(tier){
       const startSize = i === 0 ? 10 : 12.5;
       // shrinks only as far as needed so the FULL number/text always fits
       // inside its (now smaller) cell — nothing gets cut off
-      fitFontSize(ctx, v, colW[i] - cellPad*2, family, 'bold', startSize, 7);
+      fitFontSize(ctx, v, colW[i] - cellPad*2, family, 'bold', startSize, 6);
       ctx.lineWidth = 1.1; // extra-thick stroke pass — bolder than before, same thickness for every value
       const tx = x + colW[i]/2, ty = y + rowH/2;
       ctx.fillText(String(v), tx, ty);
