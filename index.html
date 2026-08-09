@@ -1015,7 +1015,7 @@ function loadPosterImage(){
 
 async function renderTierCanvas(tier){
   const SCALE = 2;
-  const PAD = 46; // wider border so the poster photo (shirt/dove/BEST logo) is actually recognizable, not just a blurry sliver
+  const PAD = 16; // same small card padding as the live page, not a big showcase border
   const colW = tier.slug === 'dukandar'
     ? [266, 145, 145, 145]               // name, weight, tpcs, price (no separate Agency column — it's identical to Price CTN)
     : [277, 113, 113, 113, 113];         // name, weight, tpcs, price, rate — same 38%/name : rest split as the live table
@@ -1031,17 +1031,20 @@ async function renderTierCanvas(tier){
   const ctx = canvas.getContext('2d');
   ctx.scale(SCALE, SCALE);
 
-  // base cream fill first
+  // base cream fill first (matches the live card's white/cream background)
   ctx.fillStyle = '#F4EFE2';
   ctx.fillRect(0, 0, width, height);
 
-  // poster photo, cover-fit across the whole canvas, drawn at full strength
-  // so it reads clearly in the border strip (no washed-out fog on top of it)
+  // poster photo, cover-fit, but only a faint tint — same opacity (.26) the
+  // live page uses for its card background, not a bold vivid image
   const poster = await loadPosterImage();
   if(poster && poster.width && poster.height){
+    ctx.save();
+    ctx.globalAlpha = 0.24;
     const coverScale = Math.max(width / poster.width, height / poster.height);
     const pw = poster.width * coverScale, ph = poster.height * coverScale;
     ctx.drawImage(poster, (width - pw) / 2, (height - ph) / 2, pw, ph);
+    ctx.restore();
   }
 
   const ox = PAD, oy = PAD;
