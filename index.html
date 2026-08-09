@@ -238,7 +238,7 @@ window.loadAuthSDKs = async function(){
     display:block;
     margin:0 auto 14px;
     background:var(--maroon-deep);
-    color:#fff;
+    color:#000;
     border:none;
     border-radius:4px;
     padding:8px 16px;
@@ -459,7 +459,7 @@ window.loadAuthSDKs = async function(){
     text-align:center;
     padding:1px 1px;
     border-radius:2px;
-    color:var(--maroon-deep);
+    color:#000;
     font-weight:700;
     -webkit-text-stroke:.45px currentColor;
     outline:none;
@@ -474,7 +474,7 @@ window.loadAuthSDKs = async function(){
     font-family:"Noto Naskh Arabic",serif;
     font-weight:700;
     font-size:10.5px;
-    color:var(--ink);
+    color:#000;
     -webkit-text-stroke:.35px currentColor;
     white-space:nowrap;
     overflow:hidden;
@@ -489,7 +489,7 @@ window.loadAuthSDKs = async function(){
     letter-spacing:.02em;
     text-align:center;
     padding:1px 1px;
-    color:var(--maroon-deep);
+    color:#000;
     font-weight:700;
     -webkit-text-stroke:.45px currentColor;
   }
@@ -497,7 +497,7 @@ window.loadAuthSDKs = async function(){
     font-family:"Noto Naskh Arabic",serif;
     font-weight:700;
     font-size:10.5px;
-    color:var(--ink);
+    color:#000;
     -webkit-text-stroke:.35px currentColor;
     white-space:nowrap;
     overflow:hidden;
@@ -1111,7 +1111,7 @@ async function renderTierCanvas(tier){
       : [p.name, p.tpcs, p.ctn, p.mrp, p[tier.key]];
     let x = ox;
     vals.forEach((v,i)=>{
-      const color = i === 0 ? '#25302B' : '#5C2020';
+      const color = i === 0 ? '#000000' : '#000000';
       ctx.fillStyle = color;
       ctx.strokeStyle = color;
       const cellPad = 4;
