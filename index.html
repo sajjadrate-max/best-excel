@@ -954,12 +954,37 @@ function recalcDependentTiers(){
 // Draws one tier's table straight onto a <canvas> from the data itself —
 // no external library, no screenshotting the live page, so it always
 // works even with no internet. Runs at 2x scale for a crisp save/share.
-function renderTierCanvas(tier){
+// Loads the same poster image used as the page's card background (the
+// Best Excel powder/shirt photo, stored as a data: URL in the --poster-img
+// CSS variable) so the exported share image can use it too. Cached after
+// the first load.
+let _posterImgPromise = null;
+function loadPosterImage(){
+  if(_posterImgPromise) return _posterImgPromise;
+  _posterImgPromise = new Promise((resolve)=>{
+    try{
+      const cssVal = getComputedStyle(document.documentElement).getPropertyValue('--poster-img').trim();
+      const match = cssVal.match(/url\((["']?)(.*?)\1\)/);
+      const src = match ? match[2] : '';
+      if(!src){ resolve(null); return; }
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = src;
+    } catch(e){ resolve(null); }
+  });
+  return _posterImgPromise;
+}
+
+async function renderTierCanvas(tier){
   const SCALE = 2;
+  const PAD = 22; // border strip where the poster photo stays visible
   const colW = [232, 132, 100, 132, 132];   // name, weight, tpcs, price, rate
-  const width = colW.reduce((a,b)=>a+b,0);
+  const innerWidth = colW.reduce((a,b)=>a+b,0);
   const titleH = 40, headH = 38, rowH = 42;
-  const height = titleH + headH + rowH * packs.length + 2;
+  const innerHeight = titleH + headH + rowH * packs.length + 2;
+  const width = innerWidth + PAD * 2;
+  const height = innerHeight + PAD * 2;
 
   const canvas = document.createElement('canvas');
   canvas.width = width * SCALE;
@@ -967,25 +992,42 @@ function renderTierCanvas(tier){
   const ctx = canvas.getContext('2d');
   ctx.scale(SCALE, SCALE);
 
+  // base cream fill first
   ctx.fillStyle = '#F4EFE2';
   ctx.fillRect(0, 0, width, height);
 
-  let y = 0;
+  // poster photo, cover-fit across the whole canvas, tinted subtle like
+  // the live page's card background
+  const poster = await loadPosterImage();
+  if(poster && poster.width && poster.height){
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    const coverScale = Math.max(width / poster.width, height / poster.height);
+    const pw = poster.width * coverScale, ph = poster.height * coverScale;
+    ctx.drawImage(poster, (width - pw) / 2, (height - ph) / 2, pw, ph);
+    ctx.restore();
+    // soft cream wash so the table stays readable against the photo
+    ctx.fillStyle = 'rgba(244,239,226,0.55)';
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  const ox = PAD, oy = PAD;
+  let y = oy;
   ctx.fillStyle = '#5C2020';
-  ctx.fillRect(0, y, width, titleH);
+  ctx.fillRect(ox, y, innerWidth, titleH);
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 17px Georgia, serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('Best Excel washing powder', width/2, y + titleH/2);
+  ctx.fillText('Best Excel washing powder', ox + innerWidth/2, y + titleH/2);
   y += titleH;
 
   ctx.fillStyle = '#5C2020';
-  ctx.fillRect(0, y, width, headH);
+  ctx.fillRect(ox, y, innerWidth, headH);
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 13px Georgia, serif';
   const headers = ['Products Name','Weight gram','T.Pcs','Price CTN','Agency'];
-  let x = 0;
+  let x = ox;
   headers.forEach((h,i)=>{
     ctx.fillText(h, x + colW[i]/2, y + headH/2);
     x += colW[i];
@@ -994,13 +1036,13 @@ function renderTierCanvas(tier){
 
   packs.forEach((p, idx)=>{
     ctx.fillStyle = idx % 2 === 0 ? '#F4EFE2' : '#EAE2CF';
-    ctx.fillRect(0, y, width, rowH);
+    ctx.fillRect(ox, y, innerWidth, rowH);
     ctx.strokeStyle = '#D8CFB8';
     ctx.lineWidth = 1;
-    ctx.strokeRect(0, y, width, rowH);
+    ctx.strokeRect(ox, y, innerWidth, rowH);
 
     const vals = [p.name, p.tpcs, p.ctn, p.mrp, p[tier.key]];
-    let x = 0;
+    let x = ox;
     vals.forEach((v,i)=>{
       ctx.fillStyle = i === 0 ? '#25302B' : '#5C2020';
       ctx.font = i === 0 ? '12.5px Georgia, serif' : 'bold 13.5px "Courier New", monospace';
@@ -1009,6 +1051,10 @@ function renderTierCanvas(tier){
     });
     y += rowH;
   });
+
+  ctx.strokeStyle = '#5C2020';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(ox + 0.5, oy + 0.5, innerWidth - 1, innerHeight - 1);
 
   ctx.strokeStyle = '#B9AF92';
   ctx.lineWidth = 1;
@@ -1027,7 +1073,7 @@ async function shareCardAsImage(tier, btn){
   btn.textContent = '⏳ تیار ہو رہا ہے...';
   btn.disabled = true;
   try{
-    const canvas = renderTierCanvas(tier);
+    const canvas = await renderTierCanvas(tier);
     const baseName = tier.title.replace(/\s+/g,'_');
 
     const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
