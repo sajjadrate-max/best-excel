@@ -1013,14 +1013,29 @@ function loadPosterImage(){
   return _posterImgPromise;
 }
 
+// Shrinks the font size just enough that `text` fits inside maxWidth —
+// so cells can be made small/compact while every full number still shows,
+// nothing ever gets clipped. Never goes below minSize.
+function fitFontSize(ctx, text, maxWidth, family, weight, startSize, minSize){
+  let size = startSize;
+  const str = String(text);
+  while(size > minSize){
+    ctx.font = `${weight} ${size}px ${family}`;
+    if(ctx.measureText(str).width <= maxWidth) break;
+    size -= 0.5;
+  }
+  ctx.font = `${weight} ${size}px ${family}`;
+  return size;
+}
+
 async function renderTierCanvas(tier){
-  const SCALE = 2;
-  const PAD = 10; // minimal card padding, same tight edge as the live page
+  const SCALE = 3;   // higher-res export — fills a full mobile screen crisply instead of looking small/pixelated
+  const PAD = 8;      // tighter card padding — compact edges
   const colW = tier.slug === 'dukandar'
-    ? [150, 83, 83, 83]                  // name, weight, tpcs, price (no separate Agency column — it's identical to Price CTN)
-    : [150, 62, 62, 62, 62];             // name, weight, tpcs, price, rate — scaled to an actual mobile-width table (~400px), not blown up 2x wider than the live page
+    ? [128, 68, 68, 68]                  // name, weight, tpcs, price (no separate Agency column — it's identical to Price CTN) — smaller boxes than before
+    : [128, 52, 52, 52, 52];             // name, weight, tpcs, price, rate — smaller boxes than before; fitFontSize below keeps every full number visible
   const innerWidth = colW.reduce((a,b)=>a+b,0);
-  const titleH = 24, headH = 20, rowH = 22; // sized to match the live page's actual on-screen proportions, not stretched wide
+  const titleH = 26, headH = 20, rowH = 22; // sized to match the live page's actual on-screen proportions, not stretched wide
   const innerHeight = titleH + headH + rowH * packs.length + 2;
   const width = innerWidth + PAD * 2;
   const height = innerHeight + PAD * 2;
@@ -1053,8 +1068,8 @@ async function renderTierCanvas(tier){
   ctx.fillRect(ox, y, innerWidth, titleH);
   ctx.fillStyle = '#fff';
   ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 0.8;
-  ctx.font = 'bold 13px Georgia, serif';
+  ctx.lineWidth = 1.6; // extra-thick stroke — noticeably bolder title
+  ctx.font = '900 15px Georgia, serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('Best Excel washing powder', ox + innerWidth/2, y + titleH/2);
@@ -1065,13 +1080,14 @@ async function renderTierCanvas(tier){
   ctx.fillRect(ox, y, innerWidth, headH);
   ctx.fillStyle = '#fff';
   ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 0.8;
-  ctx.font = 'bold 9px Georgia, serif';
+  ctx.lineWidth = 1;
   const headers = tier.slug === 'dukandar'
     ? ['Products Name','Weight gram','T.Pcs','Price CTN']
     : ['Products Name','Weight gram','T.Pcs','Price CTN','Agency'];
   let x = ox;
   headers.forEach((h,i)=>{
+    const cellPad = 4;
+    fitFontSize(ctx, h, colW[i] - cellPad*2, 'Georgia, serif', 'bold', 9, 6);
     ctx.fillText(h, x + colW[i]/2, y + headH/2);
     ctx.strokeText(h, x + colW[i]/2, y + headH/2);
     x += colW[i];
@@ -1093,7 +1109,12 @@ async function renderTierCanvas(tier){
       const color = i === 0 ? '#25302B' : '#5C2020';
       ctx.fillStyle = color;
       ctx.strokeStyle = color;
-      ctx.font = i === 0 ? 'bold 10px Georgia, serif' : 'bold 12.5px "Courier New", monospace';
+      const cellPad = 4;
+      const family = i === 0 ? 'Georgia, serif' : '"Courier New", monospace';
+      const startSize = i === 0 ? 10 : 12.5;
+      // shrinks only as far as needed so the FULL number/text always fits
+      // inside its (now smaller) cell — nothing gets cut off
+      fitFontSize(ctx, v, colW[i] - cellPad*2, family, 'bold', startSize, 7);
       ctx.lineWidth = 1.1; // extra-thick stroke pass — bolder than before, same thickness for every value
       const tx = x + colW[i]/2, ty = y + rowH/2;
       ctx.fillText(String(v), tx, ty);
