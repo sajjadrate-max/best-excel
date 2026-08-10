@@ -238,7 +238,7 @@ window.loadAuthSDKs = async function(){
     display:block;
     margin:0 auto 14px;
     background:var(--maroon-deep);
-    color:#000;
+    color:#fff;
     border:none;
     border-radius:4px;
     padding:8px 16px;
@@ -473,7 +473,7 @@ window.loadAuthSDKs = async function(){
     text-align:center;
     font-family:"Noto Naskh Arabic",serif;
     font-weight:700;
-    font-size:10.5px;
+    font-size:15px;
     color:#000;
     -webkit-text-stroke:.35px currentColor;
     white-space:nowrap;
@@ -496,7 +496,7 @@ window.loadAuthSDKs = async function(){
   .edit-table td.name-cell .cell-val{
     font-family:"Noto Naskh Arabic",serif;
     font-weight:700;
-    font-size:10.5px;
+    font-size:15px;
     color:#000;
     -webkit-text-stroke:.35px currentColor;
     white-space:nowrap;
@@ -1032,8 +1032,8 @@ async function renderTierCanvas(tier){
   const SCALE = 3;   // higher-res export — fills a full mobile screen crisply instead of looking small/pixelated
   const PAD = 8;      // tighter card padding — compact edges
   const colW = tier.slug === 'dukandar'
-    ? [102, 52, 52, 52]                  // name, weight, tpcs, price (no separate Agency column — it's identical to Price CTN) — even smaller boxes; fitFontSize keeps full numbers visible
-    : [102, 40, 40, 40, 40];             // name, weight, tpcs, price, rate — even smaller boxes; fitFontSize below shrinks text just enough so nothing is ever cut off
+    ? [128, 52, 52, 52]                  // name, weight, tpcs, price (no separate Agency column — it's identical to Price CTN) — name col widened to fit the larger, number-matching font size
+    : [128, 40, 40, 40, 40];             // name, weight, tpcs, price, rate — name col widened to fit the larger, number-matching font size; fitFontSize below shrinks text just enough so nothing is ever cut off
   const innerWidth = colW.reduce((a,b)=>a+b,0);
   const titleH = 26, headH = 20, rowH = 22; // sized to match the live page's actual on-screen proportions, not stretched wide
   const innerHeight = titleH + headH + rowH * packs.length + 2;
@@ -1116,7 +1116,7 @@ async function renderTierCanvas(tier){
       ctx.strokeStyle = color;
       const cellPad = 4;
       const family = i === 0 ? 'Georgia, serif' : '"Courier New", monospace';
-      const startSize = i === 0 ? 10 : 12.5;
+      const startSize = 12.5; // name column now matches the numbers' font size, per request
       // shrinks only as far as needed so the FULL number/text always fits
       // inside its (now smaller) cell — nothing gets cut off
       fitFontSize(ctx, v, colW[i] - cellPad*2, family, 'bold', startSize, 6);
