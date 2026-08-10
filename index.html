@@ -1028,6 +1028,38 @@ function fitFontSize(ctx, text, maxWidth, family, weight, startSize, minSize){
   return size;
 }
 
+// Draws a header label at a fixed font size, wrapping onto a 2nd line if it
+// doesn't fit — mirrors how the live page's th naturally wraps "Weight gram"
+// onto two lines instead of shrinking the font, so the export matches it.
+function drawWrappedHeader(ctx, text, cx, cy, maxWidth, size){
+  const words = String(text).split(' ');
+  if(words.length === 1 || ctx.measureText(text).width <= maxWidth){
+    ctx.fillText(text, cx, cy);
+    ctx.strokeText(text, cx, cy);
+    return;
+  }
+  // greedy word-wrap into as many lines as needed
+  const lines = [];
+  let cur = '';
+  words.forEach(w=>{
+    const test = cur ? cur + ' ' + w : w;
+    if(ctx.measureText(test).width <= maxWidth || !cur){
+      cur = test;
+    } else {
+      lines.push(cur);
+      cur = w;
+    }
+  });
+  if(cur) lines.push(cur);
+  const lineH = size * 1.05;
+  const startY = cy - (lineH * (lines.length - 1)) / 2;
+  lines.forEach((line, i)=>{
+    const ly = startY + i * lineH;
+    ctx.fillText(line, cx, ly);
+    ctx.strokeText(line, cx, ly);
+  });
+}
+
 async function renderTierCanvas(tier){
   const SCALE = 3;   // higher-res export — fills a full mobile screen crisply instead of looking small/pixelated
   const PAD = 8;      // tighter card padding — compact edges
@@ -1035,7 +1067,7 @@ async function renderTierCanvas(tier){
     ? [128, 52, 52, 52]                  // name, weight, tpcs, price (no separate Agency column — it's identical to Price CTN) — name col widened to fit the larger, number-matching font size
     : [128, 40, 40, 40, 40];             // name, weight, tpcs, price, rate — name col widened to fit the larger, number-matching font size; fitFontSize below shrinks text just enough so nothing is ever cut off
   const innerWidth = colW.reduce((a,b)=>a+b,0);
-  const titleH = 34, headH = 24, rowH = 22; // title/header rows enlarged to fit the bigger matching font sizes below without clipping
+  const titleH = 34, headH = 32, rowH = 22; // headH tall enough for a wrapped 2-line header like "Weight gram", matching the live page's natural wrap
   const innerHeight = titleH + headH + rowH * packs.length + 2;
   const width = innerWidth + PAD * 2;
   const height = innerHeight + PAD * 2;
@@ -1055,7 +1087,7 @@ async function renderTierCanvas(tier){
   const poster = await loadPosterImage();
   if(poster && poster.width && poster.height){
     ctx.save();
-    ctx.globalAlpha = 0.26; // matches the live page's card::before opacity exactly
+    ctx.globalAlpha = 0.06; // matches the live page's card::before opacity exactly (reduced from .26 earlier — the export was never updated to match)
     const coverScale = Math.max(width / poster.width, height / poster.height);
     const pw = poster.width * coverScale, ph = poster.height * coverScale;
     ctx.drawImage(poster, (width - pw) / 2, (height - ph) / 2, pw, ph);
@@ -1087,9 +1119,10 @@ async function renderTierCanvas(tier){
   let x = ox;
   headers.forEach((h,i)=>{
     const cellPad = 4;
-    fitFontSize(ctx, h, colW[i] - cellPad*2, 'Georgia, serif', '800', 13, 6); // matches the live page's th size exactly
-    ctx.fillText(h, x + colW[i]/2, y + headH/2);
-    ctx.strokeText(h, x + colW[i]/2, y + headH/2);
+    // fixed 13px (matches live page th) — narrow columns wrap to 2 lines
+    // instead of shrinking the font, same as the live page's CSS wrap
+    ctx.font = '800 13px Georgia, serif';
+    drawWrappedHeader(ctx, h, x + colW[i]/2, y + headH/2, colW[i] - cellPad*2, 13);
     x += colW[i];
   });
   y += headH;
