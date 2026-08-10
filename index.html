@@ -7,6 +7,9 @@
 <title>Best Excel واشنگ پاؤڈر — مکمل کمپنی ریٹ لسٹ اور فارمولیشن ترتیب</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400..700&family=Noto+Naskh+Arabic:wght@400..700&family=Courier+Prime:wght@400;700&family=Anton&family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<!-- Screenshots the real table DOM for the share button, so the exported
+     image is always pixel-identical to the live site (see shareCardAsImage) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 // Loads each SDK by trying several CDN mirrors in turn — some networks
 // block one Google/CDN domain but allow another, so a single hard-coded
@@ -693,14 +696,36 @@ window.loadAuthSDKs = async function(){
 </header>
 
 <nav>
-  <button data-tab="rate" class="active">ریٹ لسٹ</button>
+  <button data-tab="kata" class="active">کھاتے</button>
+  <button data-tab="rate">ریٹ لسٹ</button>
   <button data-tab="formulation">Best Excel official</button>
 </nav>
 
 <main>
 
+  <!-- ===================== کھاتے (LEDGERS) — opens first, one running
+       account book per dealer/customer, each new entry stacking below the
+       last with the previous running total carried forward automatically ===================== -->
+  <section id="kata" class="active">
+    <div class="card" style="text-align:center;">
+      <h2 style="border:none;margin-bottom:0;">کھاتے</h2>
+    </div>
+    <div id="kataListView">
+      <div class="card" style="text-align:center;">
+        <button type="button" class="share-btn" id="newKataBtn" style="margin:0;">+ نیا کھاتہ</button>
+      </div>
+      <div id="kataListContainer"></div>
+    </div>
+    <div id="kataDetailView" style="display:none;">
+      <div class="card" style="text-align:center;">
+        <button type="button" class="lock-btn" id="kataBackBtn" style="margin:0;">⬅ کھاتوں کی فہرست</button>
+      </div>
+      <div id="kataDetailContainer"></div>
+    </div>
+  </section>
+
   <!-- ===================== RATE CALCULATOR ===================== -->
-  <section id="rate" class="active">
+  <section id="rate">
     <div id="tierListsContainer"></div>
   </section>
 
@@ -813,6 +838,7 @@ document.querySelectorAll('nav button').forEach(btn=>{
 // ---------- RATE MASTER LISTS (one per tier) ----------
 const tierListsContainer = document.getElementById('tierListsContainer');
 const tierBodies = {}; // slug -> tbody element, so read-only tables can be refreshed
+const tierWraps = {};  // slug -> .edit-table wrap element, screenshotted directly for the share button
 
 function buildAllTierTables(){
   tierListsContainer.innerHTML = '';
@@ -910,6 +936,7 @@ function buildAllTierTables(){
     tierListsContainer.appendChild(card);
 
     tierBodies[tier.slug] = tbody;
+    tierWraps[tier.slug] = wrap;
     fillTierTableBody(tbody, tier);
   });
 }
@@ -1013,181 +1040,24 @@ function loadPosterImage(){
   return _posterImgPromise;
 }
 
-// Shrinks the font size just enough that `text` fits inside maxWidth —
-// so cells can be made small/compact while every full number still shows,
-// nothing ever gets clipped. Never goes below minSize.
-function fitFontSize(ctx, text, maxWidth, family, weight, startSize, minSize){
-  let size = startSize;
-  const str = String(text);
-  while(size > minSize){
-    ctx.font = `${weight} ${size}px ${family}`;
-    if(ctx.measureText(str).width <= maxWidth) break;
-    size -= 0.5;
-  }
-  ctx.font = `${weight} ${size}px ${family}`;
-  return size;
-}
-
-// Draws a header label at a fixed font size, wrapping onto a 2nd line if it
-// doesn't fit — mirrors how the live page's th naturally wraps "Weight gram"
-// onto two lines instead of shrinking the font, so the export matches it.
-function drawWrappedHeader(ctx, text, cx, cy, maxWidth, size){
-  const words = String(text).split(' ');
-  if(words.length === 1 || ctx.measureText(text).width <= maxWidth){
-    ctx.fillText(text, cx, cy);
-    ctx.strokeText(text, cx, cy);
-    return;
-  }
-  // greedy word-wrap into as many lines as needed
-  const lines = [];
-  let cur = '';
-  words.forEach(w=>{
-    const test = cur ? cur + ' ' + w : w;
-    if(ctx.measureText(test).width <= maxWidth || !cur){
-      cur = test;
-    } else {
-      lines.push(cur);
-      cur = w;
-    }
-  });
-  if(cur) lines.push(cur);
-  const lineH = size * 1.05;
-  const startY = cy - (lineH * (lines.length - 1)) / 2;
-  lines.forEach((line, i)=>{
-    const ly = startY + i * lineH;
-    ctx.fillText(line, cx, ly);
-    ctx.strokeText(line, cx, ly);
-  });
-}
-
+// Screenshots the tier's ACTUAL table element from the live page — this
+// guarantees the shared image is always pixel-identical to what the user
+// sees on screen (same fonts, same colors, same layout), since it is a
+// direct capture rather than a hand-redrawn copy that can drift out of
+// sync with the live CSS.
 async function renderTierCanvas(tier){
-  // Make sure the site's actual webfonts (Noto Naskh Arabic, Courier Prime)
-  // are fully loaded before any canvas text is drawn — otherwise the canvas
-  // silently falls back to a generic serif/monospace and the exported image
-  // looks noticeably different from the live table even though the color
-  // code below matches it exactly.
-  try{
-    await Promise.all([
-      document.fonts.load('800 13px "Noto Naskh Arabic"'),
-      document.fonts.load('700 13px "Noto Naskh Arabic"'),
-      document.fonts.load('900 20px "Noto Naskh Arabic"'),
-      document.fonts.load('700 13px "Courier Prime"'),
-      document.fonts.ready
-    ]);
-  } catch(e){ /* if font loading fails, we still draw with whatever is available */ }
+  const el = tierWraps[tier.slug];
+  // Make sure the site's webfonts are fully loaded before the screenshot,
+  // otherwise html2canvas can capture a fallback font mid-swap.
+  try{ await document.fonts.ready; } catch(e){ /* proceed anyway */ }
 
-  const SCALE = 3;   // higher-res export — fills a full mobile screen crisply instead of looking small/pixelated
-  const PAD = 8;      // tighter card padding — compact edges
-  const colW = tier.slug === 'dukandar'
-    ? [128, 52, 52, 52]                  // name, weight, tpcs, price (no separate Agency column — it's identical to Price CTN) — name col widened to fit the larger, number-matching font size
-    : [128, 40, 40, 40, 40];             // name, weight, tpcs, price, rate — name col widened to fit the larger, number-matching font size; fitFontSize below shrinks text just enough so nothing is ever cut off
-  const innerWidth = colW.reduce((a,b)=>a+b,0);
-  const titleH = 34, headH = 32, rowH = 22; // headH tall enough for a wrapped 2-line header like "Weight gram", matching the live page's natural wrap
-  const innerHeight = titleH + headH + rowH * packs.length + 2;
-  const width = innerWidth + PAD * 2;
-  const height = innerHeight + PAD * 2;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = width * SCALE;
-  canvas.height = height * SCALE;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(SCALE, SCALE);
-
-  // base cream fill first (matches the live card's white/cream background)
-  ctx.fillStyle = '#F4EFE2';
-  ctx.fillRect(0, 0, width, height);
-
-  // poster photo, cover-fit, but only a faint tint — same opacity (.26) the
-  // live page uses for its card background, not a bold vivid image
-  const poster = await loadPosterImage();
-  if(poster && poster.width && poster.height){
-    ctx.save();
-    ctx.globalAlpha = 0.06; // matches the live page's card::before opacity exactly (reduced from .26 earlier — the export was never updated to match)
-    const coverScale = Math.max(width / poster.width, height / poster.height);
-    const pw = poster.width * coverScale, ph = poster.height * coverScale;
-    ctx.drawImage(poster, (width - pw) / 2, (height - ph) / 2, pw, ph);
-    ctx.restore();
-  }
-
-  const ox = PAD, oy = PAD;
-  let y = oy;
-  ctx.fillStyle = '#7A2E2E'; // matches the live page's --maroon (the actual th/title background — --maroon-deep is a different, darker shade used elsewhere)
-  ctx.fillRect(ox, y, innerWidth, titleH);
-  ctx.fillStyle = '#FFFBF2'; // matches the live page's --white exactly (an off-white cream, not pure #fff)
-  ctx.strokeStyle = '#FFFBF2';
-  ctx.lineWidth = 1.6; // extra-thick stroke — noticeably bolder title, the boldest text in the image
-  ctx.font = '900 20px "Noto Naskh Arabic", serif'; // matches the live page's .sheet-title font + size exactly
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('Best Excel washing powder', ox + innerWidth/2, y + titleH/2);
-  ctx.strokeText('Best Excel washing powder', ox + innerWidth/2, y + titleH/2);
-  y += titleH;
-
-  ctx.fillStyle = '#7A2E2E'; // matches the live page's --maroon
-  ctx.fillRect(ox, y, innerWidth, headH);
-  ctx.fillStyle = '#FFFBF2';
-  ctx.strokeStyle = '#FFFBF2';
-  ctx.lineWidth = 1.2; // bold, but a notch lighter than the title above
-  const headers = tier.slug === 'dukandar'
-    ? ['Products Name','Weight gram','T.Pcs','Price CTN']
-    : ['Products Name','Weight gram','T.Pcs','Price CTN','Agency'];
-  let x = ox;
-  headers.forEach((h,i)=>{
-    const cellPad = 4;
-    // fixed 13px, live page's th font (Noto Naskh Arabic) — narrow columns
-    // wrap to 2 lines instead of shrinking the font, same as live CSS wrap
-    ctx.font = '800 13px "Noto Naskh Arabic", serif';
-    drawWrappedHeader(ctx, h, x + colW[i]/2, y + headH/2, colW[i] - cellPad*2, 13);
-    x += colW[i];
+  return await html2canvas(el, {
+    scale: 3,                 // high-res export
+    backgroundColor: '#F4EFE2', // matches the card's cream background
+    useCORS: true,
   });
-  y += headH;
-
-  packs.forEach((p, idx)=>{
-    // only every 2nd row gets a solid tint, same as the live page's
-    // "tr:nth-child(even)" rule — the other rows are left unpainted here
-    // so the poster photo underneath actually shows through
-    if(idx % 2 === 1){
-      ctx.fillStyle = '#FBF7EC';
-      ctx.fillRect(ox, y, innerWidth, rowH);
-    }
-    ctx.strokeStyle = '#C9BC9C'; // matches the live page's --line border color exactly
-    ctx.lineWidth = 1;
-    ctx.strokeRect(ox, y, innerWidth, rowH);
-
-    const vals = tier.slug === 'dukandar'
-      ? [p.name, p.tpcs, p.ctn, p.mrp]
-      : [p.name, p.tpcs, p.ctn, p.mrp, p[tier.key]];
-    let x = ox;
-    vals.forEach((v,i)=>{
-      const color = i === 0 ? '#000000' : '#000000';
-      ctx.fillStyle = color;
-      ctx.strokeStyle = color;
-      const cellPad = 4;
-      const family = i === 0 ? '"Noto Naskh Arabic", serif' : '"Courier Prime", monospace'; // matches the live page's name-cell / numeric-cell fonts exactly
-      const startSize = 12.5; // names + numbers: matches the live page's .cell-input/.cell-val size exactly
-      // shrinks only as far as needed so the FULL number/text always fits
-      // inside its (now smaller) cell — nothing gets cut off
-      fitFontSize(ctx, v, colW[i] - cellPad*2, family, 'bold', startSize, 6);
-      ctx.lineWidth = 1; // one notch lighter than the header row, matching the size hierarchy
-      const tx = x + colW[i]/2, ty = y + rowH/2;
-      ctx.fillText(String(v), tx, ty);
-      ctx.strokeText(String(v), tx, ty); // extra pass thickens the glyphs, matching the page's bold look
-      x += colW[i];
-
-    });
-    y += rowH;
-  });
-
-  ctx.strokeStyle = '#7A2E2E'; // matches the live page's --maroon
-  ctx.lineWidth = 1;
-  ctx.strokeRect(ox + 0.5, oy + 0.5, innerWidth - 1, innerHeight - 1);
-
-  ctx.strokeStyle = '#C9BC9C'; // matches the live page's --line
-  ctx.lineWidth = 1;
-  ctx.strokeRect(0.5, 0.5, width-1, height-1);
-
-  return canvas;
 }
+
 
 // Renders the tier's table to a canvas, then in ONE tap either opens the
 // native share sheet (so it can go straight to WhatsApp etc., or "Save to
@@ -1599,6 +1469,10 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+// Exposed globally so the کھاتے (ledgers) module, defined in the main
+// app script, can read/write Firestore once the user is signed in.
+window.auth = auth;
+window.db = db;
 // (offline persistence call removed — it only ever produced a harmless
 // but confusing console notice; Firestore still caches normally during
 // the session without it)
@@ -1921,8 +1795,10 @@ auth.onAuthStateChanged(async (user)=>{
       justAuthenticated = false;
       authGate.classList.add('hidden');
     }
+    if(window.initKataModule) window.initKataModule(user.uid);
   } else {
     unlockedThisSession = false;
+    if(window.teardownKataModule) window.teardownKataModule();
     authGate.classList.remove('hidden');
     logoutBtn.style.display = 'none';
     changePasswordBtn.style.display = 'none';
@@ -1956,6 +1832,239 @@ function showAuthLoadError(){
       <button type="button" class="lock-btn" style="width:100%;" onclick="location.reload()">دوبارہ کوشش کریں</button>
     </div>
   `;
+}
+</script>
+<!-- ===================== کھاتے (LEDGERS) MODULE =====================
+     One Firestore collection per signed-in user: users/{uid}/kataBooks
+     (each doc = one named ledger, e.g. "SHAFIQ Bhatti"). Each ledger has
+     a users/{uid}/kataBooks/{id}/entries sub-collection: one doc per
+     dated entry, stacked oldest→newest. Every new entry's "Sabka" (پچھلا
+     مجموعہ) is copied automatically from the previous entry's "Total", so
+     the running total carries forward entry-to-entry without the person
+     re-typing it. Data lives under the signed-in account, so the same
+     ledgers show up on any device the person logs into. -->
+<script>
+// Fixed item list — same on every entry of every ledger, per the person's
+// handwritten account-book format (see uploaded photo: SHAFIQ Bhatti page).
+const KATA_ITEMS = [
+  {key:"rs10",  name:"RS.10 CTN",   weight:"26g"},
+  {key:"rs50",  name:"RS.50 CTN",   weight:"155g"},
+  {key:"rs100", name:"RS.100 CTN",  weight:"316g"},
+  {key:"rs150", name:"RS.150 CTN",  weight:"475g"},
+  {key:"rs400", name:"RS.400 CTN",  weight:"1000g"},
+  {key:"rs1000",name:"RS.1000 CTN", weight:"3340g"},
+  {key:"khula", name:"khula Tora",  weight:"20kg"},
+  {key:"znet",  name:"Z Net Bill",  weight:""},
+];
+
+let kataUid = null;
+let kataListUnsub = null;
+let kataEntriesUnsub = null;
+let kataOpenId = null;      // currently-open ledger's doc id
+let kataOpenEntries = [];   // cached entries of the currently-open ledger, oldest first
+
+function kataCol(){ return window.db.collection('users').doc(kataUid).collection('kataBooks'); }
+
+window.initKataModule = function(uid){
+  kataUid = uid;
+  const newBtn = document.getElementById('newKataBtn');
+  const backBtn = document.getElementById('kataBackBtn');
+  if(newBtn && !newBtn._wired){
+    newBtn._wired = true;
+    newBtn.addEventListener('click', kataCreateNew);
+  }
+  if(backBtn && !backBtn._wired){
+    backBtn._wired = true;
+    backBtn.addEventListener('click', kataShowList);
+  }
+  kataShowList();
+  if(kataListUnsub) kataListUnsub();
+  kataListUnsub = kataCol().orderBy('createdAt','asc').onSnapshot(snap=>{
+    const container = document.getElementById('kataListContainer');
+    if(!container) return;
+    if(snap.empty){
+      container.innerHTML = '<div class="note" style="text-align:center;">ابھی کوئی کھاتہ موجود نہیں — اوپر بٹن سے نیا کھاتہ بنائیں۔</div>';
+      return;
+    }
+    container.innerHTML = '';
+    snap.forEach(docSnap=>{
+      const data = docSnap.data();
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.cursor = 'pointer';
+      card.style.textAlign = 'center';
+      card.innerHTML = `<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(data.name || '(بلا نام)')}</h2>`;
+      card.addEventListener('click', ()=> kataOpen(docSnap.id, data.name || ''));
+      container.appendChild(card);
+    });
+  }, err=>{
+    console.warn('kata list listener error', err);
+  });
+};
+
+window.teardownKataModule = function(){
+  if(kataListUnsub){ kataListUnsub(); kataListUnsub = null; }
+  if(kataEntriesUnsub){ kataEntriesUnsub(); kataEntriesUnsub = null; }
+  kataUid = null;
+  kataOpenId = null;
+  kataOpenEntries = [];
+  kataShowList();
+};
+
+function kataEscape(s){
+  const d = document.createElement('div');
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+
+function kataShowList(){
+  document.getElementById('kataListView').style.display = '';
+  document.getElementById('kataDetailView').style.display = 'none';
+  if(kataEntriesUnsub){ kataEntriesUnsub(); kataEntriesUnsub = null; }
+  kataOpenId = null;
+}
+
+async function kataCreateNew(){
+  const name = prompt('نئے کھاتے کا نام لکھیں (مثلاً: SHAFIQ Bhatti)');
+  if(!name || !name.trim()) return;
+  try{
+    await kataCol().add({
+      name: name.trim(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch(err){
+    alert('کھاتہ بنانے میں مسئلہ ہوا — دوبارہ کوشش کریں۔');
+    console.warn(err);
+  }
+}
+
+function kataOpen(id, name){
+  kataOpenId = id;
+  document.getElementById('kataListView').style.display = 'none';
+  document.getElementById('kataDetailView').style.display = '';
+  if(kataEntriesUnsub) kataEntriesUnsub();
+  kataEntriesUnsub = kataCol().doc(id).collection('entries').orderBy('createdAt','asc').onSnapshot(snap=>{
+    kataOpenEntries = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    kataRenderDetail(name);
+  }, err=>{
+    console.warn('kata entries listener error', err);
+  });
+}
+
+function kataFormatWhen(ts){
+  // Firestore Timestamp -> "10/8/2026, 6:30 PM"; falls back gracefully
+  // while serverTimestamp() is still resolving (shows "…ابھی" briefly).
+  if(!ts || !ts.toDate) return '...ابھی';
+  const d = ts.toDate();
+  return d.toLocaleDateString('en-GB') + '، ' + d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
+}
+
+function kataRenderDetail(name){
+  const container = document.getElementById('kataDetailContainer');
+  if(!container) return;
+
+  const prevTotal = kataOpenEntries.length
+    ? kataOpenEntries[kataOpenEntries.length-1].total
+    : {t:0, price:0, profit:0};
+
+  let html = `<div class="card" style="text-align:center;"><h2 style="border:none;margin:0;">${kataEscape(name)}</h2></div>`;
+
+  kataOpenEntries.forEach(entry=>{
+    html += kataRenderEntryCard(entry);
+  });
+
+  html += kataRenderNewEntryForm(prevTotal);
+
+  container.innerHTML = html;
+
+  const saveBtn = document.getElementById('kataSaveEntryBtn');
+  if(saveBtn) saveBtn.addEventListener('click', ()=> kataSaveEntry(prevTotal));
+}
+
+function kataRenderEntryCard(entry){
+  let rows = '';
+  KATA_ITEMS.forEach(item=>{
+    const v = (entry.items && entry.items[item.key]) || {t:0, price:0, profit:0};
+    if(!v.t && !v.price && !v.profit) return; // skip untouched rows to keep past entries compact
+    rows += `<tr>
+      <td style="text-align:right;padding-right:6px;">${kataEscape(item.name)}</td>
+      <td>${kataEscape(item.weight)}</td>
+      <td>${v.t}</td>
+      <td>${v.price}</td>
+      <td>${v.profit}</td>
+    </tr>`;
+  });
+  return `
+    <div class="card">
+      <div class="note" style="text-align:center;font-weight:700;">${kataFormatWhen(entry.createdAt)}</div>
+      <div class="edit-table">
+        <table dir="ltr">
+          <thead><tr><th>Items</th><th>Weight</th><th>T</th><th>Price</th><th>T.Prift</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="totals" style="grid-template-columns:1fr 1fr 1fr;">
+        <div><div class="n">${entry.sabka.t} / ${entry.sabka.price}</div><div class="l">Sabka (T / Price)</div></div>
+        <div><div class="n">${entry.today.t} / ${entry.today.price}</div><div class="l">Today (T / Price)</div></div>
+        <div><div class="n">${entry.total.t} / ${entry.total.price}</div><div class="l">Total (T / Price)</div></div>
+      </div>
+    </div>`;
+}
+
+function kataRenderNewEntryForm(prevTotal){
+  let rows = '';
+  KATA_ITEMS.forEach(item=>{
+    rows += `<tr>
+      <td style="text-align:right;padding-right:6px;">${kataEscape(item.name)}</td>
+      <td>${kataEscape(item.weight)}</td>
+      <td><input type="number" inputmode="numeric" class="cell-input" data-kata-field="t" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
+      <td><input type="number" inputmode="numeric" class="cell-input" data-kata-field="price" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
+      <td><input type="number" inputmode="numeric" class="cell-input" data-kata-field="profit" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
+    </tr>`;
+  });
+  return `
+    <div class="card">
+      <h2 style="border:none;text-align:center;">+ نئی انٹری</h2>
+      <div class="note" style="text-align:center;">پچھلا مجموعہ (Sabka) خودکار شامل ہو گا: T=${prevTotal.t}, Price=${prevTotal.price}</div>
+      <div class="edit-table">
+        <table dir="ltr">
+          <thead><tr><th>Items</th><th>Weight</th><th>T</th><th>Price</th><th>T.Prift</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <button type="button" class="share-btn" id="kataSaveEntryBtn" style="width:100%;">انٹری محفوظ کریں</button>
+    </div>`;
+}
+
+async function kataSaveEntry(prevTotal){
+  const items = {};
+  let todayT = 0, todayPrice = 0, todayProfit = 0;
+  KATA_ITEMS.forEach(item=>{
+    const t = Number(document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`).value) || 0;
+    const price = Number(document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="price"]`).value) || 0;
+    const profit = Number(document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="profit"]`).value) || 0;
+    items[item.key] = {t, price, profit};
+    todayT += t; todayPrice += price; todayProfit += profit;
+  });
+  if(todayT === 0 && todayPrice === 0 && todayProfit === 0){
+    alert('کم از کم ایک آئٹم میں کوئی مقدار درج کریں۔');
+    return;
+  }
+  const sabka = {t: prevTotal.t||0, price: prevTotal.price||0, profit: prevTotal.profit||0};
+  const today = {t: todayT, price: todayPrice, profit: todayProfit};
+  const total = {t: sabka.t + today.t, price: sabka.price + today.price, profit: sabka.profit + today.profit};
+  const btn = document.getElementById('kataSaveEntryBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ محفوظ ہو رہا ہے...'; }
+  try{
+    await kataCol().doc(kataOpenId).collection('entries').add({
+      items, sabka, today, total,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch(err){
+    alert('انٹری محفوظ کرنے میں مسئلہ ہوا — دوبارہ کوشش کریں۔');
+    console.warn(err);
+    if(btn){ btn.disabled = false; btn.textContent = 'انٹری محفوظ کریں'; }
+  }
 }
 </script>
 <script>
