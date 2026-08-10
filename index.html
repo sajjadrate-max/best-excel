@@ -281,7 +281,7 @@ window.loadAuthSDKs = async function(){
   .sheet-title{
     font-weight:900 !important;
     letter-spacing:.02em;
-    font-size:15px !important;
+    font-size:20px !important;
   }
   .edit-table.wide-table .row-lock-btn{
     font-size:7px;
@@ -336,8 +336,8 @@ window.loadAuthSDKs = async function(){
     background:var(--maroon);
     color:var(--white);
     font-family:"Noto Naskh Arabic",serif;
-    font-weight:700;
-    font-size:12px;
+    font-weight:800;
+    font-size:13px;
   }
   tr:nth-child(even) td{background:#FBF7EC;}
   tr.hot td{background:#F1E3C6; font-weight:700;}
@@ -473,9 +473,9 @@ window.loadAuthSDKs = async function(){
     text-align:center;
     font-family:"Noto Naskh Arabic",serif;
     font-weight:700;
-    font-size:15px;
+    font-size:12.5px;
     color:#000;
-    -webkit-text-stroke:.35px currentColor;
+    -webkit-text-stroke:.3px currentColor;
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
@@ -485,20 +485,20 @@ window.loadAuthSDKs = async function(){
     width:100%;
     font-family:"Courier Prime",monospace;
     font-variant-numeric:tabular-nums;
-    font-size:15px;
+    font-size:12.5px;
     letter-spacing:.02em;
     text-align:center;
     padding:1px 1px;
     color:#000;
     font-weight:700;
-    -webkit-text-stroke:.45px currentColor;
+    -webkit-text-stroke:.4px currentColor;
   }
   .edit-table td.name-cell .cell-val{
     font-family:"Noto Naskh Arabic",serif;
     font-weight:700;
-    font-size:15px;
+    font-size:12.5px;
     color:#000;
-    -webkit-text-stroke:.35px currentColor;
+    -webkit-text-stroke:.3px currentColor;
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
@@ -1035,7 +1035,7 @@ async function renderTierCanvas(tier){
     ? [128, 52, 52, 52]                  // name, weight, tpcs, price (no separate Agency column — it's identical to Price CTN) — name col widened to fit the larger, number-matching font size
     : [128, 40, 40, 40, 40];             // name, weight, tpcs, price, rate — name col widened to fit the larger, number-matching font size; fitFontSize below shrinks text just enough so nothing is ever cut off
   const innerWidth = colW.reduce((a,b)=>a+b,0);
-  const titleH = 26, headH = 20, rowH = 22; // sized to match the live page's actual on-screen proportions, not stretched wide
+  const titleH = 34, headH = 24, rowH = 22; // title/header rows enlarged to fit the bigger matching font sizes below without clipping
   const innerHeight = titleH + headH + rowH * packs.length + 2;
   const width = innerWidth + PAD * 2;
   const height = innerHeight + PAD * 2;
@@ -1068,8 +1068,8 @@ async function renderTierCanvas(tier){
   ctx.fillRect(ox, y, innerWidth, titleH);
   ctx.fillStyle = '#fff';
   ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 1.6; // extra-thick stroke — noticeably bolder title
-  ctx.font = '900 15px Georgia, serif';
+  ctx.lineWidth = 1.6; // extra-thick stroke — noticeably bolder title, the boldest text in the image
+  ctx.font = '900 20px Georgia, serif'; // matches the live page's .sheet-title size exactly
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('Best Excel washing powder', ox + innerWidth/2, y + titleH/2);
@@ -1080,14 +1080,14 @@ async function renderTierCanvas(tier){
   ctx.fillRect(ox, y, innerWidth, headH);
   ctx.fillStyle = '#fff';
   ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.2; // bold, but a notch lighter than the title above
   const headers = tier.slug === 'dukandar'
     ? ['Products Name','Weight gram','T.Pcs','Price CTN']
     : ['Products Name','Weight gram','T.Pcs','Price CTN','Agency'];
   let x = ox;
   headers.forEach((h,i)=>{
     const cellPad = 4;
-    fitFontSize(ctx, h, colW[i] - cellPad*2, 'Georgia, serif', 'bold', 9, 5.5);
+    fitFontSize(ctx, h, colW[i] - cellPad*2, 'Georgia, serif', '800', 13, 6); // matches the live page's th size exactly
     ctx.fillText(h, x + colW[i]/2, y + headH/2);
     ctx.strokeText(h, x + colW[i]/2, y + headH/2);
     x += colW[i];
@@ -1116,11 +1116,11 @@ async function renderTierCanvas(tier){
       ctx.strokeStyle = color;
       const cellPad = 4;
       const family = i === 0 ? 'Georgia, serif' : '"Courier New", monospace';
-      const startSize = 12.5; // name column now matches the numbers' font size, per request
+      const startSize = 12.5; // names + numbers: matches the live page's .cell-input/.cell-val size exactly
       // shrinks only as far as needed so the FULL number/text always fits
       // inside its (now smaller) cell — nothing gets cut off
       fitFontSize(ctx, v, colW[i] - cellPad*2, family, 'bold', startSize, 6);
-      ctx.lineWidth = 1.1; // extra-thick stroke pass — bolder than before, same thickness for every value
+      ctx.lineWidth = 1; // one notch lighter than the header row, matching the size hierarchy
       const tx = x + colW[i]/2, ty = y + rowH/2;
       ctx.fillText(String(v), tx, ty);
       ctx.strokeText(String(v), tx, ty); // extra pass thickens the glyphs, matching the page's bold look
