@@ -9,7 +9,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400..700&family=Noto+Naskh+Arabic:wght@400..700&family=Courier+Prime:wght@400;700&family=Anton&family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
 <!-- Screenshots the real table DOM for the share button, so the exported
      image is always pixel-identical to the live site (see shareCardAsImage) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <script>
 // Loads each SDK by trying several CDN mirrors in turn — some networks
 // block one Google/CDN domain but allow another, so a single hard-coded
@@ -57,8 +58,8 @@ window.loadAuthSDKs = async function(){
     --paper:#F4EFE2;
     --paper-dark:#EAE2CF;
     --ink:#25302B;
-    --maroon:#7A2E2E;
-    --maroon-deep:#5C2020;
+    --maroon:#2E75B6;
+    --maroon-deep:#154360;
     --gold:#B4893A;
     --line:#C9BC9C;
     --green-stamp:#3C5A44;
@@ -212,20 +213,41 @@ window.loadAuthSDKs = async function(){
     padding:18px 16px;
     margin:14px 0;
     box-shadow:0 1px 0 var(--line);
-  }
-  .card.tier-card{
     position:relative;
     overflow:hidden;
   }
-  .card.tier-card::before{
+  .card::before{
     content:"";
     position:absolute;
     inset:0;
-    background:var(--poster-img) center / cover no-repeat;
-    opacity:.06;
+    background:var(--poster-img) center 15% / cover no-repeat;
+    opacity:.35;
     z-index:0;
   }
-  .card.tier-card > *{
+  /* Cards that contain a rate/ledger table get their own watermark via
+     .edit-table's background (see below) — showing the card-level one too
+     doubled the "BEST" logo (one inside the table, one bleeding into the
+     note text below it), so it's switched off here for those cards only. */
+  .card:has(.edit-table)::before{
+    content:none;
+  }
+  /* کھاتے: one card stacks THREE .edit-table sections (main table, totals
+     block, Sale Mahana Record) — each rendering its own copy of the "BEST"
+     watermark made the logo repeat 3x down a single card. Turn off the
+     per-table watermark there and use one consolidated card-level watermark
+     instead, matching the rest of the site's "one logo per card" rule. */
+  #kataDetailView .edit-table{
+    background-image:none;
+  }
+  #kataDetailView .card:has(.edit-table)::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:var(--poster-img) center 30% / cover no-repeat;
+    opacity:.28;
+    z-index:0;
+  }
+  .card > *{
     position:relative;
     z-index:1;
   }
@@ -263,23 +285,28 @@ window.loadAuthSDKs = async function(){
     cursor:pointer;
   }
   .row-lock-btn{
-    display:block;
-    margin-inline:auto;
-    margin-bottom:2px;
+    display:inline;
+    background:transparent !important;
     border:none;
-    font-size:11px;
+    font-size:3px;
     line-height:1;
-    padding:2px 4px;
-    border-radius:3px;
+    padding:0;
+    margin:0 1px 0 0;
+    border-radius:0;
     cursor:pointer;
+    box-shadow:none !important;
+  }
+  .row-lock-btn.is-locked,
+  .row-lock-btn.is-unlocked{
+    box-shadow:none;
+    padding:0 1px;
+    border-radius:1px;
   }
   .row-lock-btn.is-locked{
-    background:var(--brand-red);
-    box-shadow:0 0 0 1px rgba(255,255,255,.5);
+    background:rgba(212,36,48,.35) !important;
   }
   .row-lock-btn.is-unlocked{
-    background:#1a7a3c;
-    box-shadow:0 0 0 1px rgba(255,255,255,.5);
+    background:rgba(26,122,60,.35) !important;
   }
   .sheet-title{
     font-weight:900 !important;
@@ -287,16 +314,16 @@ window.loadAuthSDKs = async function(){
     font-size:20px !important;
   }
   .edit-table.wide-table .row-lock-btn{
-    font-size:7px;
-    padding:1px 2px;
-    margin-inline-end:1px;
-    border-radius:2px;
-    display:block;
-    margin-inline:auto;
-    margin-bottom:1px;
+    font-size:3px;
+    padding:0;
+    margin:0 1px 0 0;
+    border-radius:0;
+    display:inline;
+    background:transparent !important;
+    box-shadow:none !important;
   }
   .edit-table td.formula-cell{
-    background:rgba(122,46,46,.08);
+    background:rgba(21,67,96,.08);
   }
   .edit-table .formula-badge{
     display:inline;
@@ -382,10 +409,14 @@ window.loadAuthSDKs = async function(){
   .totals .l{font-size:11px;color:#5b5346;margin-top:2px;}
   .note{font-size:12px;color:#6b6153;margin-top:4px;line-height:1.7;}
   .edit-table{
-    overflow-x:hidden;
-    background:rgba(255,255,255,.72);
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    background-image:linear-gradient(rgba(255,255,255,.5),rgba(255,255,255,.5)), var(--poster-img);
+    background-position:center, center 80%;
+    background-size:cover, 50%;
+    background-repeat:no-repeat, no-repeat;
     border-radius:5px;
-    padding:3px;
+    padding:2px;
   }
   .edit-table.wide-table{
     overflow-x:auto;
@@ -399,56 +430,66 @@ window.loadAuthSDKs = async function(){
   }
   .edit-table.wide-table th,
   .edit-table.wide-table td{
-    min-width:30px;
+    min-width:17px;
   }
   .edit-table.wide-table td.name-cell{
-    min-width:56px;
+    min-width:36px;
   }
   .edit-table.wide-table th{
-    padding:3px 1px;
-    font-size:7.5px;
-    line-height:1.25;
+    padding:0px 0px;
+    font-size:4.6px;
+    line-height:1;
   }
   .edit-table.wide-table .cell-input,
   .edit-table.wide-table .cell-val{
-    font-size:8.5px;
-    padding:2px 1px;
+    font-size:5.2px;
+    padding:0px 0px;
   }
   .edit-table.wide-table td.name-cell .cell-input,
   .edit-table.wide-table td.name-cell .cell-val{
-    font-size:8px;
+    font-size:4.8px;
   }
   .edit-table.wide-table td.edit-cell{
-    padding:1px;
+    padding:0px;
   }
   .edit-table.wide-table .formula-badge{
     font-size:6px;
   }
   .edit-table table{
-    table-layout:fixed;
-    width:100%;
+    table-layout:auto;
+    width:auto;
+    min-width:100%;
     border-collapse:separate;
     border-spacing:0;
   }
-  .edit-table col.col-name{width:38%;}
-  .edit-table col.col-num{width:15.5%;}
+  .edit-table th,
+  .edit-table td{
+    white-space:nowrap;
+    width:auto;
+  }
+  .edit-table col.col-name{width:auto;}
+  .edit-table col.col-num{width:auto;}
   .edit-table th.corner-tri{
-    font-size:10.5px;
+    font-size:9.5px;
   }
   .edit-table td.edit-cell{
     text-align:center;
-    padding:1px 1px;
+    padding:0px;
+  }
+  .edit-table td.name-cell{
+    padding:0px;
   }
   .edit-table tbody tr:nth-child(even) td{
-    background:rgba(234,226,207,.6);
+    background:rgba(234,226,207,.3);
   }
   .edit-table th{
-    padding:5px 2px;
-    font-size:9.5px;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:normal;
-    line-height:1.2;
+    padding:0px 2px;
+    font-size:5.5px;
+    overflow:visible;
+    text-overflow:clip;
+    white-space:nowrap;
+    line-height:1;
+    color:#fff;
   }
   .edit-table .cell-input{
     width:100%;
@@ -457,14 +498,14 @@ window.loadAuthSDKs = async function(){
     background:transparent;
     font-family:"Courier Prime",monospace;
     font-variant-numeric:tabular-nums;
-    font-size:15px;
-    letter-spacing:.02em;
+    font-size:7.5px;
+    letter-spacing:.01em;
     text-align:center;
-    padding:1px 1px;
-    border-radius:2px;
+    padding:0px 0px;
+    border-radius:1px;
     color:#000;
     font-weight:700;
-    -webkit-text-stroke:.45px currentColor;
+    -webkit-text-stroke:.35px currentColor;
     outline:none;
     box-sizing:border-box;
   }
@@ -472,39 +513,46 @@ window.loadAuthSDKs = async function(){
     border-color:var(--brand-red);
     background:#fff;
   }
+  .edit-table .cell-input:disabled{
+    opacity:1;
+    border-color:var(--maroon-deep) !important;
+    background:rgba(21,67,96,.08);
+    color:#000;
+    -webkit-text-fill-color:#000;
+  }
+  .kata-t-cell{
+    background:rgba(76,175,80,.25) !important;
+  }
   .edit-table td.name-cell .cell-input{
     text-align:center;
     font-family:"Noto Naskh Arabic",serif;
     font-weight:700;
-    font-size:12.5px;
+    font-size:7.5px;
     color:#000;
-    -webkit-text-stroke:.3px currentColor;
+    -webkit-text-stroke:.25px currentColor;
     white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
+    min-width:16ch;
   }
   .edit-table .cell-val{
     display:block;
     width:100%;
     font-family:"Courier Prime",monospace;
     font-variant-numeric:tabular-nums;
-    font-size:12.5px;
-    letter-spacing:.02em;
+    font-size:7.5px;
+    letter-spacing:.01em;
     text-align:center;
-    padding:1px 1px;
+    padding:0px 0px;
     color:#000;
     font-weight:700;
-    -webkit-text-stroke:.4px currentColor;
+    -webkit-text-stroke:.3px currentColor;
   }
   .edit-table td.name-cell .cell-val{
     font-family:"Noto Naskh Arabic",serif;
     font-weight:700;
-    font-size:12.5px;
+    font-size:7.5px;
     color:#000;
-    -webkit-text-stroke:.3px currentColor;
+    -webkit-text-stroke:.25px currentColor;
     white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
   }
 
   tr.hot td{background:#F1E3C6;}
@@ -603,6 +651,29 @@ window.loadAuthSDKs = async function(){
     font-size:12px;
     cursor:pointer;
   }
+/* "BEST Excel" brand mark: no box behind it — plain red text (single
+   uniform color throughout "Best Excel", matching "BEST" from the
+   reference poster), wherever the standalone brand heading appears
+   (login screen, ledger table title, error screen, sheet titles). User
+   tried a two-tone version (red "Best" + blue "Excel") and rejected it —
+   wants ONE color for the whole phrase, not per-word colors. A
+   background image goes behind this later — left transparent for now so
+   that image will show through. Product-name cells like "Best Excel
+   Rs.10" are data rows, not this brand mark, so they're left as-is. */
+.brand-badge{
+  display:inline-block;
+  background:transparent;
+  padding:0;
+  border-radius:0;
+}
+.brand-badge .b-best,
+.brand-badge .b-excel,
+.brand-red{
+  color:#D9251C;
+  font-weight:900;
+  -webkit-text-stroke:.7px #FFFBF2;
+  paint-order:stroke fill;
+}
 </style>
 </head>
 <body>
@@ -610,7 +681,7 @@ window.loadAuthSDKs = async function(){
 <!-- ===================== AUTH GATE (sign up / verify / login) ===================== -->
 <div id="authGate">
   <div class="auth-box" dir="ltr" style="text-align:left;">
-    <h2 style="text-align:center;">BEST Excel</h2>
+    <h2 style="text-align:center;" dir="ltr"><span class="brand-badge"><span class="b-best">BEST</span> <span class="b-excel">Excel</span></span></h2>
 
     <div id="authStep-login">
       <label>Email</label>
@@ -696,7 +767,7 @@ window.loadAuthSDKs = async function(){
 </header>
 
 <nav>
-  <button data-tab="kata" class="active">کھاتے</button>
+  <button data-tab="kata" class="active">سیلزمین کھاتے</button>
   <button data-tab="rate">ریٹ لسٹ</button>
   <button data-tab="formulation">Best Excel official</button>
 </nav>
@@ -707,17 +778,14 @@ window.loadAuthSDKs = async function(){
        account book per dealer/customer, each new entry stacking below the
        last with the previous running total carried forward automatically ===================== -->
   <section id="kata" class="active">
-    <div class="card" style="text-align:center;">
-      <h2 style="border:none;margin-bottom:0;">کھاتے</h2>
-    </div>
     <div id="kataListView">
-      <div class="card" style="text-align:center;">
+      <div style="text-align:center;margin:14px 0;">
         <button type="button" class="share-btn" id="newKataBtn" style="margin:0;">+ نیا کھاتہ</button>
       </div>
       <div id="kataListContainer"></div>
     </div>
     <div id="kataDetailView" style="display:none;">
-      <div class="card" style="text-align:center;">
+      <div style="text-align:center;margin:14px 0;">
         <button type="button" class="lock-btn" id="kataBackBtn" style="margin:0;">⬅ کھاتوں کی فہرست</button>
       </div>
       <div id="kataDetailContainer"></div>
@@ -745,27 +813,27 @@ window.loadAuthSDKs = async function(){
 <script>
 // ---------- DATA ----------
 const packs = [
-  {key:"rs10",   name:"Best Excel Rs.10",   tpcs:17,   ctn:288, mrp:2400, company:2060, agencyB:2100, agencyC:2140, salman:2220, dukandar:2400},
-  {key:"rs50",   name:"Best Excel Rs.50",   tpcs:102,  ctn:48,  mrp:2160, company:1800, agencyB:1840, agencyC:1880, salman:1960, dukandar:2160},
-  {key:"rs100",  name:"Best Excel Rs.100", tpcs:204,  ctn:24,  mrp:2160, company:1800, agencyB:1840, agencyC:1880, salman:1960, dukandar:2160},
-  {key:"rs150",  name:"Best Excel Rs.150", tpcs:310,  ctn:24,  mrp:3100, company:2520, agencyB:2580, agencyC:2640, salman:2760, dukandar:3100},
-  {key:"rs400",  name:"Best Excel Rs.400", tpcs:1000, ctn:12,  mrp:4250, company:3650, agencyB:3710, agencyC:3770, salman:3890, dukandar:4250},
-  {key:"rs1000", name:"Best Excel Rs.1000",tpcs:2550,ctn:4,   mrp:3550, company:2990, agencyB:3050, agencyC:3110, salman:3230, dukandar:3550},
-  {key:"kabotar",name:"Best Excel Special",tpcs:"20.000",ctn:1,   mrp:6200, company:5500, agencyB:5560, agencyC:5620, salman:5740, dukandar:6200},
-  {key:"sada",   name:"Best Excel sada", tpcs:"20.000",   ctn:1,   mrp:4000, company:3430, agencyB:3490, agencyC:3550, salman:3670, dukandar:4000},
+  {key:"rs10",   name:"Best Excel Rs.10",   tpcs:"",   ctn:"", mrp:"", company:"", agencyB:"", agencyC:"", salman:"", dukandar:""},
+  {key:"rs50",   name:"Best Excel Rs.50",   tpcs:"",  ctn:"",  mrp:"", company:"", agencyB:"", agencyC:"", salman:"", dukandar:""},
+  {key:"rs100",  name:"Best Excel Rs.100", tpcs:"",  ctn:"",  mrp:"", company:"", agencyB:"", agencyC:"", salman:"", dukandar:""},
+  {key:"rs150",  name:"Best Excel Rs.150", tpcs:"",  ctn:"",  mrp:"", company:"", agencyB:"", agencyC:"", salman:"", dukandar:""},
+  {key:"rs400",  name:"Best Excel Rs.400", tpcs:"", ctn:"",  mrp:"", company:"", agencyB:"", agencyC:"", salman:"", dukandar:""},
+  {key:"rs1000", name:"Best Excel Rs.1000",tpcs:"",ctn:"",   mrp:"", company:"", agencyB:"", agencyC:"", salman:"", dukandar:""},
+  {key:"kabotar",name:"Best Excel Special",tpcs:"",ctn:"",   mrp:"", company:"", agencyB:"", agencyC:"", salman:"", dukandar:""},
+  {key:"sada",   name:"Best Excel sada", tpcs:"",   ctn:"",   mrp:"", company:"", agencyB:"", agencyC:"", salman:"", dukandar:""},
 ];
 
 // Packaging-weight breakdown — matches the reference sheet's second block
 // exactly (Weight gram / فی گرام / ٹوٹل شاپر کے ساتھ وزن / شاپر وزن /
 // ٹوٹل شاپر وزن / وزن پیک), same column order, one row per product.
 const packagingRows = [
-  {name:"Best Excel Rs.10",    weight:18,     perGram:18.3,    totalWithShopper:220.1,   shopperWeight:1.25, totalShopperWeight:15.0, packWeight:205.1},
-  {name:"Best Excel Rs.50",    weight:110,    perGram:107.2,   totalWithShopper:1286.6,  shopperWeight:3.00, totalShopperWeight:36.0, packWeight:1250.6},
-  {name:"Best Excel Rs.100",   weight:222,    perGram:210.1,   totalWithShopper:420.1,   shopperWeight:4.25, totalShopperWeight:8.5,  packWeight:411.6},
-  {name:"Best Excel Rs.150",   weight:334,    perGram:316.0,   totalWithShopper:632.0,   shopperWeight:6.5,  totalShopperWeight:13,   packWeight:619.0},
-  {name:"Best Excel Rs.400",   weight:1056,   perGram:993.4,   totalWithShopper:993.4,   shopperWeight:8.5,  totalShopperWeight:8.5,  packWeight:984.9},
-  {name:"Best Excel Rs.1000",  weight:2676,   perGram:2512.8,  totalWithShopper:2512.8,  shopperWeight:30,   totalShopperWeight:30,   packWeight:2482.8},
-  {name:"Best Excel Special",  weight:"20.850",perGram:19585.1,totalWithShopper:19585.1, shopperWeight:80,   totalShopperWeight:80,   packWeight:19505.1},
+  {name:"Best Excel Rs.10",    weight:"",     perGram:"",    totalWithShopper:"",   shopperWeight:"", totalShopperWeight:"", packWeight:""},
+  {name:"Best Excel Rs.50",    weight:"",    perGram:"",   totalWithShopper:"",  shopperWeight:"", totalShopperWeight:"", packWeight:""},
+  {name:"Best Excel Rs.100",   weight:"",    perGram:"",   totalWithShopper:"",   shopperWeight:"", totalShopperWeight:"",  packWeight:""},
+  {name:"Best Excel Rs.150",   weight:"",    perGram:"",   totalWithShopper:"",   shopperWeight:"",  totalShopperWeight:"",   packWeight:""},
+  {name:"Best Excel Rs.400",   weight:"",   perGram:"",   totalWithShopper:"",   shopperWeight:"",  totalShopperWeight:"",  packWeight:""},
+  {name:"Best Excel Rs.1000",  weight:"",   perGram:"",  totalWithShopper:"",  shopperWeight:"",   totalShopperWeight:"",   packWeight:""},
+  {name:"Best Excel Special",  weight:"",perGram:"",totalWithShopper:"", shopperWeight:"",   totalShopperWeight:"",   packWeight:""},
   {name:"Best Excel sada",     weight:"",     perGram:"",      totalWithShopper:"",      shopperWeight:"",   totalShopperWeight:"",   packWeight:""},
 ];
 
@@ -774,13 +842,13 @@ const packagingRows = [
 // ٹوٹل رقم بقایا / ٹوٹل خرچ / کمپنی منافع / بجلی / ٹیکس / کارٹن ریٹ /
 // شاپر رقم / آئٹم کے نام).
 const costRows = [
-  {name:"سرف 10 والا",   rate:247, gram:1000.0, remainingSurf:46.95,  perPieceRate:12, totalRemaining:85.83, totalExpense:38.88, companyProfit:11.5, bijli:2,  tax:6.08,  ctnRate:4,  shopperAmt:15.3},
-  {name:"سرف 50 والا",   rate:247, gram:1000.0, remainingSurf:300.00, perPieceRate:12, totalRemaining:450,   totalExpense:150,   companyProfit:63,   bijli:2,  tax:23,    ctnRate:21, shopperAmt:41},
-  {name:"سرف 100 والا",  rate:247, gram:1000.0, remainingSurf:99.57,  perPieceRate:2,  totalRemaining:150,   totalExpense:50.43, companyProfit:21,   bijli:2,  tax:10.13, ctnRate:7,  shopperAmt:10.3},
-  {name:"سرف 150 والا",  rate:247, gram:1000.0, remainingSurf:149.67, perPieceRate:2,  totalRemaining:210,   totalExpense:60.33, companyProfit:19,   bijli:2,  tax:15.33, ctnRate:8,  shopperAmt:16},
-  {name:"سرف 400 والا",  rate:247, gram:1000.0, remainingSurf:241.16, perPieceRate:1,  totalRemaining:304.16,totalExpense:63,     companyProfit:21,   bijli:2,  tax:21,    ctnRate:8,  shopperAmt:11},
-  {name:"سرف 1000 والا", rate:247, gram:1000.0, remainingSurf:605.84, perPieceRate:1,  totalRemaining:747.5, totalExpense:141.66, companyProfit:40,   bijli:3,  tax:51,    ctnRate:22, shopperAmt:25.66},
-  {name:"سرف 20kg",      rate:247, gram:1000.0, remainingSurf:4798.00,perPieceRate:1,  totalRemaining:5350,  totalExpense:552,    companyProfit:180,  bijli:"", tax:300,   ctnRate:60, shopperAmt:12},
+  {name:"سرف 10 والا",   rate:"", gram:"", remainingSurf:"",  perPieceRate:"", totalRemaining:"", totalExpense:"", companyProfit:"", bijli:"",  tax:"",  ctnRate:"",  shopperAmt:""},
+  {name:"سرف 50 والا",   rate:"", gram:"", remainingSurf:"", perPieceRate:"", totalRemaining:"",   totalExpense:"",   companyProfit:"",   bijli:"",  tax:"",    ctnRate:"", shopperAmt:""},
+  {name:"سرف 100 والا",  rate:"", gram:"", remainingSurf:"",  perPieceRate:"",  totalRemaining:"",   totalExpense:"", companyProfit:"",   bijli:"",  tax:"", ctnRate:"",  shopperAmt:""},
+  {name:"سرف 150 والا",  rate:"", gram:"", remainingSurf:"", perPieceRate:"",  totalRemaining:"",   totalExpense:"", companyProfit:"",   bijli:"",  tax:"", ctnRate:"",  shopperAmt:""},
+  {name:"سرف 400 والا",  rate:"", gram:"", remainingSurf:"", perPieceRate:"",  totalRemaining:"",totalExpense:"",     companyProfit:"",   bijli:"",  tax:"",    ctnRate:"",  shopperAmt:""},
+  {name:"سرف 1000 والا", rate:"", gram:"", remainingSurf:"", perPieceRate:"",  totalRemaining:"", totalExpense:"", companyProfit:"",   bijli:"",  tax:"",    ctnRate:"", shopperAmt:""},
+  {name:"سرف 20kg",      rate:"", gram:"", remainingSurf:"",perPieceRate:"",  totalRemaining:"",  totalExpense:"",    companyProfit:"",  bijli:"", tax:"",   ctnRate:"", shopperAmt:""},
 ];
 
 // Fixed, permanent Rs. differences from Rate A — captured once, right now,
@@ -811,18 +879,18 @@ let masterColLocked = { name:true, tpcs:true, ctn:true, mrp:true, company:true }
 // کھاتہ (ledger) — transcribed from the handwritten account book page (#186).
 // Columns: ملتان ریٹ | تفصیل | موجودہ ریٹ | ٹوٹل وزن | ٹوٹل ریٹ
 const ledgerRows = [
-  {dateNo:"12",   detail:"بھاری پاؤڈر",              page:"12",   naam:12000, baqaya:144},
-  {dateNo:"71",   detail:"کاسٹک لئی",                page:"76",   naam:4000,  baqaya:304},
-  {dateNo:"122",  detail:"سفید پاؤڈر",               page:"123",  naam:30000, baqaya:3690},
-  {dateNo:"16",   detail:"سوپ سٹون",                 page:"21",   naam:12000, baqaya:252},
-  {dateNo:"220",  detail:"J&C - TSP",                page:"225",  naam:1500,  baqaya:338},
-  {dateNo:"1500", detail:"Taiwan - SLS",             page:"1510", naam:1000,  baqaya:1510},
-  {dateNo:"200",  detail:"SMS",                      page:"205",  naam:1300,  baqaya:267},
-  {dateNo:"157",  detail:"تنسا پاؤڈر",               page:"162",  naam:2500,  baqaya:405},
-  {dateNo:"520",  detail:"سلفونک ایسڈ طفال",         page:"525",  naam:9000,  baqaya:4725},
-  {dateNo:"12000",detail:"لیکو جرمنی",               page:"1200", naam:10,    baqaya:121},
-  {dateNo:"3300", detail:"یاسمین (رنگ)",             page:"3350", naam:160,   baqaya:536},
-  {dateNo:"330",  detail:"سوریا (لال + پیلا)",       page:"335",  naam:500,   baqaya:168},
+  {dateNo:"",   detail:"بھاری پاؤڈر",              page:"",   naam:"", baqaya:""},
+  {dateNo:"",   detail:"کاسٹک لئی",                page:"",   naam:"",  baqaya:""},
+  {dateNo:"",  detail:"سفید پاؤڈر",               page:"",  naam:"", baqaya:""},
+  {dateNo:"",   detail:"سوپ سٹون",                 page:"",   naam:"", baqaya:""},
+  {dateNo:"",  detail:"J&C - TSP",                page:"",  naam:"",  baqaya:""},
+  {dateNo:"", detail:"Taiwan - SLS",             page:"", naam:"",  baqaya:""},
+  {dateNo:"",  detail:"SMS",                      page:"",  naam:"",  baqaya:""},
+  {dateNo:"",  detail:"تنسا پاؤڈر",               page:"",  naam:"",  baqaya:""},
+  {dateNo:"",  detail:"سلفونک ایسڈ طفال",         page:"",  naam:"",  baqaya:""},
+  {dateNo:"",detail:"لیکو جرمنی",               page:"", naam:"",    baqaya:""},
+  {dateNo:"", detail:"یاسمین (رنگ)",             page:"", naam:"",   baqaya:""},
+  {dateNo:"",  detail:"سوریا (لال + پیلا)",       page:"",   naam:"",   baqaya:""},
 ];
 
 // ---------- TABS ----------
@@ -878,7 +946,7 @@ function buildAllTierTables(){
 
     const thead = document.createElement('thead');
     const titleRow = document.createElement('tr');
-    titleRow.innerHTML = `<th colspan="${tier.slug === 'dukandar' ? 4 : 5}" class="sheet-title">Best Excel washing powder</th>`;
+    titleRow.innerHTML = `<th colspan="${tier.slug === 'dukandar' ? 4 : 5}" class="sheet-title" dir="ltr"><span class="brand-badge"><span class="b-best">Best</span> <span class="b-excel">Excel</span></span> <span class="brand-red">washing powder</span></th>`;
     thead.appendChild(titleRow);
 
     const headRow = document.createElement('tr');
@@ -899,10 +967,16 @@ function buildAllTierTables(){
         th.appendChild(document.createTextNode(label));
         return th;
       }
-      [
-        ['Products Name','name'], ['Weight gram','tpcs'], ['T.Pcs','ctn'],
-        ['Price CTN','mrp'], ['Agency','company'],
-      ].forEach(([label, field])=> headRow.appendChild(makeMasterHeaderCell(label, field)));
+      // All 5 columns now use the same toggleable 🔒/🔓 lock pattern —
+      // Products Name / T.Pcs / Agency were previously PERMANENTLY closed
+      // (no unlock button at all); user asked to restore full per-column
+      // editability for List A, so they now behave exactly like Weight
+      // gram / Price CTN always did.
+      headRow.appendChild(makeMasterHeaderCell('Products Name','name'));
+      headRow.appendChild(makeMasterHeaderCell('Weight gram','tpcs'));
+      headRow.appendChild(makeMasterHeaderCell('T.Pcs','ctn'));
+      headRow.appendChild(makeMasterHeaderCell('Price CTN','mrp'));
+      headRow.appendChild(makeMasterHeaderCell('Agency','company'));
       headRow.lastElementChild.classList.add('corner-tri');
     } else {
       headRow.innerHTML = tier.slug === 'dukandar' ? `
@@ -950,14 +1024,18 @@ function fillTierTableBody(tbody, tier){
     tr.dataset.key = p.key;
 
     if(tier.master){
+      // All 5 columns now read their own toggle state from
+      // masterColLocked — Products Name/T.Pcs/Agency are no longer
+      // hardcoded read-only.
       tr.appendChild(makeCell(p, 'name', true, !masterColLocked.name, 'name-cell'));
-      tr.appendChild(makeCell(p, 'tpcs', false, !masterColLocked.tpcs));
+      tr.appendChild(makeCell(p, 'tpcs', true, !masterColLocked.tpcs)); // text — keeps "20.000"-style weights exact, never silently reformatted by a number input
       tr.appendChild(makeCell(p, 'ctn', false, !masterColLocked.ctn));
       tr.appendChild(makeCell(p, 'mrp', false, !masterColLocked.mrp));
       tr.appendChild(makeCell(p, tier.key, false, !masterColLocked.company));
     } else {
       tr.appendChild(makeCell(p, 'name', true, false, 'name-cell'));
-      ['tpcs','ctn','mrp'].forEach(k=>{
+      tr.appendChild(makeCell(p, 'tpcs', true, false));
+      ['ctn','mrp'].forEach(k=>{
         tr.appendChild(makeCell(p, k, false, false));
       });
       if(tier.slug !== 'dukandar'){
@@ -1045,8 +1123,8 @@ function loadPosterImage(){
 // sees on screen (same fonts, same colors, same layout), since it is a
 // direct capture rather than a hand-redrawn copy that can drift out of
 // sync with the live CSS.
-async function renderTierCanvas(tier){
-  const el = tierWraps[tier.slug];
+async function renderTierCanvas(btn){
+  const el = btn.closest('.card').querySelector('.edit-table');
   // Make sure the site's webfonts are fully loaded before the screenshot,
   // otherwise html2canvas can capture a fallback font mid-swap.
   try{ await document.fonts.ready; } catch(e){ /* proceed anyway */ }
@@ -1059,55 +1137,68 @@ async function renderTierCanvas(tier){
 }
 
 
-// Renders the tier's table to a canvas, then in ONE tap either opens the
-// native share sheet (so it can go straight to WhatsApp etc., or "Save to
-// Files" as a PDF from there), or — if nothing else works — downloads a
-// PDF straight away. Falls back to PNG only if the PDF library couldn't
-// load, so the button never does nothing.
+// Renders the tier's table to a canvas, then converts that canvas into a
+// single-page PDF (via jsPDF) sized to match the table's own aspect ratio,
+// and shares/downloads THAT — per the user's explicit request, the share
+// button must always produce a PDF, never a plain image file.
+// Per explicit request (2026-08-12): no in-page choice sheet anymore —
+// tapping Share goes STRAIGHT to the device's native share sheet (all
+// apps), only falling back to a plain download if the browser genuinely
+// can't do native sharing with files.
+async function sharePdfDirectly(blob, fileName, title){
+  try{
+    if(navigator.canShare && window.File){
+      const file = new File([blob], fileName, {type:'application/pdf'});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({files:[file], title});
+        return;
+      }
+    }
+  } catch(shareErr){
+    // user cancelled the native share sheet — nothing else to do
+    return;
+  }
+  // Fallback only when native sharing truly isn't available on this browser.
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 2000);
+  alert('اس براؤزر میں براہِ راست شیئر شیٹ دستیاب نہیں — PDF فائل ڈاؤن لوڈ ہو گئی ہے، اسے WhatsApp یا کسی بھی ایپ سے شیئر کر دیں۔');
+}
+
 async function shareCardAsImage(tier, btn){
   const originalLabel = btn.textContent;
   btn.textContent = '⏳ تیار ہو رہا ہے...';
   btn.disabled = true;
   try{
-    const canvas = await renderTierCanvas(tier);
+    const canvas = await renderTierCanvas(btn);
     const baseName = tier.title.replace(/\s+/g,'_');
 
-    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-    const fileName = baseName + '.png';
-    const mimeType = 'image/png';
+    if(typeof jspdf === 'undefined' || !jspdf.jsPDF){
+      throw new Error('jsPDF-not-loaded');
+    }
+    const { jsPDF } = jspdf;
+    const imgData = canvas.toDataURL('image/png');
+    // Page sized to the table's own proportions (portrait or landscape,
+    // whichever the captured table actually is) so nothing gets cropped
+    // or padded with empty margins.
+    const pdf = new jsPDF({
+      orientation: canvas.width >= canvas.height ? 'landscape' : 'portrait',
+      unit: 'pt',
+      format: [canvas.width, canvas.height],
+    });
+    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+    const blob = pdf.output('blob');
+    const fileName = baseName + '.pdf';
     if(!blob) throw new Error('no-blob');
 
-    let shared = false;
-    if(navigator.canShare && window.File){
-      try{
-        const file = new File([blob], fileName, {type: mimeType});
-        if(navigator.canShare({files:[file]})){
-          await navigator.share({files:[file], title: tier.title});
-          shared = true;
-        }
-      } catch(shareErr){ /* fall through to other options below */ }
-    }
-
-    if(!shared && mimeType === 'image/png' && navigator.clipboard && window.ClipboardItem){
-      try{
-        await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
-        alert('تصویر کاپی ہو گئی ہے — اب کہیں بھی پیسٹ کر سکتے ہیں۔');
-        shared = true;
-      } catch(clipErr){ /* fall through to download */ }
-    }
-
-    if(!shared){
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(()=> URL.revokeObjectURL(url), 2000);
-    }
+    await sharePdfDirectly(blob, fileName, tier.title);
   } catch(err){
-    alert('تصویر بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
+    alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
   } finally {
     btn.textContent = originalLabel;
     btn.disabled = false;
@@ -1127,6 +1218,13 @@ let colLocked = {
 };
 
 function buildCombinedTable(){
+  // Rebuilding this table (below) replaces the whole DOM subtree, which on
+  // mobile browsers can reset the page's scroll position — most noticeably
+  // when a lock button inside the table is tapped: the button itself gets
+  // destroyed and recreated, and some browsers then reset scroll instead of
+  // keeping the view where it was. Save/restore scrollY around the rebuild
+  // so tapping a lock keeps the screen exactly where it was.
+  const scrollY = window.scrollY;
   const container = document.getElementById('combinedTableContainer');
   container.innerHTML = '';
   const card = document.createElement('div');
@@ -1146,7 +1244,7 @@ function buildCombinedTable(){
 
   const thead = document.createElement('thead');
   const titleRow = document.createElement('tr');
-  titleRow.innerHTML = '<th colspan="16" class="sheet-title">Best Excel washing powder</th>';
+  titleRow.innerHTML = '<th colspan="16" class="sheet-title" dir="ltr"><span class="brand-badge"><span class="b-best">Best</span> <span class="b-excel">Excel</span></span> <span class="brand-red">washing powder</span></th>';
   thead.appendChild(titleRow);
 
   // Builds one <th> — for a locked/unlockable column it includes a small
@@ -1206,7 +1304,7 @@ function buildCombinedTable(){
     const tr = document.createElement('tr');
 
     tr.appendChild(makeCell(pRow, 'name', true, !colLocked.name, 'name-cell'));
-    tr.appendChild(makeCell(pRow, 'weight', false, !colLocked.weight));
+    tr.appendChild(makeCell(pRow, 'weight', true, !colLocked.weight)); // text — preserves exact "20.850"/"20.000"-style padding; a number-type input was silently rounding this to 2 decimals and stripping trailing zeros whenever the column got unlocked and edited (root cause of the "20.8 instead of 20.800" report)
 
     // فی گرام = ٹوٹل شاپر کے ساتھ وزن ÷ سرف پیس تعداد
     const perGram = makeFormulaCell();
@@ -1318,6 +1416,13 @@ function buildCombinedTable(){
   card.appendChild(note);
 
   container.appendChild(card);
+
+  // Restore the scroll position captured at the top of this function —
+  // must happen after the new content is in the DOM so the page has its
+  // final height, and on the next frame so the browser has finished
+  // laying it out (an immediate call can be a frame too early on some
+  // mobile browsers and get overridden back to 0).
+  requestAnimationFrame(()=>{ window.scrollTo(0, scrollY); });
 }
 buildCombinedTable();
 
@@ -1340,7 +1445,8 @@ function buildLedgerTable(){
 
   const h2 = document.createElement('h2');
   h2.style.textAlign = 'center';
-  h2.textContent = 'BEST Excel Washing powder';
+  h2.dir = 'ltr';
+  h2.innerHTML = '<span class="brand-badge"><span class="b-best">BEST</span> <span class="b-excel">Excel</span></span> <span class="brand-red">Washing powder</span>';
   card.appendChild(h2);
 
   const wrap = document.createElement('div');
@@ -1380,65 +1486,122 @@ function buildLedgerTable(){
   const tbody = document.createElement('tbody');
   table.appendChild(tbody);
 
-  let naamTotal = 0, baqayaTotal = 0;
+  let naamTotal = 0, baqayaTotal = 0, naamTotalKg = 0;
 
-  ledgerRows.forEach(row=>{
-    const tr = document.createElement('tr');
-    tr.appendChild(makeCell(row, 'dateNo', true, !ledgerColLocked.dateNo));
-    tr.appendChild(makeCell(row, 'detail', true, !ledgerColLocked.detail, 'name-cell'));
-    tr.appendChild(makeCell(row, 'page', true, !ledgerColLocked.page));
-    tr.appendChild(makeCell(row, 'naam', false, !ledgerColLocked.naam));
-    tr.appendChild(makeCell(row, 'baqaya', false, !ledgerColLocked.baqaya));
-    tbody.appendChild(tr);
-    naamTotal += parseFloat(row.naam) || 0;
-    baqayaTotal += parseFloat(row.baqaya) || 0;
-  });
+  // ٹوٹل ریٹ (baqaya) = موجودہ ریٹ (page, rate per kg) × ٹوٹل وزن (naam, in
+  // grams ÷ 1000 for kg) — live formula, matches the ƒ-badge pattern used
+  // elsewhere on the site. naam stays a plain editable input; only baqaya
+  // becomes a computed cell.
+  function makeLedgerFormulaCell(){
+    const td = document.createElement('td');
+    td.className = 'edit-cell formula-cell';
+    const badge = document.createElement('span');
+    badge.className = 'formula-badge';
+    badge.textContent = 'ƒ';
+    const span = document.createElement('span');
+    span.className = 'cell-val';
+    td.appendChild(badge);
+    td.appendChild(span);
+    return {td, span};
+  }
 
-  // Totals row — قطار میں سیدھی ترتیب سے، بغیر بڑے خالی خانے کے
-  const naamTotalKg = Math.round((naamTotal / 1000) * 100) / 100;
+  // Totals row elements (created now, appended to tbody after the data
+  // rows below so it stays visually last; values filled in by
+  // recalcLedgerTotals as rows change).
   const totalTr = document.createElement('tr');
   totalTr.className = 'hot';
+  const totalKgTd = document.createElement('td');
+  totalKgTd.style.cssText = 'text-align:center;font-weight:700;white-space:nowrap;-webkit-text-stroke:.45px currentColor;';
+  const totalRateTd = document.createElement('td');
+  totalRateTd.style.cssText = 'text-align:center;font-weight:700;-webkit-text-stroke:.45px currentColor;';
   totalTr.innerHTML = `<td></td>
     <td style="text-align:center;font-weight:700;-webkit-text-stroke:.45px currentColor;">مجموعہ</td>
-    <td></td>
-    <td style="text-align:center;font-weight:700;white-space:nowrap;-webkit-text-stroke:.45px currentColor;">${naamTotalKg}&nbsp;kg</td>
-    <td style="text-align:center;font-weight:700;-webkit-text-stroke:.45px currentColor;">${baqayaTotal}</td>`;
-  tbody.appendChild(totalTr);
+    <td></td>`;
+  totalTr.appendChild(totalKgTd);
+  totalTr.appendChild(totalRateTd);
 
+  // "تیار سرف کا حساب" controls — defined here (before the row loop) so
+  // recalcSurf exists by the time the first recalcLedgerTotals() call
+  // (triggered while building the rows below) needs it.
   const weightLossWrap = document.createElement('div');
   const weightLossLabel = document.createElement('label');
-  weightLossLabel.textContent = 'وزن کی کمی (گرام)';
+  weightLossLabel.textContent = 'وزن کی کمی (کلو)';
   weightLossLabel.style.textAlign = 'center';
-  const weightLossInput = document.createElement('input');
-  weightLossInput.type = 'number';
-  weightLossInput.step = '0.01';
-  weightLossInput.value = 0;
-  weightLossInput.style.textAlign = 'center';
+  weightLossLabel.style.display = 'block';
+
+  const weightLossKgInput = document.createElement('input');
+  weightLossKgInput.type = 'number';
+  weightLossKgInput.step = 'any';
+  weightLossKgInput.value = 0;
+  weightLossKgInput.style.textAlign = 'center';
+
   weightLossWrap.appendChild(weightLossLabel);
-  weightLossWrap.appendChild(weightLossInput);
-  card.appendChild(weightLossWrap);
+  weightLossWrap.appendChild(weightLossKgInput);
 
   const remainingBox = document.createElement('div');
   remainingBox.className = 'result';
   remainingBox.innerHTML = `<div class="amt" id="surfRemainingWeight">0</div>`;
-  card.appendChild(remainingBox);
 
   const finalBox = document.createElement('div');
   finalBox.className = 'result';
   finalBox.innerHTML = `<div class="amt" id="surfFinalRate">0</div>`;
-  card.appendChild(finalBox);
 
   const remainingAmt = remainingBox.querySelector('#surfRemainingWeight');
   const finalAmt = finalBox.querySelector('#surfFinalRate');
 
   const recalcSurf = ()=>{
-    const lossGrams = parseFloat(weightLossInput.value) || 0;
-    const lossKg = lossGrams / 1000; // ledger entries are in grams, so convert to kg to match ٹوٹل وزن
+    const lossKg = parseFloat(weightLossKgInput.value) || 0;
     const remaining = Math.round((naamTotalKg - lossKg) * 100) / 100;
     remainingAmt.textContent = remaining + '\u00A0kg';
     finalAmt.textContent = remaining ? Math.round((baqayaTotal / remaining) * 100) / 100 : 0;
   };
-  weightLossInput.addEventListener('input', recalcSurf);
+  weightLossKgInput.addEventListener('input', recalcSurf);
+
+  function recalcLedgerTotals(){
+    naamTotal = 0; baqayaTotal = 0;
+    ledgerRows.forEach(row=>{
+      naamTotal += parseFloat(row.naam) || 0;
+      baqayaTotal += parseFloat(row.baqaya) || 0;
+    });
+    naamTotalKg = Math.round(naamTotal * 100) / 100;
+    totalKgTd.textContent = naamTotalKg + '\u00A0kg';
+    totalRateTd.textContent = Math.round(baqayaTotal * 100) / 100;
+    recalcSurf();
+  }
+
+  ledgerRows.forEach(row=>{
+    const tr = document.createElement('tr');
+    tr.appendChild(makeCell(row, 'dateNo', true, !ledgerColLocked.dateNo));
+    tr.appendChild(makeCell(row, 'detail', true, !ledgerColLocked.detail, 'name-cell'));
+
+    const pageTd = makeCell(row, 'page', true, !ledgerColLocked.page);
+    tr.appendChild(pageTd);
+    const naamTd = makeCell(row, 'naam', false, !ledgerColLocked.naam);
+    tr.appendChild(naamTd);
+
+    const baqayaCell = makeLedgerFormulaCell();
+    tr.appendChild(baqayaCell.td);
+
+    const recalcRow = ()=>{
+      const rate = parseFloat(row.page) || 0;
+      const weight = parseFloat(row.naam) || 0;
+      row.baqaya = Math.round(rate * weight * 100) / 100;
+      baqayaCell.span.textContent = row.baqaya;
+      recalcLedgerTotals();
+    };
+    const pageInput = pageTd.querySelector('.cell-input');
+    const naamInput = naamTd.querySelector('.cell-input');
+    if(pageInput) pageInput.addEventListener('input', recalcRow);
+    if(naamInput) naamInput.addEventListener('input', recalcRow);
+    recalcRow();
+
+    tbody.appendChild(tr);
+  });
+
+  tbody.appendChild(totalTr);
+  card.appendChild(weightLossWrap);
+  card.appendChild(remainingBox);
+  card.appendChild(finalBox);
   recalcSurf();
 
   container.appendChild(card);
@@ -1446,6 +1609,16 @@ function buildLedgerTable(){
 buildLedgerTable();
 
 // ---------- AUTH GATE (Firebase + EmailJS) ----------
+// TEMPORARY: login system switched off while other setup is finished.
+// Flip this back to false (or remove the block) to restore it — nothing
+// else in the auth code was deleted, this just short-circuits it.
+const LOGIN_TEMPORARILY_DISABLED = true;
+if(LOGIN_TEMPORARILY_DISABLED){
+  const gate = document.getElementById('authGate');
+  if(gate) gate.classList.add('hidden');
+  // کھاتے module (loaded further down the page) picks this flag up itself
+  // and switches to local (no-login) storage — see its own script block.
+} else {
 // Load the SDKs (trying several CDN mirrors each), THEN set up the auth
 // system. If every mirror fails, show a clear on-page message instead of
 // crashing or silently vanishing.
@@ -1453,6 +1626,7 @@ window.loadAuthSDKs().then(initAuthSystem).catch((err)=>{
   console.warn('Firebase/EmailJS SDK did not load from any source.', err);
   showAuthLoadError();
 });
+}
 
 function initAuthSystem(){
 if(typeof firebase !== 'undefined' && typeof emailjs !== 'undefined'){
@@ -1473,9 +1647,18 @@ const db = firebase.firestore();
 // app script, can read/write Firestore once the user is signed in.
 window.auth = auth;
 window.db = db;
-// (offline persistence call removed — it only ever produced a harmless
-// but confusing console notice; Firestore still caches normally during
-// the session without it)
+// OFFLINE PERSISTENCE (re-enabled per user's explicit request): this makes
+// Firestore cache all data on the device and queue any writes made while
+// offline. When the app is opened without internet it reads straight from
+// this local cache (last-known data, not blank), and the moment internet
+// comes back the queued writes are pushed to the server automatically —
+// no manual "sync" step needed. If persistence can't start (e.g. the app
+// is open in more than one browser tab at once, or the browser doesn't
+// support it), we fail silently and the app still works, just without the
+// offline cache for that session.
+db.enablePersistence({ synchronizeTabs: true }).catch((err)=>{
+  console.warn('Offline persistence not enabled:', err.code);
+});
 
 emailjs.init('a98weI8jcUY6UDhMw');
 const EMAILJS_SERVICE_ID = 'service_fwgkjwe';
@@ -1824,7 +2007,7 @@ function showAuthLoadError(){
   const gate = document.getElementById('authGate');
   gate.innerHTML = `
     <div class="auth-box" style="text-align:center;">
-      <h2>BEST Excel</h2>
+      <h2 dir="ltr"><span class="brand-badge"><span class="b-best">BEST</span> <span class="b-excel">Excel</span></span></h2>
       <div class="note" style="font-size:14px;line-height:2;">
         لاگ اِن سسٹم لوڈ نہیں ہو سکا — اس کے لیے انٹرنیٹ کنکشن درکار ہے۔<br>
         اپنا انٹرنیٹ (وائی فائی/ڈیٹا) چیک کریں اور دوبارہ کوشش کریں۔
@@ -1844,26 +2027,125 @@ function showAuthLoadError(){
      re-typing it. Data lives under the signed-in account, so the same
      ledgers show up on any device the person logs into. -->
 <script>
-// Fixed item list — same on every entry of every ledger, per the person's
-// handwritten account-book format (see uploaded photo: SHAFIQ Bhatti page).
+// Item list — matches the person's handwritten account-book page exactly
+// (see uploaded photo: FIAZ SHAFIQ Bhatti page). rate/prift/d are fixed
+// REFERENCE values printed on the page (same for every entry); t/price/
+// tPrift/tD are typed fresh on every entry.
 const KATA_ITEMS = [
-  {key:"rs10",  name:"RS.10 CTN",   weight:"26g"},
-  {key:"rs50",  name:"RS.50 CTN",   weight:"155g"},
-  {key:"rs100", name:"RS.100 CTN",  weight:"316g"},
-  {key:"rs150", name:"RS.150 CTN",  weight:"475g"},
-  {key:"rs400", name:"RS.400 CTN",  weight:"1000g"},
-  {key:"rs1000",name:"RS.1000 CTN", weight:"3340g"},
-  {key:"khula", name:"khula Tora",  weight:"20kg"},
-  {key:"znet",  name:"Z Net Bill",  weight:""},
+  {key:"rs10",   name:"Best Excel RS.10",   weight:"26g",   rate:2100, prift:250, d:40},
+  {key:"rs50",   name:"Best Excel Rs.50",   weight:"155g",  rate:1840, prift:260, d:40},
+  {key:"rs100",  name:"Best Excel Rs.100",  weight:"316g",  rate:1840, prift:260, d:40},
+  {key:"rs150",  name:"Best Excel RS.150",  weight:"475g",  rate:2580, prift:520, d:60},
+  {key:"rs400",  name:"Best Excel RS.400",  weight:"1000g", rate:3710, prift:540, d:60},
+  {key:"rs1000", name:"Best Excel RS.1000", weight:"3340g", rate:3050, prift:500, d:60},
+  {key:"special",name:"Best Excel Special", weight:"20kg",  rate:5560, prift:640, d:60},
+  {key:"sada",   name:"Best Excel sada",    weight:"20kg",  rate:3490, prift:510, d:0},
+  {key:"znet1",  name:"Z Net Bill",  weight:"",      rate:0,    prift:0,   d:0},
+  {key:"znet2",  name:"Z Net Bill",  weight:"",      rate:0,    prift:0,   d:0},
+];
+
+// Second table on the same page — "Sale Mahana Record" (monthly sale
+// tally). Separate item set/weights from the table above (note RS.300 CTN
+// here, not RS.400, and khula Tora — matches the photo exactly). Tracks
+// quantity only (no rate/price), Sabka carries forward like the main table.
+const SALE_MAHANA_ITEMS = [
+  {key:"rs10",   name:"RS.10 CTN",  weight:"26g"},
+  {key:"rs50",   name:"RS.50 CTN",  weight:"155g"},
+  {key:"rs100",  name:"RS.100 CTN", weight:"316g"},
+  {key:"rs150",  name:"RS.150 CTN", weight:"475g"},
+  {key:"rs300",  name:"RS.300 CTN", weight:"956g"},
+  {key:"rs1000", name:"RS.1000 CTN",weight:"3340g"},
+  {key:"khula",  name:"khula Tora", weight:"14500g"},
+  {key:"rs400",  name:"RS.400 CTN", weight:"1000g"},
+  {key:"special",name:"Bestspecial",weight:"20kg"},
+  {key:"sada",   name:"Best sada",  weight:"20kg"},
 ];
 
 let kataUid = null;
 let kataListUnsub = null;
 let kataEntriesUnsub = null;
 let kataOpenId = null;      // currently-open ledger's doc id
+let kataOpenName = '';      // currently-open ledger's name
 let kataOpenEntries = [];   // cached entries of the currently-open ledger, oldest first
+let kataLocalMode = false;  // true when login is off — uses localStorage on this device instead of Firestore
+let kataColLocked = {name:true, weight:true, t:false, rate:true, prift:true, d:true, salesman:false}; // lock buttons for the new-entry table's columns, like ریٹ لسٹ — reference fields (name/weight/rate/prift/d) default locked to guard against accidental edits, T and salesman default open
+let kataUndoStack = []; // {input, oldValue} — one entry per finished edit (on blur/change), so Undo reverts a whole edit at once, not per-keystroke
+let kataUndoRestoring = false; // guards against the programmatic restore itself being tracked as a new undo-able change
 
 function kataCol(){ return window.db.collection('users').doc(kataUid).collection('kataBooks'); }
+
+// ---------- LOCAL (no-login) STORAGE, used while login is switched off ----------
+// Same data shapes as the Firestore path (books: {id,name,createdAt}; entries:
+// same object kataSaveEntry already builds) so kataRenderDetail/kataRenderEntryCard/
+// kataRenderNewEntryForm/kataWireLiveFormulas/kataTotalsBlockHtml all work unchanged
+// regardless of which storage backend is active. Data is per-device only (not synced
+// across devices) — this is what login normally provides, so mention that if asked.
+function kataLocalBooksKey(){ return 'kataLocalBooks'; }
+function kataLocalEntriesKey(bookId){ return 'kataLocalEntries_' + bookId; }
+function kataLocalGetBooks(){
+  try{ return JSON.parse(localStorage.getItem(kataLocalBooksKey())) || []; }catch(e){ return []; }
+}
+function kataLocalSaveBooks(arr){ localStorage.setItem(kataLocalBooksKey(), JSON.stringify(arr)); }
+function kataLocalGetEntries(bookId){
+  try{ return JSON.parse(localStorage.getItem(kataLocalEntriesKey(bookId))) || []; }catch(e){ return []; }
+}
+function kataLocalSaveEntries(bookId, arr){ localStorage.setItem(kataLocalEntriesKey(bookId), JSON.stringify(arr)); }
+
+function kataLocalRenderList(){
+  const container = document.getElementById('kataListContainer');
+  if(!container) return;
+  const books = kataLocalGetBooks();
+  if(!books.length){
+    container.innerHTML = '<div class="note" style="text-align:center;">ابھی کوئی کھاتہ موجود نہیں — اوپر بٹن سے نیا کھاتہ بنائیں۔</div>';
+    return;
+  }
+  container.innerHTML = '';
+  books.forEach(b=>{
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.cursor = 'pointer';
+    card.style.textAlign = 'center';
+    card.innerHTML = `<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(b.name || '(بلا نام)')}</h2>`;
+    card.addEventListener('click', ()=> kataLocalOpen(b.id, b.name || ''));
+    container.appendChild(card);
+  });
+}
+
+function kataLocalCreateNew(){
+  const name = prompt('نئے کھاتے کا نام لکھیں (مثلاً: SHAFIQ Bhatti)');
+  if(!name || !name.trim()) return;
+  const books = kataLocalGetBooks();
+  books.push({id: 'k'+Date.now(), name: name.trim(), createdAt: new Date().toISOString()});
+  kataLocalSaveBooks(books);
+  kataLocalRenderList();
+}
+
+function kataLocalOpen(id, name){
+  kataOpenId = id;
+  kataOpenName = name;
+  document.getElementById('kataListView').style.display = 'none';
+  document.getElementById('kataDetailView').style.display = '';
+  kataOpenEntries = kataLocalGetEntries(id);
+  kataRenderDetail(name);
+}
+
+window.initKataModuleLocal = function(){
+  kataLocalMode = true;
+  const newBtn = document.getElementById('newKataBtn');
+  const backBtn = document.getElementById('kataBackBtn');
+  if(newBtn){
+    newBtn.disabled = false;
+    newBtn.style.opacity = '';
+    newBtn.title = '';
+    if(!newBtn._wired){ newBtn._wired = true; newBtn.addEventListener('click', kataLocalCreateNew); }
+  }
+  if(backBtn && !backBtn._wired){
+    backBtn._wired = true;
+    backBtn.addEventListener('click', kataShowList);
+  }
+  kataShowList();
+  kataLocalRenderList();
+};
 
 window.initKataModule = function(uid){
   kataUid = uid;
@@ -1925,6 +2207,10 @@ function kataShowList(){
 }
 
 async function kataCreateNew(){
+  if(!kataUid){
+    alert('لاگ اِن سسٹم عارضی طور پر بند ہے، اس لیے کھاتے فی الحال کام نہیں کریں گے۔');
+    return;
+  }
   const name = prompt('نئے کھاتے کا نام لکھیں (مثلاً: SHAFIQ Bhatti)');
   if(!name || !name.trim()) return;
   try{
@@ -1940,6 +2226,7 @@ async function kataCreateNew(){
 
 function kataOpen(id, name){
   kataOpenId = id;
+  kataOpenName = name;
   document.getElementById('kataListView').style.display = 'none';
   document.getElementById('kataDetailView').style.display = '';
   if(kataEntriesUnsub) kataEntriesUnsub();
@@ -1954,8 +2241,11 @@ function kataOpen(id, name){
 function kataFormatWhen(ts){
   // Firestore Timestamp -> "10/8/2026, 6:30 PM"; falls back gracefully
   // while serverTimestamp() is still resolving (shows "…ابھی" briefly).
-  if(!ts || !ts.toDate) return '...ابھی';
-  const d = ts.toDate();
+  // Local mode stores a plain ISO string instead, handled here too.
+  let d;
+  if(ts && typeof ts.toDate === 'function') d = ts.toDate();
+  else if(typeof ts === 'string') d = new Date(ts);
+  if(!d || isNaN(d.getTime())) return '...ابھی';
   return d.toLocaleDateString('en-GB') + '، ' + d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
 }
 
@@ -1963,108 +2253,536 @@ function kataRenderDetail(name){
   const container = document.getElementById('kataDetailContainer');
   if(!container) return;
 
-  const prevTotal = kataOpenEntries.length
-    ? kataOpenEntries[kataOpenEntries.length-1].total
-    : {t:0, price:0, profit:0};
+  const lastEntry = kataOpenEntries.length ? kataOpenEntries[kataOpenEntries.length-1] : null;
+  const prevTotal = lastEntry ? lastEntry.total : {t:0, price:0, profit:0};
+  const prevSaleMahana = lastEntry ? lastEntry.saleMahana : null;
+  const prevSalesman = lastEntry ? (lastEntry.salesman || '') : '';
 
   let html = `<div class="card" style="text-align:center;"><h2 style="border:none;margin:0;">${kataEscape(name)}</h2></div>`;
 
-  kataOpenEntries.forEach(entry=>{
-    html += kataRenderEntryCard(entry);
+  kataOpenEntries.forEach((entry, i)=>{
+    html += kataRenderEntryCard(entry, i === kataOpenEntries.length - 1);
   });
 
-  html += kataRenderNewEntryForm(prevTotal);
+  html += kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman);
 
   container.innerHTML = html;
 
   const saveBtn = document.getElementById('kataSaveEntryBtn');
-  if(saveBtn) saveBtn.addEventListener('click', ()=> kataSaveEntry(prevTotal));
+  if(saveBtn) saveBtn.addEventListener('click', ()=> kataSaveEntry(prevTotal, prevSaleMahana));
+  kataWireLiveFormulas(prevTotal);
+
+  container.querySelectorAll('.kata-delete-entry-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> kataDeleteEntry());
+  });
+  container.querySelectorAll('.kata-print-entry-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> kataPrintEntry(btn));
+  });
 }
 
-function kataRenderEntryCard(entry){
+// Captures just the tapped entry's own card as one PDF page and hands it to
+// the same native-share pipeline the ریٹ لسٹ share button already uses —
+// opens the OS share sheet (WhatsApp, Gmail, any app) directly.
+// Takes the CLICKED BUTTON itself (not an id) and walks up to its own
+// containing .kata-entry-card — this is the fix for a real bug: the old
+// id-based lookup fell back to `document.querySelector('.kata-entry-card')`
+// (always the FIRST card) whenever an entry's id was missing/didn't match,
+// so printing entry #2 silently printed entry #1 instead. Targeting the
+// button's own ancestor card can never point at the wrong entry.
+async function kataPrintEntry(btn){
+  const card = btn.closest('.kata-entry-card');
+  if(!card) return;
+  const originalLabel = btn.textContent;
+  btn.textContent = '⏳...'; btn.disabled = true;
+  const actions = card.querySelector('.kata-entry-actions');
+  const prevDisplay = actions ? actions.style.display : '';
+  if(actions) actions.style.display = 'none'; // don't capture the print/delete buttons themselves
+  try{
+    try{ await document.fonts.ready; } catch(e){ /* proceed anyway */ }
+    const canvas = await html2canvas(card, {scale:3, backgroundColor:'#F4EFE2', useCORS:true});
+    if(typeof jspdf === 'undefined' || !jspdf.jsPDF) throw new Error('jsPDF-not-loaded');
+    const { jsPDF } = jspdf;
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({
+      orientation: canvas.width >= canvas.height ? 'landscape' : 'portrait',
+      unit: 'pt',
+      format: [canvas.width, canvas.height],
+    });
+    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+    const blob = pdf.output('blob');
+    if(!blob) throw new Error('no-blob');
+    await sharePdfDirectly(blob, 'kata-entry.pdf', 'کھاتہ انٹری');
+  } catch(err){
+    alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
+    console.warn(err);
+  } finally {
+    if(actions) actions.style.display = prevDisplay;
+    btn.textContent = originalLabel; btn.disabled = false;
+  }
+}
+
+// Deletes one saved entry (for fixing a mistaken انٹری). Only ever offered
+// on the BOTTOM-MOST entry (see kataRenderEntryCard's isLast param) since
+// every entry's Sabka carries forward from the one before it — deleting a
+// middle/top entry would break that running-total chain for everything
+// after it. Confirms first since this can't be undone.
+async function kataDeleteEntry(){
+  if(!confirm('کیا آپ واقعی یہ انٹری حذف کرنا چاہتے ہیں؟ یہ واپس نہیں ہو سکتا۔')) return;
+  if(kataLocalMode){
+    const entries = kataLocalGetEntries(kataOpenId);
+    entries.pop(); // delete is only ever offered on the last entry, so just drop it — no id matching needed (older entries may lack one)
+    kataLocalSaveEntries(kataOpenId, entries);
+    kataOpenEntries = entries;
+    kataRenderDetail(kataOpenName);
+  } else {
+    const last = kataOpenEntries[kataOpenEntries.length - 1];
+    if(!last || !last.id) return;
+    try{
+      await kataCol().doc(kataOpenId).collection('entries').doc(last.id).delete();
+      // Firestore's onSnapshot listener (see kataOpen) picks up the
+      // deletion automatically and re-renders — nothing more to do here.
+    } catch(err){
+      alert('انٹری حذف کرنے میں مسئلہ ہوا — دوبارہ کوشش کریں۔');
+      console.warn(err);
+    }
+  }
+}
+
+function kataRenderEntryCard(entry, isLast){
   let rows = '';
-  KATA_ITEMS.forEach(item=>{
+  KATA_ITEMS.forEach((item, idx)=>{
     const v = (entry.items && entry.items[item.key]) || {t:0, price:0, profit:0};
     if(!v.t && !v.price && !v.profit) return; // skip untouched rows to keep past entries compact
+    // Older entries (saved before reference fields became per-row snapshots)
+    // won't have v.rate/v.prift/v.d/v.name/v.weight — fall back to today's
+    // KATA_ITEMS values for those so old cards still render.
+    const rate = (v.rate!=null) ? v.rate : item.rate;
+    const prift = (v.prift!=null) ? v.prift : item.prift;
+    const d = (v.d!=null) ? v.d : item.d;
+    const name = (v.name!=null && v.name!=='') ? v.name : item.name;
+    const weight = (v.weight!=null) ? v.weight : item.weight;
+    const td = d * v.t;
+    const nameColor = idx < 8 ? 'color:red;' : '';
     rows += `<tr>
-      <td style="text-align:right;padding-right:6px;">${kataEscape(item.name)}</td>
-      <td>${kataEscape(item.weight)}</td>
+      <td>${idx+1}</td>
+      <td style="text-align:right;padding-right:6px;${nameColor}">${kataEscape(name)}</td>
+      <td>${kataEscape(weight)}</td>
       <td>${v.t}</td>
+      <td>${rate}</td>
       <td>${v.price}</td>
+      <td>${prift}</td>
       <td>${v.profit}</td>
+      <td>${d}</td>
+      <td>${td}</td>
     </tr>`;
   });
+  let saleRows = '';
+  SALE_MAHANA_ITEMS.forEach((item, idx)=>{
+    const v = (entry.saleMahana && entry.saleMahana[item.key]) || {today:0, sabka:0, total:0};
+    if(!v.today && !v.sabka && !v.total) return;
+    const mirror = KATA_ITEMS[idx];
+    const displayName = mirror ? mirror.name : item.name;
+    const displayWeight = mirror ? mirror.weight : item.weight;
+    const nameColor = idx < 8 ? 'color:red;' : '';
+    saleRows += `<tr>
+      <td>${idx+1}</td>
+      <td style="text-align:right;padding-right:6px;${nameColor}">${kataEscape(displayName)}</td>
+      <td>${kataEscape(displayWeight)}</td>
+      <td>${v.today}</td>
+      <td>${v.sabka}</td>
+      <td>${v.total}</td>
+    </tr>`;
+  });
+  const smt = entry.saleMahanaTotals || {todayCtn:0, sabkaCtn:0, totalCtn:0};
+  const entryDomId = `kataEntry_${entry.id || Math.random().toString(36).slice(2)}`;
   return `
-    <div class="card">
+    <div class="card kata-entry-card" id="${entryDomId}">
       <div class="note" style="text-align:center;font-weight:700;">${kataFormatWhen(entry.createdAt)}</div>
-      <div class="edit-table">
+      ${entry.salesman ? `<div class="note" style="text-align:center;">سیلزمین: ${kataEscape(entry.salesman)}</div>` : ''}
+      <div class="edit-table wide-table">
         <table dir="ltr">
-          <thead><tr><th>Items</th><th>Weight</th><th>T</th><th>Price</th><th>T.Prift</th></tr></thead>
+          <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>T CTN</th><th>Rate</th><th>Total Rate</th><th>Profit</th><th>Total Profit</th><th>Discount</th><th>T.D</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
+      ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya)}
+      ${saleRows ? `
+      <h2 style="border:none;text-align:center;font-size:15px;margin-top:14px;">Sale Mahana Record</h2>
+      <div class="edit-table">
+        <table dir="ltr">
+          <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>Today</th><th>Sabka</th><th>Total</th></tr></thead>
+          <tbody>${saleRows}</tbody>
+        </table>
+      </div>
       <div class="totals" style="grid-template-columns:1fr 1fr 1fr;">
-        <div><div class="n">${entry.sabka.t} / ${entry.sabka.price}</div><div class="l">Sabka (T / Price)</div></div>
-        <div><div class="n">${entry.today.t} / ${entry.today.price}</div><div class="l">Today (T / Price)</div></div>
-        <div><div class="n">${entry.total.t} / ${entry.total.price}</div><div class="l">Total (T / Price)</div></div>
+        <div><div class="n">${smt.todayCtn}</div><div class="l">Today CTN</div></div>
+        <div><div class="n">${smt.sabkaCtn}</div><div class="l">Sabka CTN</div></div>
+        <div><div class="n">${smt.totalCtn}</div><div class="l">Total CTN</div></div>
+      </div>` : ''}
+      <div class="kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
+        <button type="button" class="kata-print-entry-btn" data-entry-id="${entry.id||''}" style="padding:5px 14px;font-size:12px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 پرنٹ</button>
+        ${isLast ? `<button type="button" class="kata-delete-entry-btn" data-entry-id="${entry.id||''}" style="padding:5px 14px;font-size:12px;border:none;border-radius:4px;color:#fff;background:#B3261E;cursor:pointer;">🗑 حذف کریں</button>` : ''}
       </div>
     </div>`;
 }
 
-function kataRenderNewEntryForm(prevTotal){
+// Renders the "Sabka / Today / Total / Jamah / Jamah / Bqaya" mini-table —
+// matches the photographed register page's summary block exactly: three
+// value columns (T, Price, T.Prift), but Jamah/Jamah/Bqaya rows only apply
+// to the two money columns (Price, T.Prift) — T (piece count) has no
+// payment tracking, matching the photo where that column is blank there.
+function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya){
+  jamah = jamah || {price:[0,0], profit:[0,0], td:[0,0]};
+  bqaya = bqaya || {price:0, profit:0, td:0};
+  return `
+      <div class="edit-table" style="margin-top:8px;">
+        <table dir="ltr">
+          <thead><tr><th></th><th>T</th><th>Price</th><th>T.Profit</th><th>T.D</th></tr></thead>
+          <tbody>
+            <tr><td style="text-align:right;padding-right:6px;">Sabka</td><td>${sabka.t}</td><td>${sabka.price}</td><td>${sabka.profit}</td><td>${sabka.td||0}</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Today</td><td>${today.t}</td><td>${today.price}</td><td>${today.profit}</td><td>${today.td||0}</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Total</td><td>${total.t}</td><td>${total.price}</td><td>${total.profit}</td><td>${total.td||0}</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td></td><td>${jamah.price[0]||0}</td><td>${jamah.profit[0]||0}</td><td>${(jamah.td&&jamah.td[0])||0}</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td></td><td>${jamah.price[1]||0}</td><td>${jamah.profit[1]||0}</td><td>${(jamah.td&&jamah.td[1])||0}</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Bqaya</td><td></td><td>${bqaya.price}</td><td>${bqaya.profit}</td><td>${bqaya.td||0}</td></tr>
+          </tbody>
+        </table>
+      </div>`;
+}
+
+function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman){
   let rows = '';
-  KATA_ITEMS.forEach(item=>{
+  KATA_ITEMS.forEach((item, idx)=>{
+    const nameColor = idx < 8 ? 'color:red;' : '';
     rows += `<tr>
-      <td style="text-align:right;padding-right:6px;">${kataEscape(item.name)}</td>
-      <td>${kataEscape(item.weight)}</td>
-      <td><input type="number" inputmode="numeric" class="cell-input" data-kata-field="t" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
-      <td><input type="number" inputmode="numeric" class="cell-input" data-kata-field="price" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
-      <td><input type="number" inputmode="numeric" class="cell-input" data-kata-field="profit" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
+      <td>${idx+1}</td>
+      <td style="text-align:right;padding-right:6px;"><input type="text" class="cell-input" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:right;${nameColor}" value="${kataEscape(item.name)}"></td>
+      <td><input type="text" class="cell-input" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${kataEscape(item.weight)}"></td>
+      <td class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="t" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
+      <td><input type="number" inputmode="numeric" class="cell-input" data-kata-field="rate" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${item.rate}"></td>
+      <td data-kata-totalrate="${item.key}">0</td>
+      <td><input type="number" inputmode="numeric" class="cell-input" data-kata-field="prift" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${item.prift}"></td>
+      <td data-kata-totalprofit="${item.key}">0</td>
+      <td><input type="number" inputmode="numeric" class="cell-input" data-kata-field="d" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${item.d}"></td>
+      <td data-kata-td="${item.key}">0</td>
+    </tr>`;
+  });
+  let saleRows = '';
+  SALE_MAHANA_ITEMS.forEach((item, idx)=>{
+    const sabka = (prevSaleMahana && prevSaleMahana[item.key] && prevSaleMahana[item.key].total) || 0;
+    const mirror = KATA_ITEMS[idx];
+    const displayName = mirror ? mirror.name : item.name;
+    const displayWeight = mirror ? mirror.weight : item.weight;
+    const nameColor = idx < 8 ? 'color:red;' : '';
+    saleRows += `<tr>
+      <td>${idx+1}</td>
+      <td style="text-align:right;padding-right:6px;"><input type="text" class="cell-input" data-sale-name="${item.key}" data-sale-row-idx="${idx}" ${mirror ? 'disabled' : ''} style="border:1px solid var(--line);text-align:right;${nameColor}" value="${kataEscape(displayName)}"></td>
+      <td><input type="text" class="cell-input" data-sale-weight="${item.key}" data-sale-row-idx="${idx}" ${mirror ? 'disabled' : ''} style="border:1px solid var(--line);" value="${kataEscape(displayWeight)}"></td>
+      <td><input type="number" inputmode="numeric" class="cell-input" data-sale-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
+      <td>${sabka}</td>
+      <td data-sale-total="${item.key}" data-sale-sabka="${sabka}">${sabka}</td>
     </tr>`;
   });
   return `
     <div class="card">
       <h2 style="border:none;text-align:center;">+ نئی انٹری</h2>
-      <div class="note" style="text-align:center;">پچھلا مجموعہ (Sabka) خودکار شامل ہو گا: T=${prevTotal.t}, Price=${prevTotal.price}</div>
+      <div style="text-align:center;margin-bottom:8px;">
+        <button type="button" class="share-btn" id="kataUndoBtn" style="width:auto;padding:4px 16px;font-size:13px;">↩ پچھلی تبدیلی واپس کریں</button>
+      </div>
+      <div class="note" style="text-align:center;">
+        <div style="margin-bottom:4px;">سیلزمین کا نام</div>
+        <button type="button" class="row-lock-btn" data-kata-lockbtn="salesman"></button>
+        <input type="text" class="cell-input" data-kata-field="salesman" style="border:1px solid var(--line);text-align:center;" value="${kataEscape(prevSalesman||'')}">
+      </div>
+      <div class="edit-table wide-table">
+        <table dir="ltr">
+          <thead><tr>
+            <th>#</th>
+            <th><button type="button" class="row-lock-btn" data-kata-lockbtn="name"></button>Items</th>
+            <th><button type="button" class="row-lock-btn" data-kata-lockbtn="weight"></button>Weight</th>
+            <th><button type="button" class="row-lock-btn" data-kata-lockbtn="t"></button>T CTN</th>
+            <th><button type="button" class="row-lock-btn" data-kata-lockbtn="rate"></button>Rate</th>
+            <th>Total Rate</th>
+            <th><button type="button" class="row-lock-btn" data-kata-lockbtn="prift"></button>Profit</th>
+            <th>Total Profit</th>
+            <th><button type="button" class="row-lock-btn" data-kata-lockbtn="d"></button>Discount</th>
+            <th>T.D</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="edit-table" style="margin-top:8px;">
+        <table dir="ltr">
+          <thead><tr><th></th><th>T</th><th>Price</th><th>T.Profit</th><th>T.D</th></tr></thead>
+          <tbody>
+            <tr><td style="text-align:right;padding-right:6px;">Sabka</td><td>${prevTotal.t}</td><td>${prevTotal.price}</td><td>${prevTotal.profit}</td><td>${prevTotal.td||0}</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Today</td><td data-kata-today-t>0</td><td data-kata-today-price>0</td><td data-kata-today-profit>0</td><td data-kata-today-td>0</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Total</td><td data-kata-tot-t>${prevTotal.t}</td><td data-kata-tot-price>${prevTotal.price}</td><td data-kata-tot-profit>${prevTotal.profit}</td><td data-kata-tot-td>${prevTotal.td||0}</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price0" style="border:1px solid var(--line);" value="0"></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="profit0" style="border:1px solid var(--line);" value="0"></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="td0" style="border:1px solid var(--line);" value="0"></td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price1" style="border:1px solid var(--line);" value="0"></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="profit1" style="border:1px solid var(--line);" value="0"></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="td1" style="border:1px solid var(--line);" value="0"></td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Bqaya</td><td></td><td data-kata-bqaya-price>${prevTotal.price}</td><td data-kata-bqaya-profit>${prevTotal.profit}</td><td data-kata-bqaya-td>${prevTotal.td||0}</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h2 style="border:none;text-align:center;font-size:15px;margin-top:14px;">Sale Mahana Record</h2>
       <div class="edit-table">
         <table dir="ltr">
-          <thead><tr><th>Items</th><th>Weight</th><th>T</th><th>Price</th><th>T.Prift</th></tr></thead>
-          <tbody>${rows}</tbody>
+          <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>Today</th><th>Sabka</th><th>Total</th></tr></thead>
+          <tbody>${saleRows}</tbody>
         </table>
       </div>
       <button type="button" class="share-btn" id="kataSaveEntryBtn" style="width:100%;">انٹری محفوظ کریں</button>
     </div>`;
 }
 
-async function kataSaveEntry(prevTotal){
+// Keeps T.D (main table), Total (Sale Mahana table), and the
+// Sabka/Today/Total/Jamah/Jamah/Bqaya block all live-updated as the person
+// types, without a full re-render.
+function kataWireLiveFormulas(prevTotal){
+  prevTotal = prevTotal || {t:0, price:0, profit:0, td:0};
+
+  // خانے مواد (نمبر/الفاظ) کے سائز کے مطابق خودکار چھوٹے بڑے ہوں — ہر ان پٹ کی
+  // چوڑائی اس کے اپنے موجودہ متن کے مطابق مقرر کی جاتی ہے، فکسڈ 100% کی بجائے۔
+  function kataAutoSizeInput(input){
+    if(!input) return;
+    const len = (input.value || input.placeholder || '0').toString().length;
+    input.style.width = Math.max(len + 1.5, 3) + 'ch';
+  }
+  function kataAutoSizeAll(){
+    document.querySelectorAll('#kataDetailView .cell-input').forEach(kataAutoSizeInput);
+  }
+  kataAutoSizeAll();
+  document.querySelectorAll('#kataDetailView .cell-input').forEach(input=>{
+    input.addEventListener('input', ()=> kataAutoSizeInput(input));
+  });
+
+  function recomputeTotalsBlock(){
+    let todayT = 0, todayPrice = 0, todayProfit = 0, todayTd = 0;
+    KATA_ITEMS.forEach(item=>{
+      const tI = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`);
+      const t = Number((tI && tI.value) || 0) || 0;
+      todayT += t;
+      todayPrice += item.rate * t;
+      todayProfit += item.prift * t;
+      todayTd += item.d * t;
+    });
+    const totT = prevTotal.t + todayT, totPrice = prevTotal.price + todayPrice, totProfit = prevTotal.profit + todayProfit, totTd = (prevTotal.td||0) + todayTd;
+    const set = (sel, val)=>{ const el = document.querySelector(sel); if(el) el.textContent = val; };
+    set('[data-kata-today-t]', todayT);
+    set('[data-kata-today-price]', todayPrice);
+    set('[data-kata-today-profit]', todayProfit);
+    set('[data-kata-today-td]', todayTd);
+    set('[data-kata-tot-t]', totT);
+    set('[data-kata-tot-price]', totPrice);
+    set('[data-kata-tot-profit]', totProfit);
+    set('[data-kata-tot-td]', totTd);
+    const j = (sel)=>{ const el = document.querySelector(sel); return el ? (Number(el.value)||0) : 0; };
+    const jamahPrice = j('[data-jamah="price0"]') + j('[data-jamah="price1"]');
+    const jamahProfit = j('[data-jamah="profit0"]') + j('[data-jamah="profit1"]');
+    const jamahTd = j('[data-jamah="td0"]') + j('[data-jamah="td1"]');
+    set('[data-kata-bqaya-price]', totPrice - jamahPrice);
+    set('[data-kata-bqaya-profit]', totProfit - jamahProfit);
+    set('[data-kata-bqaya-td]', totTd - jamahTd);
+  }
+
+  KATA_ITEMS.forEach((item, idx)=>{
+    const tInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`);
+    const nameInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="name"]`);
+    const weightInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="weight"]`);
+    const rateInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="rate"]`);
+    const priftInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="prift"]`);
+    const dInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="d"]`);
+    const tdCell = document.querySelector(`[data-kata-td="${item.key}"]`);
+    const totalRateCell = document.querySelector(`[data-kata-totalrate="${item.key}"]`);
+    const totalProfitCell = document.querySelector(`[data-kata-totalprofit="${item.key}"]`);
+
+    const getT = ()=> Number((tInput && tInput.value)||0)||0;
+    const refreshRow = ()=>{
+      if(tdCell) tdCell.textContent = item.d * getT();
+      if(totalRateCell) totalRateCell.textContent = item.rate * getT();
+      if(totalProfitCell) totalProfitCell.textContent = item.prift * getT();
+      recomputeTotalsBlock();
+    };
+
+    if(nameInput) nameInput.addEventListener('input', ()=>{
+      item.name = nameInput.value;
+      const saleNameInput = document.querySelector(`[data-sale-row-idx="${idx}"][data-sale-name]`);
+      if(saleNameInput){ saleNameInput.value = nameInput.value; kataAutoSizeInput(saleNameInput); }
+    });
+    if(weightInput) weightInput.addEventListener('input', ()=>{
+      item.weight = weightInput.value;
+      const saleWeightInput = document.querySelector(`[data-sale-row-idx="${idx}"][data-sale-weight]`);
+      if(saleWeightInput){ saleWeightInput.value = weightInput.value; kataAutoSizeInput(saleWeightInput); }
+    });
+    if(rateInput) rateInput.addEventListener('input', ()=>{ item.rate = Number(rateInput.value)||0; refreshRow(); });
+    if(priftInput) priftInput.addEventListener('input', ()=>{ item.prift = Number(priftInput.value)||0; refreshRow(); });
+    if(dInput) dInput.addEventListener('input', ()=>{ item.d = Number(dInput.value)||0; refreshRow(); });
+    if(tInput) tInput.addEventListener('input', refreshRow);
+  });
+  document.querySelectorAll('[data-jamah]').forEach(input=>{
+    input.addEventListener('input', recomputeTotalsBlock);
+  });
+
+  function applyKataColLock(field){
+    const locked = kataColLocked[field];
+    document.querySelectorAll(`[data-kata-field="${field}"]`).forEach(input=>{
+      input.disabled = locked;
+    });
+    const btn = document.querySelector(`[data-kata-lockbtn="${field}"]`);
+    if(btn){
+      btn.className = 'row-lock-btn ' + (locked ? 'is-locked' : 'is-unlocked');
+      btn.textContent = locked ? '🔒' : '🔓';
+      btn.title = locked ? 'یہ کالم ترمیم کے لیے کھولیں' : 'یہ کالم لاک کریں';
+    }
+  }
+  ['name','weight','t','rate','prift','d','salesman'].forEach(field=>{
+    applyKataColLock(field);
+    const btn = document.querySelector(`[data-kata-lockbtn="${field}"]`);
+    if(btn) btn.addEventListener('click', ()=>{
+      kataColLocked[field] = !kataColLocked[field];
+      applyKataColLock(field);
+    });
+  });
+
+  SALE_MAHANA_ITEMS.forEach(item=>{
+    const todayInput = document.querySelector(`[data-sale-item="${item.key}"]`);
+    const totalCell = document.querySelector(`[data-sale-total="${item.key}"]`);
+    if(todayInput && totalCell){
+      const sabka = Number(totalCell.dataset.saleSabka)||0;
+      todayInput.addEventListener('input', ()=>{
+        totalCell.textContent = sabka + (Number(todayInput.value)||0);
+      });
+    }
+  });
+
+  // ---------- UNDO (↩ / Ctrl+Z) ----------
+  // One undo entry per finished edit (captured on focus, pushed on
+  // change/blur) rather than per keystroke — so pressing undo once
+  // reverts a whole edit, not one character. Covers every editable
+  // کھاتے cell: name/weight/t/rate/prift/d/salesman, both Jamah pairs,
+  // and every Sale Mahana "Today" quantity.
+  function kataTrackUndo(input){
+    input.addEventListener('focus', ()=>{ input.dataset.kataPrevValue = input.value; });
+    input.addEventListener('change', ()=>{
+      if(kataUndoRestoring) return;
+      if(input.dataset.kataPrevValue !== undefined && input.dataset.kataPrevValue !== input.value){
+        kataUndoStack.push({input, oldValue: input.dataset.kataPrevValue});
+        if(kataUndoStack.length > 50) kataUndoStack.shift();
+      }
+      input.dataset.kataPrevValue = input.value;
+    });
+  }
+  document.querySelectorAll('#kataDetailView .cell-input').forEach(kataTrackUndo);
+
+  function kataUndo(){
+    let entry = kataUndoStack.pop();
+    while(entry && !document.body.contains(entry.input)) entry = kataUndoStack.pop(); // skip entries from rows no longer in the DOM (e.g. after a save re-render)
+    if(!entry) return;
+    kataUndoRestoring = true;
+    entry.input.value = entry.oldValue;
+    entry.input.dataset.kataPrevValue = entry.oldValue;
+    entry.input.dispatchEvent(new Event('input', {bubbles:true}));
+    kataUndoRestoring = false;
+  }
+
+  const undoBtn = document.getElementById('kataUndoBtn');
+  if(undoBtn) undoBtn.addEventListener('click', kataUndo);
+  if(!window._kataUndoKeyListenerAttached){
+    window._kataUndoKeyListenerAttached = true;
+    document.addEventListener('keydown', (e)=>{
+      if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && document.getElementById('kataDetailView')){
+        e.preventDefault();
+        kataUndo();
+      }
+    });
+  }
+}
+
+async function kataSaveEntry(prevTotal, prevSaleMahana){
   const items = {};
-  let todayT = 0, todayPrice = 0, todayProfit = 0;
+  let todayT = 0, todayPrice = 0, todayProfit = 0, todayTd = 0;
   KATA_ITEMS.forEach(item=>{
     const t = Number(document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`).value) || 0;
-    const price = Number(document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="price"]`).value) || 0;
-    const profit = Number(document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="profit"]`).value) || 0;
-    items[item.key] = {t, price, profit};
-    todayT += t; todayPrice += price; todayProfit += profit;
+    const price = item.rate * t;
+    const profit = item.prift * t;
+    const td = item.d * t;
+    items[item.key] = {t, price, profit, rate: item.rate, prift: item.prift, d: item.d, name: item.name, weight: item.weight};
+    todayT += t; todayPrice += price; todayProfit += profit; todayTd += td;
   });
-  if(todayT === 0 && todayPrice === 0 && todayProfit === 0){
+  const salesmanInput = document.querySelector('[data-kata-field="salesman"]');
+  const salesman = salesmanInput ? salesmanInput.value : '';
+
+  const saleMahana = {};
+  let todayCtn = 0, sabkaCtn = 0, totalCtn = 0;
+  SALE_MAHANA_ITEMS.forEach(item=>{
+    const today = Number(document.querySelector(`[data-sale-item="${item.key}"]`).value) || 0;
+    const sabka = (prevSaleMahana && prevSaleMahana[item.key] && prevSaleMahana[item.key].total) || 0;
+    const total = sabka + today;
+    saleMahana[item.key] = {today, sabka, total};
+    todayCtn += today; sabkaCtn += sabka; totalCtn += total;
+  });
+
+  if(todayT === 0 && todayPrice === 0 && todayProfit === 0 && todayCtn === 0){
     alert('کم از کم ایک آئٹم میں کوئی مقدار درج کریں۔');
     return;
   }
-  const sabka = {t: prevTotal.t||0, price: prevTotal.price||0, profit: prevTotal.profit||0};
-  const today = {t: todayT, price: todayPrice, profit: todayProfit};
-  const total = {t: sabka.t + today.t, price: sabka.price + today.price, profit: sabka.profit + today.profit};
+  const sabka = {t: prevTotal.t||0, price: prevTotal.price||0, profit: prevTotal.profit||0, td: prevTotal.td||0};
+  const today = {t: todayT, price: todayPrice, profit: todayProfit, td: todayTd};
+  const total = {t: sabka.t + today.t, price: sabka.price + today.price, profit: sabka.profit + today.profit, td: sabka.td + today.td};
+
+  const jVal = (name)=>{ const el = document.querySelector(`[data-jamah="${name}"]`); return el ? (Number(el.value)||0) : 0; };
+  const jamah = {price: [jVal('price0'), jVal('price1')], profit: [jVal('profit0'), jVal('profit1')], td: [jVal('td0'), jVal('td1')]};
+  const bqaya = {price: total.price - (jamah.price[0]+jamah.price[1]), profit: total.profit - (jamah.profit[0]+jamah.profit[1]), td: total.td - (jamah.td[0]+jamah.td[1])};
+
   const btn = document.getElementById('kataSaveEntryBtn');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ محفوظ ہو رہا ہے...'; }
+
+  if(kataLocalMode){
+    const entries = kataLocalGetEntries(kataOpenId);
+    entries.push({
+      id: 'e' + Date.now() + Math.random().toString(36).slice(2,7),
+      items, sabka, today, total, jamah, bqaya, salesman,
+      saleMahana, saleMahanaTotals: {todayCtn, sabkaCtn, totalCtn},
+      createdAt: new Date().toISOString(),
+    });
+    kataLocalSaveEntries(kataOpenId, entries);
+    kataOpenEntries = entries;
+    kataRenderDetail(kataOpenName);
+    kataShowSavedToast();
+    return;
+  }
+
   try{
     await kataCol().doc(kataOpenId).collection('entries').add({
-      items, sabka, today, total,
+      items, sabka, today, total, jamah, bqaya, salesman,
+      saleMahana, saleMahanaTotals: {todayCtn, sabkaCtn, totalCtn},
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
+    kataShowSavedToast();
   } catch(err){
     alert('انٹری محفوظ کرنے میں مسئلہ ہوا — دوبارہ کوشش کریں۔');
     console.warn(err);
     if(btn){ btn.disabled = false; btn.textContent = 'انٹری محفوظ کریں'; }
   }
+}
+
+// Small on-screen confirmation that an entry saved — a native alert() would
+// force a tap to dismiss every time, this just appears and fades on its own.
+function kataShowSavedToast(){
+  const old = document.getElementById('kataSavedToast');
+  if(old) old.remove();
+  const toast = document.createElement('div');
+  toast.id = 'kataSavedToast';
+  toast.textContent = '✅ انٹری محفوظ ہو گئی';
+  toast.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1a7a3c;color:#fff;padding:10px 20px;border-radius:20px;font-weight:700;font-size:14px;z-index:9999;box-shadow:0 2px 10px rgba(0,0,0,.3);';
+  document.body.appendChild(toast);
+  setTimeout(()=>{ toast.style.transition='opacity .4s'; toast.style.opacity='0'; setTimeout(()=>toast.remove(), 400); }, 2200);
+}
+
+// If login is switched off site-wide, کھاتے still works fully — just using
+// this device's own local storage instead of the signed-in cloud account.
+if(typeof LOGIN_TEMPORARILY_DISABLED !== 'undefined' && LOGIN_TEMPORARILY_DISABLED){
+  window.initKataModuleLocal();
 }
 </script>
 <script>
