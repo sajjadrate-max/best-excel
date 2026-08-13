@@ -1703,6 +1703,16 @@ const MS_ITEMS = [
 ];
 let msCtnProfits = {rs10:0, rs50:0, rs100:0, rs150:0, rs400:0, rs1000:0, rs20kg:0}; // remembered CTN.Profit reference values, session-only (like KATA_ITEMS.rate)
 let msOpenId = null, msOpenName = '', msOpenEntries = [];
+let msOpenCarryForward = null; // set from the opened book's .carryForward when it has no entries yet (after an automatic monthly rollover)
+let msOpenClosed = false; // true once this book has been auto-closed by a monthly rollover — view only, no new entries
+
+// Shared "YYYY-MM" key used by the automatic monthly rollover in both this
+// module and کھاتہ below — same real-world month must always look the same
+// no matter which system checks it.
+function kataMonthKey(d){
+  d = d || new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
 
 function msLocalBooksKey(){ return 'msLocalBooks'; }
 function msLocalEntriesKey(bookId){ return 'msLocalEntries_' + bookId; }
@@ -1716,7 +1726,41 @@ function msShowList(){
   document.getElementById('msDetailView').style.display = 'none';
 }
 
+// Runs every time the کھاتوں کی فہرست is opened. If an OPEN book's most
+// recent activity (last entry, or its own creation date if it has none yet)
+// falls in an earlier calendar month than today, it gets closed (view-only
+// from then on, see msRenderDetail) and a new book is created in its place,
+// carrying the running total forward as the new book's opening Sabka. This
+// NEVER deletes anything — only sets a `closed` flag and adds one new book.
+function msCheckMonthRollover(){
+  const books = msLocalGetBooks();
+  const curMonth = kataMonthKey();
+  let changed = false;
+  const newBooks = [];
+  books.forEach(b=>{
+    if(b.closed) return;
+    const entries = msLocalGetEntries(b.id);
+    const lastEntry = entries.length ? entries[entries.length-1] : null;
+    const refDate = lastEntry ? new Date(lastEntry.createdAt) : new Date(b.createdAt);
+    const bookMonth = kataMonthKey(refDate);
+    if(bookMonth !== curMonth){
+      b.closed = true;
+      changed = true;
+      const finalTotal = lastEntry ? lastEntry.total : (b.carryForward || {n:0, totalProfit:0});
+      newBooks.push({
+        id: 'm' + Date.now() + Math.random().toString(36).slice(2,7),
+        name: (b.name || 'کھاتہ') + ' - ' + curMonth,
+        createdAt: new Date().toISOString(),
+        carryForward: finalTotal,
+      });
+    }
+  });
+  if(newBooks.length) books.push(...newBooks);
+  if(changed) msLocalSaveBooks(books);
+}
+
 function msRenderList(){
+  msCheckMonthRollover();
   const container = document.getElementById('msListContainer');
   if(!container) return;
   const books = msLocalGetBooks();
@@ -1730,7 +1774,7 @@ function msRenderList(){
     card.className = 'card';
     card.style.cursor = 'pointer';
     card.style.textAlign = 'center';
-    card.innerHTML = `<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(b.name || '(بلا نام)')}</h2>`;
+    card.innerHTML = `<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(b.name || '(بلا نام)')}${b.closed ? ' 🔒' : ''}</h2>`;
     card.addEventListener('click', ()=> msOpen(b.id, b.name || ''));
     container.appendChild(card);
   });
@@ -1747,6 +1791,10 @@ function msCreateNew(){
 
 function msOpen(id, name){
   msOpenId = id; msOpenName = name;
+  const books = msLocalGetBooks();
+  const book = books.find(b=>b.id===id);
+  msOpenCarryForward = book ? (book.carryForward || null) : null;
+  msOpenClosed = book ? !!book.closed : false;
   document.getElementById('msListView').style.display = 'none';
   document.getElementById('msDetailView').style.display = '';
   msOpenEntries = msLocalGetEntries(id);
@@ -1771,13 +1819,13 @@ function msRenderEntryCard(entry, isLast){
       <div class="note" style="text-align:center;font-weight:700;">${kataFormatWhen(entry.createdAt)}</div>
       <div class="edit-table wide-table">
         <table dir="ltr">
-          <thead><tr><th>Items</th><th>N</th><th>CTN.Profit</th><th>Total Profit</th></tr></thead>
+          <thead><tr><th>Items</th><th>CTN</th><th>CTN.Profit</th><th>Total Profit</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
       <div class="edit-table" style="margin-top:8px;">
         <table dir="ltr">
-          <thead><tr><th></th><th>N</th><th>Total Profit</th></tr></thead>
+          <thead><tr><th></th><th>CTN</th><th>Total Profit</th></tr></thead>
           <tbody>
             <tr><td style="text-align:right;padding-right:6px;">Sabka</td><td>${entry.sabka.n}</td><td>${entry.sabka.totalProfit}</td></tr>
             <tr><td style="text-align:right;padding-right:6px;">Today</td><td>${entry.today.n}</td><td>${entry.today.totalProfit}</td></tr>
@@ -1814,13 +1862,13 @@ function msRenderNewEntryForm(prevTotal){
       <h2 style="border:none;text-align:center;">+ نئی انٹری</h2>
       <div class="edit-table wide-table">
         <table dir="ltr">
-          <thead><tr><th>Items</th><th>N</th><th>CTN.Profit</th><th>Total Profit</th></tr></thead>
+          <thead><tr><th>Items</th><th>CTN</th><th>CTN.Profit</th><th>Total Profit</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
       <div class="edit-table" style="margin-top:8px;">
         <table dir="ltr">
-          <thead><tr><th></th><th>N</th><th>Total Profit</th></tr></thead>
+          <thead><tr><th></th><th>CTN</th><th>Total Profit</th></tr></thead>
           <tbody>
             <tr><td style="text-align:right;padding-right:6px;">Sabka</td><td>${prevTotal.n}</td><td>${prevTotal.totalProfit}</td></tr>
             <tr><td style="text-align:right;padding-right:6px;">Today</td><td data-ms-today-n>0</td><td data-ms-today-totalprofit>0</td></tr>
@@ -1845,6 +1893,18 @@ function msRenderNewEntryForm(prevTotal){
 }
 
 function msWireLiveFormulas(prevTotal){
+  // خانے مواد (نمبر/الفاظ) کے سائز کے مطابق خودکار چھوٹے بڑے ہوں — same
+  // mechanism as کھاتہ's own kataAutoSizeInput, applied here to #msDetailContainer.
+  function msAutoSizeInput(input){
+    if(!input) return;
+    const len = (input.value || input.placeholder || '0').toString().length;
+    input.style.width = Math.max(len + 1.5, 3) + 'ch';
+  }
+  document.querySelectorAll('#msDetailContainer .cell-input').forEach(msAutoSizeInput);
+  document.querySelectorAll('#msDetailContainer .cell-input').forEach(inp=>{
+    inp.addEventListener('input', ()=> msAutoSizeInput(inp));
+  });
+
   function recalc(){
     let todayN = 0, todayProfit = 0;
     MS_ITEMS.forEach(item=>{
@@ -1939,18 +1999,25 @@ function msRenderDetail(name){
   const container = document.getElementById('msDetailContainer');
   if(!container) return;
   const lastEntry = msOpenEntries.length ? msOpenEntries[msOpenEntries.length-1] : null;
-  const prevTotal = lastEntry ? lastEntry.total : {n:0, totalProfit:0};
+  const prevTotal = lastEntry ? lastEntry.total : (msOpenCarryForward || {n:0, totalProfit:0});
 
-  let html = `<div class="card" style="text-align:center;">${kataDotsMenuHtml([{cls:'ms-delete-book-btn', label:'🗑 یہ کھاتہ حذف کریں'}])}<h2 style="border:none;margin:0;">${kataEscape(name)}</h2></div>`;
+  let html = `<div class="card" style="text-align:center;">${kataDotsMenuHtml([{cls:'ms-delete-book-btn', label:'🗑 یہ کھاتہ حذف کریں'}])}<h2 style="border:none;margin:0;">${kataEscape(name)}${msOpenClosed ? ' 🔒' : ''}</h2></div>`;
   msOpenEntries.forEach((entry, i)=>{
-    html += msRenderEntryCard(entry, i === msOpenEntries.length - 1);
+    const isLast = i === msOpenEntries.length - 1;
+    html += msRenderEntryCard(entry, isLast && !msOpenClosed);
   });
-  html += msRenderNewEntryForm(prevTotal);
+  if(msOpenClosed){
+    html += '<div class="card"><div class="note" style="text-align:center;">یہ کھاتہ بند ہو چکا ہے — نیا مہینہ شروع ہونے پر خودکار نیا کھاتہ بن گیا، اب یہاں صرف پرانا ریکارڈ دیکھا جا سکتا ہے۔</div></div>';
+  } else {
+    html += msRenderNewEntryForm(prevTotal);
+  }
   container.innerHTML = html;
 
-  const saveBtn = document.getElementById('msSaveEntryBtn');
-  if(saveBtn) saveBtn.addEventListener('click', ()=> msSaveEntry(prevTotal));
-  msWireLiveFormulas(prevTotal);
+  if(!msOpenClosed){
+    const saveBtn = document.getElementById('msSaveEntryBtn');
+    if(saveBtn) saveBtn.addEventListener('click', ()=> msSaveEntry(prevTotal));
+    msWireLiveFormulas(prevTotal);
+  }
 
   container.querySelectorAll('.ms-delete-entry-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> msDeleteEntry());
@@ -1969,7 +2036,7 @@ function msDeleteWholeBook(name){
 }
 
 document.getElementById('newMsBtn').addEventListener('click', msCreateNew);
-document.getElementById('msBackBtn').addEventListener('click', msShowList);
+document.getElementById('msBackBtn').addEventListener('click', ()=>{ msShowList(); msRenderList(); });
 msShowList();
 msRenderList();
 
@@ -2433,6 +2500,8 @@ let kataOpenId = null;      // currently-open ledger's doc id
 let kataOpenName = '';      // currently-open ledger's name
 let kataOpenEntries = [];   // cached entries of the currently-open ledger, oldest first
 let kataLocalMode = false;  // true when login is off — uses localStorage on this device instead of Firestore
+let kataOpenCarryForward = null; // set from the opened book's .carryForward when it has no entries yet (after an automatic monthly rollover)
+let kataOpenClosed = false; // true once this book has been auto-closed by a monthly rollover — view only, no new entries
 let kataInstance = 'salesman'; // which named ledger section is active — 'salesman' is the original/default (unprefixed storage keys, for backward compatibility with existing data), any other value (e.g. 'ribnawaz') gets its own separate namespace
 let kataColLocked = {name:true, weight:true, t:false, rate:true, prift:true, d:true, salesman:false}; // lock buttons for the new-entry table's columns, like ریٹ لسٹ — reference fields (name/weight/rate/prift/d) default locked to guard against accidental edits, T and salesman default open
 let kataUndoStack = []; // {input, oldValue} — one entry per finished edit (on blur/change), so Undo reverts a whole edit at once, not per-keystroke
@@ -2457,7 +2526,40 @@ function kataLocalGetEntries(bookId){
 }
 function kataLocalSaveEntries(bookId, arr){ localStorage.setItem(kataLocalEntriesKey(bookId), JSON.stringify(arr)); }
 
+// Runs every time the کھاتوں کی فہرست is opened — same rollover logic as
+// سرف کا ماہانہ حساب's msCheckMonthRollover (see there for the full
+// explanation). Never deletes anything, only closes old books and adds new
+// ones. Applies to whichever instance is active (سیلزمین یا ربنواز), since
+// each already has its own separate storage namespace via kataInstance.
+function kataCheckMonthRolloverLocal(){
+  const books = kataLocalGetBooks();
+  const curMonth = kataMonthKey();
+  let changed = false;
+  const newBooks = [];
+  books.forEach(b=>{
+    if(b.closed) return;
+    const entries = kataLocalGetEntries(b.id);
+    const lastEntry = entries.length ? entries[entries.length-1] : null;
+    const refDate = lastEntry ? new Date(lastEntry.createdAt) : new Date(b.createdAt);
+    const bookMonth = kataMonthKey(refDate);
+    if(bookMonth !== curMonth){
+      b.closed = true;
+      changed = true;
+      const finalTotal = lastEntry ? lastEntry.total : (b.carryForward || {t:0, price:0, profit:0, td:0});
+      newBooks.push({
+        id: 'k' + Date.now() + Math.random().toString(36).slice(2,7),
+        name: (b.name || 'کھاتہ') + ' - ' + curMonth,
+        createdAt: new Date().toISOString(),
+        carryForward: finalTotal,
+      });
+    }
+  });
+  if(newBooks.length) books.push(...newBooks);
+  if(changed) kataLocalSaveBooks(books);
+}
+
 function kataLocalRenderList(){
+  kataCheckMonthRolloverLocal();
   const container = document.getElementById('kataListContainer');
   if(!container) return;
   const books = kataLocalGetBooks();
@@ -2471,7 +2573,7 @@ function kataLocalRenderList(){
     card.className = 'card';
     card.style.cursor = 'pointer';
     card.style.textAlign = 'center';
-    card.innerHTML = `<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(b.name || '(بلا نام)')}</h2>`;
+    card.innerHTML = `<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(b.name || '(بلا نام)')}${b.closed ? ' 🔒' : ''}</h2>`;
     card.addEventListener('click', ()=> kataLocalOpen(b.id, b.name || ''));
 
     container.appendChild(card);
@@ -2490,6 +2592,10 @@ function kataLocalCreateNew(){
 function kataLocalOpen(id, name){
   kataOpenId = id;
   kataOpenName = name;
+  const books = kataLocalGetBooks();
+  const book = books.find(b=>b.id===id);
+  kataOpenCarryForward = book ? (book.carryForward || null) : null;
+  kataOpenClosed = book ? !!book.closed : false;
   document.getElementById('kataListView').style.display = 'none';
   document.getElementById('kataDetailView').style.display = '';
   kataOpenEntries = kataLocalGetEntries(id);
@@ -2508,7 +2614,7 @@ window.initKataModuleLocal = function(){
   }
   if(backBtn && !backBtn._wired){
     backBtn._wired = true;
-    backBtn.addEventListener('click', kataShowList);
+    backBtn.addEventListener('click', ()=>{ kataShowList(); kataLocalRenderList(); });
   }
   kataShowList();
   kataLocalRenderList();
@@ -2524,9 +2630,10 @@ window.initKataModule = function(uid){
   }
   if(backBtn && !backBtn._wired){
     backBtn._wired = true;
-    backBtn.addEventListener('click', kataShowList);
+    backBtn.addEventListener('click', ()=>{ kataShowList(); kataCheckMonthRolloverFirestore(); });
   }
   kataShowList();
+  kataCheckMonthRolloverFirestore();
   if(kataListUnsub) kataListUnsub();
   kataListUnsub = kataCol().orderBy('createdAt','asc').onSnapshot(snap=>{
     const container = document.getElementById('kataListContainer');
@@ -2542,7 +2649,7 @@ window.initKataModule = function(uid){
       card.className = 'card';
       card.style.cursor = 'pointer';
       card.style.textAlign = 'center';
-      card.innerHTML = `<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(data.name || '(بلا نام)')}</h2>`;
+      card.innerHTML = `<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(data.name || '(بلا نام)')}${data.closed ? ' 🔒' : ''}</h2>`;
       card.addEventListener('click', ()=> kataOpen(docSnap.id, data.name || ''));
 
       container.appendChild(card);
@@ -2551,6 +2658,44 @@ window.initKataModule = function(uid){
     console.warn('kata list listener error', err);
   });
 };
+
+// Firestore counterpart of kataCheckMonthRolloverLocal — same logic, same
+// "never delete, only close+add" rule, just async/batched for Firestore.
+// Runs once whenever the module initializes (i.e. right after sign-in).
+async function kataCheckMonthRolloverFirestore(){
+  try{
+    const curMonth = kataMonthKey();
+    const snap = await kataCol().get();
+    const batch = window.db.batch();
+    let changed = false;
+    for(const docSnap of snap.docs){
+      const data = docSnap.data();
+      if(data.closed) continue;
+      const entriesSnap = await kataCol().doc(docSnap.id).collection('entries').orderBy('createdAt','asc').get();
+      const lastDoc = entriesSnap.docs.length ? entriesSnap.docs[entriesSnap.docs.length-1] : null;
+      const lastData = lastDoc ? lastDoc.data() : null;
+      let refDate;
+      if(lastData && lastData.createdAt && typeof lastData.createdAt.toDate === 'function') refDate = lastData.createdAt.toDate();
+      else if(data.createdAt && typeof data.createdAt.toDate === 'function') refDate = data.createdAt.toDate();
+      else refDate = new Date();
+      const bookMonth = kataMonthKey(refDate);
+      if(bookMonth !== curMonth){
+        changed = true;
+        batch.update(docSnap.ref, {closed: true});
+        const finalTotal = lastData ? lastData.total : (data.carryForward || {t:0, price:0, profit:0, td:0});
+        const newRef = kataCol().doc();
+        batch.set(newRef, {
+          name: (data.name || 'کھاتہ') + ' - ' + curMonth,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          carryForward: finalTotal,
+        });
+      }
+    }
+    if(changed) await batch.commit();
+  } catch(err){
+    console.warn('kata month rollover (Firestore) failed', err);
+  }
+}
 
 window.teardownKataModule = function(){
   if(kataListUnsub){ kataListUnsub(); kataListUnsub = null; }
@@ -2620,6 +2765,12 @@ function kataOpen(id, name){
   kataOpenName = name;
   document.getElementById('kataListView').style.display = 'none';
   document.getElementById('kataDetailView').style.display = '';
+  kataCol().doc(id).get().then(docSnap=>{
+    const data = docSnap.data() || {};
+    kataOpenCarryForward = data.carryForward || null;
+    kataOpenClosed = !!data.closed;
+    kataRenderDetail(name); // re-render once these are known — the entries listener below may have already rendered once with stale (false/null) values
+  }).catch(err=>console.warn('kata book fetch error', err));
   if(kataEntriesUnsub) kataEntriesUnsub();
   kataEntriesUnsub = kataCol().doc(id).collection('entries').orderBy('createdAt','asc').onSnapshot(snap=>{
     kataOpenEntries = snap.docs.map(d=>({id:d.id, ...d.data()}));
@@ -2645,23 +2796,30 @@ function kataRenderDetail(name){
   if(!container) return;
 
   const lastEntry = kataOpenEntries.length ? kataOpenEntries[kataOpenEntries.length-1] : null;
-  const prevTotal = lastEntry ? lastEntry.total : {t:0, price:0, profit:0};
+  const prevTotal = lastEntry ? lastEntry.total : (kataOpenCarryForward || {t:0, price:0, profit:0, td:0});
   const prevSaleMahana = lastEntry ? lastEntry.saleMahana : null;
   const prevSalesman = lastEntry ? (lastEntry.salesman || '') : '';
 
-  let html = `<div class="card" style="text-align:center;">${kataDotsMenuHtml([{cls:'kata-book-delete-btn', label:'🗑 یہ کھاتہ حذف کریں'}])}<h2 style="border:none;margin:0;">${kataEscape(name)}</h2></div>`;
+  let html = `<div class="card" style="text-align:center;">${kataDotsMenuHtml([{cls:'kata-book-delete-btn', label:'🗑 یہ کھاتہ حذف کریں'}])}<h2 style="border:none;margin:0;">${kataEscape(name)}${kataOpenClosed ? ' 🔒' : ''}</h2></div>`;
 
   kataOpenEntries.forEach((entry, i)=>{
-    html += kataRenderEntryCard(entry, i === kataOpenEntries.length - 1);
+    const isLast = i === kataOpenEntries.length - 1;
+    html += kataRenderEntryCard(entry, isLast && !kataOpenClosed);
   });
 
-  html += kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman);
+  if(kataOpenClosed){
+    html += '<div class="card"><div class="note" style="text-align:center;">یہ کھاتہ بند ہو چکا ہے — نیا مہینہ شروع ہونے پر خودکار نیا کھاتہ بن گیا، اب یہاں صرف پرانا ریکارڈ دیکھا جا سکتا ہے۔</div></div>';
+  } else {
+    html += kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman);
+  }
 
   container.innerHTML = html;
 
-  const saveBtn = document.getElementById('kataSaveEntryBtn');
-  if(saveBtn) saveBtn.addEventListener('click', ()=> kataSaveEntry(prevTotal, prevSaleMahana));
-  kataWireLiveFormulas(prevTotal);
+  if(!kataOpenClosed){
+    const saveBtn = document.getElementById('kataSaveEntryBtn');
+    if(saveBtn) saveBtn.addEventListener('click', ()=> kataSaveEntry(prevTotal, prevSaleMahana));
+    kataWireLiveFormulas(prevTotal);
+  }
 
   const bookDelBtn = container.querySelector('.kata-book-delete-btn');
   if(bookDelBtn) bookDelBtn.addEventListener('click', ()=> kataDeleteWholeBook(name));
