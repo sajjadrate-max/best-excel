@@ -2129,23 +2129,34 @@ document.getElementById('backToLoginFromForgot').addEventListener('click', (e)=>
   showAuthStep('login');
 });
 document.getElementById('forgotBtn').addEventListener('click', async ()=>{
-  const email = document.getElementById('forgotEmail').value.trim();
   const errEl = document.getElementById('forgotError');
   const okEl = document.getElementById('forgotSuccess');
-  errEl.textContent = ''; okEl.textContent = '';
-  if(!email){ errEl.textContent = 'Please enter your email.'; return; }
   const btn = document.getElementById('forgotBtn');
-  const originalLabel = btn.textContent;
-  btn.textContent = 'Sending...';
-  btn.disabled = true;
   try{
-    await auth.sendPasswordResetEmail(email);
-    okEl.textContent = 'A reset link has been sent to that email — check your inbox.';
-  } catch(err){
-    errEl.textContent = 'Could not send reset email. Check the address and try again.';
-  } finally {
-    btn.textContent = originalLabel;
-    btn.disabled = false;
+    const email = document.getElementById('forgotEmail').value.trim();
+    if(errEl) errEl.textContent = '';
+    if(okEl) okEl.textContent = '';
+    if(!email){ if(errEl) errEl.textContent = 'Please enter your email.'; return; }
+    const originalLabel = btn.textContent;
+    btn.textContent = 'Sending...';
+    btn.disabled = true;
+    try{
+      await auth.sendPasswordResetEmail(email);
+      okEl.textContent = 'A reset link has been sent to that email — check your inbox.';
+    } catch(err){
+      console.warn('sendPasswordResetEmail failed:', err.code, err.message);
+      errEl.textContent = (err.code === 'auth/invalid-email') ? 'یہ ای میل درست نہیں لگتا۔' : 'Could not send reset email. Check the address and try again.';
+    } finally {
+      btn.textContent = originalLabel;
+      btn.disabled = false;
+    }
+  } catch(outerErr){
+    // Catches anything unexpected outside the Firebase call itself (e.g. a
+    // missing element) so the button never just silently does nothing —
+    // there's always at least a visible message to report back.
+    console.warn('forgotBtn handler crashed:', outerErr);
+    if(errEl) errEl.textContent = 'کچھ غلط ہوا — دوبارہ کوشش کریں۔';
+    if(btn){ btn.textContent = 'Send Reset Link'; btn.disabled = false; }
   }
 });
 
