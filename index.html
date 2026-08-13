@@ -180,21 +180,26 @@ window.loadAuthSDKs = async function(){
     margin-top:-6px;
   }
   nav{
-    display:flex; flex-wrap:wrap; gap:8px;
-    justify-content:center;
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+    gap:8px;
     padding:16px 14px;
     max-width:760px; margin:0 auto;
   }
   nav button{
     font-family:"Noto Naskh Arabic",serif;
     font-size:14px;
-    padding:8px 16px;
+    padding:10px 12px;
     background:var(--white);
     border:1px solid var(--line);
-    border-radius:2px;
+    border-radius:4px;
     color:var(--ink);
     cursor:pointer;
     transition:.15s;
+    text-align:center;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
   }
   nav button.active{
     background:var(--brand-red);
@@ -961,6 +966,18 @@ const ledgerRows = [
 // ---------- TABS ----------
 document.querySelectorAll('nav button').forEach(btn=>{
   btn.addEventListener('click', ()=>{
+    // "Best Excel official" stays permanently password-locked — asks every
+    // time (not just once per session), independent of the (disabled)
+    // Firebase login system. Wrong/cancelled password → stay put, no
+    // tab-switch happens at all.
+    if(btn.dataset.tab === 'formulation'){
+      const pw = prompt('یہ صفحہ محفوظ ہے — پاس ورڈ درج کریں:');
+      if(pw !== 'BestExcel'){
+        if(pw !== null) alert('غلط پاس ورڈ۔');
+        return;
+      }
+    }
+
     document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('main section').forEach(s=>s.classList.remove('active'));
     btn.classList.add('active');
