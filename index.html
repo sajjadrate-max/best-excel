@@ -2041,10 +2041,12 @@ msShowList();
 msRenderList();
 
 // ---------- AUTH GATE (Firebase + EmailJS) ----------
-// TEMPORARY: login system switched off while other setup is finished.
-// Flip this back to false (or remove the block) to restore it — nothing
-// else in the auth code was deleted, this just short-circuits it.
-const LOGIN_TEMPORARILY_DISABLED = false;
+// LOGIN PERMANENTLY DISABLED (2026-08-13, explicit request: "ہمیشہ کیلئے
+// ختم کریں" — end it forever). This is no longer a temporary toggle — do
+// not flip it back to true without a fresh, explicit request. The auth
+// code itself is untouched below (nothing deleted), this just short-
+// circuits it so the gate never shows and the app opens straight in.
+const LOGIN_TEMPORARILY_DISABLED = true;
 if(LOGIN_TEMPORARILY_DISABLED){
   const gate = document.getElementById('authGate');
   if(gate) gate.classList.add('hidden');
