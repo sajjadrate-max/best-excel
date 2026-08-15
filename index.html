@@ -734,6 +734,43 @@ window.loadAuthSDKs = async function(){
 </style>
 </head>
 <body>
+<div id="siteAccessGate" style="position:fixed;inset:0;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:rgba(0,0,0,.9);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+  <div class="auth-box" style="text-align:center;">
+    <h2 style="text-align:center;font-size:18px;">🔒 یہ ویب سائٹ محفوظ ہے</h2>
+    <label>کوڈ درج کریں</label>
+    <input type="password" id="siteAccessInput" style="text-align:center;" autofocus>
+    <div id="siteAccessError" class="note" style="color:#B23;text-align:center;"></div>
+    <button type="button" id="siteAccessSubmit" class="lock-btn" style="width:100%;">کھولیں</button>
+  </div>
+</div>
+<script>
+// ---------- پوری ویب سائٹ کوڈ سے محفوظ (2026-08-15) ----------
+// صفحہ کھلتے ہی سب سے پہلے یہ سیاہ پردہ نظر آتا ہے (باقی سائٹ کے کسی بھی
+// دوسرے اسکرپٹ سے پہلے چلتا ہے، چاہے وہ سست ہوں یا فیل ہو جائیں) — درست
+// کوڈ کے بغیر آگے نہیں بڑھا جا سکتا۔ بالکل "Best Excel official" ٹیب کے
+// پاس ورڈ گیٹ جیسا طریقہ (وہی in-page modal پیٹرن، window.prompt() نہیں —
+// یہ انسٹالڈ PWA میں خاموشی سے دب جاتا ہے)، لیکن یہ پورے صفحے کے لیے ہے
+// اور ہر بار (session بھر یاد نہیں رکھتا) کھلتے وقت پوچھتا ہے۔
+(function(){
+  var gate = document.getElementById('siteAccessGate');
+  var input = document.getElementById('siteAccessInput');
+  var err = document.getElementById('siteAccessError');
+  var btn = document.getElementById('siteAccessSubmit');
+  function trySubmit(){
+    if(input.value === 'Bhatti'){
+      gate.style.display = 'none';
+    } else {
+      err.textContent = 'غلط کوڈ۔';
+      input.value = '';
+      input.focus();
+    }
+  }
+  btn.addEventListener('click', trySubmit);
+  input.addEventListener('keydown', function(e){ if(e.key === 'Enter') trySubmit(); });
+  input.focus();
+})();
+</script>
+
 
 <!-- ===================== AUTH GATE (sign up / verify / login) ===================== -->
 <div id="authGate">
@@ -981,6 +1018,72 @@ const ledgerRows = [
   {dateNo:"", detail:"یاسمین (رنگ)",             page:"", naam:"",   baqaya:""},
   {dateNo:"",  detail:"سوریا (لال + پیلا)",       page:"",   naam:"",   baqaya:""},
 ];
+
+// ---------- ریٹ لسٹ / Best Excel official کا سارا ڈیٹا محفوظ کرنا ----------
+// اوپر کے تمام arrays (packs, packagingRows, costRows, ledgerRows) اور لاک
+// کی حالتیں (masterColLocked, colLocked, ledgerColLocked) اب ری لوڈ پر
+// خالی نہیں ہوں گی — ہر تبدیلی (تھوڑا سا رکنے کے بعد، debounce) اسی
+// firebaseSyncSet کے ذریعے localStorage اور Firestore دونوں میں محفوظ ہو
+// جاتی ہے (کھاتہ/ماہانہ سرف پہلے ہی اسی طریقے سے محفوظ ہو رہے تھے)۔ صفحہ
+// کھلتے ہی محفوظ شدہ ڈیٹا واپس انہی arrays میں بھر دیا جاتا ہے، پھر
+// متعلقہ ٹیبلز خودکار دوبارہ بن جاتی ہیں تاکہ فوراً نظر آئے۔
+const SITE_DATA_KEY = 'bestExcelSiteData';
+function saveSiteDataNow(){
+  const state = {
+    packs: packs.map(p=>({tpcs:p.tpcs, ctn:p.ctn, mrp:p.mrp, company:p.company, name:p.name})),
+    packagingRows: packagingRows.map(r=>({name:r.name, weight:r.weight, shopperWeight:r.shopperWeight})),
+    costRows: costRows.map(r=>({name:r.name, rate:r.rate, remainingSurf:r.remainingSurf, perPieceRate:r.perPieceRate, companyProfit:r.companyProfit, bijli:r.bijli, tax:r.tax, ctnRate:r.ctnRate, shopperAmt:r.shopperAmt})),
+    ledgerRows: ledgerRows.map(r=>({dateNo:r.dateNo, detail:r.detail, page:r.page, naam:r.naam})),
+    masterColLocked, colLocked, ledgerColLocked,
+    weightLossKg: (document.getElementById('weightLossKgInput') || {}).value || '0',
+  };
+  const json = JSON.stringify(state);
+  localStorage.setItem(SITE_DATA_KEY, json);
+  (window.firebaseSyncSet || (()=>{}))(SITE_DATA_KEY, json);
+}
+let siteDataSaveTimer = null;
+function scheduleSiteDataSave(){
+  clearTimeout(siteDataSaveTimer);
+  siteDataSaveTimer = setTimeout(saveSiteDataNow, 500);
+}
+// ہر ٹائپنگ یا لاک بٹن دبانے پر (ریٹ لسٹ + Best Excel official کے پورے
+// حصے میں) خودکار محفوظ ہو جائے — ہر ان پٹ/بٹن پر الگ سے کوڈ لگانے کی
+// ضرورت نہیں، ایک delegated listener کافی ہے۔
+['tierListsContainer','combinedTableContainer','ledgerContainer'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('input', scheduleSiteDataSave);
+  el.addEventListener('click', (e)=>{ if(e.target.closest('.row-lock-btn')) scheduleSiteDataSave(); });
+});
+
+function restoreSiteData(){
+  let saved = null;
+  try{ saved = JSON.parse(localStorage.getItem(SITE_DATA_KEY)); }catch(e){ saved = null; }
+  if(!saved) return false;
+  if(Array.isArray(saved.packs)) saved.packs.forEach((row,i)=>{ if(packs[i]) Object.assign(packs[i], row); });
+  if(Array.isArray(saved.packagingRows)) saved.packagingRows.forEach((row,i)=>{ if(packagingRows[i]) Object.assign(packagingRows[i], row); });
+  if(Array.isArray(saved.costRows)) saved.costRows.forEach((row,i)=>{ if(costRows[i]) Object.assign(costRows[i], row); });
+  if(Array.isArray(saved.ledgerRows)) saved.ledgerRows.forEach((row,i)=>{ if(ledgerRows[i]) Object.assign(ledgerRows[i], row); });
+  if(saved.masterColLocked) Object.assign(masterColLocked, saved.masterColLocked);
+  if(saved.colLocked) Object.assign(colLocked, saved.colLocked);
+  if(saved.ledgerColLocked) Object.assign(ledgerColLocked, saved.ledgerColLocked);
+  packs.forEach(p=>{
+    p.agencyB   = p.company + p.diffB;
+    p.agencyC   = p.company + p.diffC;
+    p.salman    = p.company + p.diffSalman;
+    p.dukandar  = p.company + p.diffDukandar;
+  });
+  if(typeof buildAllTierTables === 'function') buildAllTierTables();
+  if(typeof buildCombinedTable === 'function') buildCombinedTable();
+  if(typeof buildLedgerTable === 'function') buildLedgerTable();
+  const lossInput = document.getElementById('weightLossKgInput');
+  if(lossInput && saved.weightLossKg !== undefined){
+    lossInput.value = saved.weightLossKg;
+    lossInput.dispatchEvent(new Event('input'));
+  }
+  return true;
+}
+window.restoreSiteData = restoreSiteData;
 
 // ---------- TABS ----------
 const formulationPwModal = document.getElementById('formulationPwModal');
@@ -1296,6 +1399,32 @@ async function renderTierCanvas(btn){
 // tapping Share goes STRAIGHT to the device's native share sheet (all
 // apps), only falling back to a plain download if the browser genuinely
 // can't do native sharing with files.
+// کمپیوٹر پر پرنٹ کرنے کا طریقہ: PDF کو ایک پوشیدہ iframe میں لوڈ کر کے
+// اسی کا print() چلایا جاتا ہے — اس سے براؤزر کا اپنا اصل پرنٹ ڈائیلاگ
+// کھلتا ہے (بالکل ویسے ہی جیسے Ctrl+P دبانے پر کھلتا ہے)، جس میں کمپیوٹر
+// سے جڑا ہوا اصل پرنٹر خودکار پہلے سے منتخب نظر آتا ہے — الگ سے کوئی
+// فائل ڈاؤن لوڈ نہیں ہوتی، صرف پرنٹ ڈائیلاگ کھلتا ہے جہاں "پرنٹ" دبانے پر
+// اسی پرنٹر سے کاغذ نکل آتا ہے۔
+function printPdfBlob(blob){
+  const url = URL.createObjectURL(blob);
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;';
+  iframe.src = url;
+  document.body.appendChild(iframe);
+  const cleanup = ()=>{ if(iframe.parentNode) iframe.parentNode.removeChild(iframe); URL.revokeObjectURL(url); };
+  iframe.onload = ()=>{
+    try{
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    } catch(err){
+      // کچھ براؤزر iframe کے اندر سے پرنٹ کی اجازت نہیں دیتے — اس صورت میں
+      // ایک نئے ٹیب میں PDF کھول دیتے ہیں تاکہ صارف وہاں سے Ctrl+P کر سکے۔
+      window.open(url, '_blank');
+    }
+    setTimeout(cleanup, 60000); // پرنٹ ڈائیلاگ بند ہونے تک وقت دیتے ہیں، پھر صاف کرتے ہیں
+  };
+}
+
 async function sharePdfDirectly(blob, fileName, title){
   try{
     if(navigator.canShare && window.File){
@@ -1309,16 +1438,9 @@ async function sharePdfDirectly(blob, fileName, title){
     // user cancelled the native share sheet — nothing else to do
     return;
   }
-  // Fallback only when native sharing truly isn't available on this browser.
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(()=> URL.revokeObjectURL(url), 2000);
-  alert('اس براؤزر میں براہِ راست شیئر شیٹ دستیاب نہیں — PDF فائل ڈاؤن لوڈ ہو گئی ہے، اسے WhatsApp یا کسی بھی ایپ سے شیئر کر دیں۔');
+  // موبائل native شیئر نہ ہونے کی صورت میں (عام طور پر کمپیوٹر) — اب یہاں
+  // فائل ڈاؤن لوڈ کرنے کے بجائے سیدھا کمپیوٹر کا پرنٹ ڈائیلاگ کھولتے ہیں۔
+  printPdfBlob(blob);
 }
 
 async function shareCardAsImage(tier, btn){
@@ -1757,6 +1879,7 @@ function buildLedgerTable(){
   container.appendChild(card);
 }
 buildLedgerTable();
+restoreSiteData(); // same-device reload — cloud-pulled data (other devices) restored again once Firestore connects, see firebaseSyncInit
 
 // ---------- MONTHLY SURF کھاتہ (books + stacking dated entries, same
 // pattern as سیلزمین کھاتے: Sabka/Today/Total carry-forward, undo-free
@@ -1809,9 +1932,9 @@ function kataMonthKey(d){
 function msLocalBooksKey(){ return 'msLocalBooks'; }
 function msLocalEntriesKey(bookId){ return 'msLocalEntries_' + bookId; }
 function msLocalGetBooks(){ try{ return JSON.parse(localStorage.getItem(msLocalBooksKey())) || []; }catch(e){ return []; } }
-function msLocalSaveBooks(arr){ localStorage.setItem(msLocalBooksKey(), JSON.stringify(arr)); }
+function msLocalSaveBooks(arr){ (window.firebaseSyncSet || ((k,v)=>localStorage.setItem(k,v)))(msLocalBooksKey(), JSON.stringify(arr)); }
 function msLocalGetEntries(bookId){ try{ return JSON.parse(localStorage.getItem(msLocalEntriesKey(bookId))) || []; }catch(e){ return []; } }
-function msLocalSaveEntries(bookId, arr){ localStorage.setItem(msLocalEntriesKey(bookId), JSON.stringify(arr)); }
+function msLocalSaveEntries(bookId, arr){ (window.firebaseSyncSet || ((k,v)=>localStorage.setItem(k,v)))(msLocalEntriesKey(bookId), JSON.stringify(arr)); }
 
 function msShowList(){
   document.getElementById('msListView').style.display = '';
@@ -2250,7 +2373,7 @@ function msRenderDetail(name){
     };
   });
 
-  let html = `<div class="card" style="text-align:center;">${kataDotsMenuHtml([{cls:'ms-delete-book-btn', label:'🗑 یہ کھاتہ حذف کریں'}])}<h2 style="border:none;margin:0;">${kataEscape(name)}${msOpenClosed ? ' 🔒' : ''}</h2></div>`;
+  let html = `<div class="card" style="text-align:center;">${kataDotsMenuHtml([{cls:'ms-close-book-btn', label:'📅 یہ ریکارڈ محفوظ کر کے نیا مہینہ شروع کریں'}, {cls:'ms-delete-book-btn', label:'🗑 یہ کھاتہ حذف کریں'}])}<h2 style="border:none;margin:0;">${kataEscape(name)}${msOpenClosed ? ' 🔒' : ''}</h2></div>`;
   msOpenEntries.forEach((entry, i)=>{
     const isLast = i === msOpenEntries.length - 1;
     html += msRenderEntryCard(entry, isLast && !msOpenClosed);
@@ -2276,6 +2399,34 @@ function msRenderDetail(name){
   });
   const bookDelBtn = container.querySelector('.ms-delete-book-btn');
   if(bookDelBtn) bookDelBtn.addEventListener('click', ()=> msDeleteWholeBook(name));
+  const bookCloseBtn = container.querySelector('.ms-close-book-btn');
+  if(bookCloseBtn) bookCloseBtn.addEventListener('click', ()=> msManualCloseBook(name));
+}
+
+// موجودہ کھلا کھاتہ فوراً بند کر کے (پرانے مہینے کے ریکارڈ کے طور پر
+// محفوظ ہو جاتا ہے، ہمیشہ کے لیے دیکھا جا سکتا ہے) اس کا آخری ٹوٹل نئے
+// کھاتے میں بطور Sabka منتقل کر کے نیا مہینہ شروع کر دیتا ہے — بالکل
+// وہی کام جو مہینہ خودکار بدلنے پر msCheckMonthRollover کرتا ہے، بس یہاں
+// صارف کی مرضی سے، فوری طور پر۔ ڈیٹا کچھ بھی حذف نہیں ہوتا۔
+function msManualCloseBook(name){
+  if(!confirm(`"${name || '(بلا نام)'}" کو اب بند کر کے نیا مہینہ شروع کیا جائے؟ موجودہ ریکارڈ محفوظ رہے گا (صرف دیکھا جا سکے گا)، اور اسی کا آخری ٹوٹل نئے کھاتے میں بطور Sabka چلا جائے گا۔`)) return;
+  const books = msLocalGetBooks();
+  const book = books.find(b=>b.id===msOpenId);
+  if(!book || book.closed) return;
+  const entries = msLocalGetEntries(book.id);
+  const lastEntry = entries.length ? entries[entries.length-1] : null;
+  const finalTotal = lastEntry ? lastEntry.total : (book.carryForward || {n:0, totalProfit:0});
+  book.closed = true;
+  const newBook = {
+    id: 'm' + Date.now() + Math.random().toString(36).slice(2,7),
+    name: (book.name || 'کھاتہ') + ' - ' + kataMonthKey(),
+    createdAt: new Date().toISOString(),
+    carryForward: finalTotal,
+  };
+  books.push(newBook);
+  msLocalSaveBooks(books);
+  msShowList();
+  msRenderList();
 }
 
 function msDeleteWholeBook(name){
@@ -2785,11 +2936,11 @@ function kataLocalEntriesKey(bookId){ return (kataInstance === 'salesman' ? 'kat
 function kataLocalGetBooks(){
   try{ return JSON.parse(localStorage.getItem(kataLocalBooksKey())) || []; }catch(e){ return []; }
 }
-function kataLocalSaveBooks(arr){ localStorage.setItem(kataLocalBooksKey(), JSON.stringify(arr)); }
+function kataLocalSaveBooks(arr){ (window.firebaseSyncSet || ((k,v)=>localStorage.setItem(k,v)))(kataLocalBooksKey(), JSON.stringify(arr)); }
 function kataLocalGetEntries(bookId){
   try{ return JSON.parse(localStorage.getItem(kataLocalEntriesKey(bookId))) || []; }catch(e){ return []; }
 }
-function kataLocalSaveEntries(bookId, arr){ localStorage.setItem(kataLocalEntriesKey(bookId), JSON.stringify(arr)); }
+function kataLocalSaveEntries(bookId, arr){ (window.firebaseSyncSet || ((k,v)=>localStorage.setItem(k,v)))(kataLocalEntriesKey(bookId), JSON.stringify(arr)); }
 
 // Runs every time the کھاتوں کی فہرست is opened — same rollover logic as
 // سرف کا ماہانہ حساب's msCheckMonthRollover (see there for the full
@@ -3752,16 +3903,273 @@ colorModeFab.addEventListener('click', ()=>{
   picker.click();
 });
 
-// رنگ موڈ فعال ہو تو کسی بھی کھاتے کے خانے پر ٹیپ کرنے سے وہی رنگ لگ جائے —
-// نارمل کلک/ان پٹ کا کام نہ رکے، اس لیے صرف اس خانے کا بیک گراؤنڈ رنگ سیٹ
-// کرتے ہیں، باقی سب ویسے ہی چلتا رہتا ہے۔
+// ---------- ہر خانے کا رنگ مستقل محفوظ (2026-08-15، پہلا نظام کام نہیں کر
+// رہا تھا کیونکہ رنگ صرف اسی لمحے کے لیے DOM پر لگتا تھا، کہیں محفوظ نہیں
+// ہوتا تھا اور اگلی بار ٹیبل دوبارہ بنتے ہی ختم ہو جاتا تھا) ----------
+// اب ہر رنگ کیا گیا خانہ ایک مستقل "پتے" (scope key) کے ساتھ localStorage
+// اور کلاؤڈ (وہی firebaseSyncSet جو باقی ڈیٹا کے لیے استعمال ہو رہا ہے)
+// دونوں میں محفوظ ہوتا ہے، اور ایک MutationObserver (نیچے) ہر بار جب بھی
+// کوئی ٹیبل دوبارہ بنے (لاک بٹن، save، تاب سوئچ وغیرہ) خودکار وہی رنگ
+// واپس لگا دیتا ہے — فہرست کے کارڈز، Sale Mahana Record، totals کے
+// خانے، سب شامل ہیں، صرف مرکزی ٹیبل نہیں۔
+const CELL_COLORS_KEY = 'kataCellColorsMap';
+let cellColorsMap = {};
+try{ cellColorsMap = JSON.parse(localStorage.getItem(CELL_COLORS_KEY)) || {}; }catch(e){ cellColorsMap = {}; }
+let cellColorsSaveTimer = null;
+function saveCellColorsSoon(){
+  clearTimeout(cellColorsSaveTimer);
+  cellColorsSaveTimer = setTimeout(()=>{
+    const json = JSON.stringify(cellColorsMap);
+    localStorage.setItem(CELL_COLORS_KEY, json);
+    (window.firebaseSyncSet || (()=>{}))(CELL_COLORS_KEY, json);
+  }, 400);
+}
+
+// خانے کی مستقل شناخت: کون سا ماڈیول (کھاتہ سیلزمین/ربنواز یا ماہانہ سرف)،
+// فہرست کا کارڈ ہے تو اس کے نام سے، ورنہ موجودہ کھلا کھاتہ + کون سی
+// ٹیبل/انٹری/قطار/کالم میں یہ خانہ ہے۔
+function cellScopeKey(cell){
+  const view = cell.closest('#kataListView, #kataDetailView, #msListView, #msDetailView');
+  if(!view) return null;
+  const viewId = view.id;
+  const isKata = viewId.startsWith('kata');
+  if(viewId === 'kataListView' || viewId === 'msListView'){
+    const card = cell.closest('.card');
+    const label = card ? (card.querySelector('h2') ? card.querySelector('h2').textContent : '') : '';
+    return viewId + '::' + (isKata ? kataInstance : '') + '::list::' + label;
+  }
+  const openId = viewId === 'kataDetailView' ? kataOpenId : msOpenId;
+  const table = cell.closest('table');
+  const tableIdx = table ? Array.from(view.querySelectorAll('table')).indexOf(table) : 0;
+  const row = cell.closest('tr');
+  const rowIdx = row ? Array.from(row.parentNode.children).indexOf(row) : 0;
+  const cellIdx = row ? Array.from(row.children).indexOf(cell) : Array.from(cell.parentNode.children).indexOf(cell);
+  const entryCard = cell.closest('.kata-entry-card, .ms-entry-card');
+  const entryTag = entryCard ? Array.from(view.querySelectorAll('.kata-entry-card, .ms-entry-card')).indexOf(entryCard) : 'new';
+  return viewId + '::' + (isKata ? kataInstance : '') + '::' + openId + '::' + entryTag + '::' + tableIdx + '::' + rowIdx + '::' + cellIdx;
+}
+
+function applyStoredCellColors(root){
+  const scope = (root && root.querySelectorAll) ? root : document;
+  const cells = scope.querySelectorAll('#kataListView td, #kataListView .card, #kataDetailView td, #kataDetailView .totals > div, #kataDetailView .n, #kataDetailView .l, #msListView td, #msListView .card, #msDetailView td, #msDetailView .totals > div, #msDetailView .n, #msDetailView .l');
+  cells.forEach(cell=>{
+    const key = cellScopeKey(cell);
+    if(key && cellColorsMap[key]) cell.style.backgroundColor = cellColorsMap[key];
+  });
+}
+// صفحہ کھلتے ہی ایک بار، پھر ہر بار جب کھاتہ/ماہانہ سرف کا کوئی حصہ
+// دوبارہ بنے (کوئی بھی نیا عنصر شامل ہو) خودکار — الگ سے ہر رینڈر
+// فنکشن میں کوڈ ڈالنے کی ضرورت نہیں۔
+applyStoredCellColors();
+const cellColorObserver = new MutationObserver(()=> applyStoredCellColors());
+['kataListView','kataDetailView','msListView','msDetailView'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(el) cellColorObserver.observe(el, {childList:true, subtree:true});
+});
+
+// رنگ موڈ فعال ہو تو کسی بھی کھاتے کے خانے پر ٹیپ کرنے سے وہی رنگ لگ کر
+// فوراً محفوظ ہو جائے — نارمل کلک/ان پٹ کا کام نہ رکے۔
 document.addEventListener('click', (e)=>{
   if(!kataColorModeActive) return;
   const scope = e.target.closest('#kataListView, #kataDetailView, #msListView, #msDetailView');
   if(!scope) return;
-  const cell = e.target.closest('td, .totals > div, .n, .l');
+  const cell = e.target.closest('td, .totals > div, .n, .l, .card');
   if(!cell) return;
+  const key = cellScopeKey(cell);
   cell.style.backgroundColor = kataColorModeValue;
+  if(key){
+    cellColorsMap[key] = kataColorModeValue;
+    saveCellColorsSoon();
+  }
+}, true);
+</script>
+<script>
+// ---------- ڈیٹا کلاؤڈ سنک (بغیر لاگ ان) ----------
+// مقصد: کسی بھی موبائل/کمپیوٹر سے کھاتہ (سیلزمین + ربنواز) یا سرف کا
+// ماہانہ حساب میں کوئی بھی اپڈیٹ کریں تو کسی بھی دوسری ڈیوائس سے یہی ویب
+// سائٹ کھولنے پر وہی اپڈیٹ شدہ ڈیٹا نظر آئے — بغیر کسی سائن ان کے۔
+//
+// طریقہ کار: موجودہ localStorage پر مبنی سسٹم کو بالکل نہیں چھیڑا گیا
+// (کھاتہ/ماہانہ سرف کے تمام پرانے فنکشنز ویسے ہی کام کرتے ہیں) — بس ہر
+// "save" پر ڈیٹا اسی ڈیوائس کے localStorage کے ساتھ ساتھ Firestore کے
+// ایک مشترکہ کلیکشن ("localSync") میں بھی محفوظ ہو جاتا ہے (firebaseSyncSet
+// — اوپر kataLocalSaveBooks/kataLocalSaveEntries/msLocalSaveBooks/
+// msLocalSaveEntries میں استعمال ہوتا ہے)۔ صفحہ کھلتے وقت پہلے یہ سارا
+// ڈیٹا کلاؤڈ سے واپس اسی ڈیوائس کے localStorage میں کاپی ہوتا ہے
+// (firebaseSyncPullAll)، پھر کھاتہ/ماہانہ سرف کی فہرست دوبارہ بنائی جاتی
+// ہے تاکہ تازہ ڈیٹا نظر آئے۔ اس کے بعد ایک لائیو listener بھی لگا ہے —
+// اگر ایپ کھلی ہو اور اسی دوران کسی اور ڈیوائس سے کوئی تبدیلی آئے تو فہرست
+// خودکار تازہ ہو جاتی ہے۔
+//
+// ⚠️ ضروری: یہ اسی وقت کام کرے گا جب Firebase Console میں Firestore کے
+// "localSync" کلیکشن پر بغیر لاگ ان کے (public) read/write کی اجازت ہو —
+// چونکہ سائٹ پر لاگ ان مستقل بند ہے، اس ڈیٹا کی حفاظت صرف اس بات پر منحصر
+// ہے کہ اس ویب سائٹ کا لنک نجی رکھا جائے۔
+function firebaseSyncSet(key, valueStr){
+  localStorage.setItem(key, valueStr);
+  if(window.db){
+    window.db.collection('localSync').doc(key).set({
+      value: valueStr,
+      updatedAt: (typeof firebase !== 'undefined' && firebase.firestore) ? firebase.firestore.FieldValue.serverTimestamp() : Date.now()
+    }).catch(err=> console.warn('cloud sync save failed for', key, err));
+  }
+}
+window.firebaseSyncSet = firebaseSyncSet;
+
+async function firebaseSyncPullAll(){
+  if(!window.db) return;
+  try{
+    const snap = await window.db.collection('localSync').get();
+    snap.forEach(docSnap=>{
+      const data = docSnap.data();
+      if(data && typeof data.value === 'string') localStorage.setItem(docSnap.id, data.value);
+    });
+  } catch(err){ console.warn('cloud sync pull failed — staying with this device\'s existing data', err); }
+}
+
+function firebaseSyncRefreshVisibleViews(){
+  const kataListEl = document.getElementById('kataListView');
+  if(kataListEl && kataListEl.style.display !== 'none' && typeof kataLocalRenderList === 'function') kataLocalRenderList();
+  const msListEl = document.getElementById('msListView');
+  if(msListEl && msListEl.style.display !== 'none' && typeof msRenderList === 'function') msRenderList();
+}
+
+function firebaseSyncListenLive(){
+  if(!window.db) return;
+  window.db.collection('localSync').onSnapshot(snap=>{
+    let changedAny = false;
+    let siteDataChanged = false;
+    snap.docChanges().forEach(change=>{
+      if(change.type === 'removed') return; // manual deletes only ever come from OUR OWN app code (see کھاتہ/ms delete buttons) — a remote doc disappearing here is never treated as "clear this device's copy", so nothing is ever wiped just because a listener fired
+      const data = change.doc.data();
+      if(data && typeof data.value === 'string'){
+        localStorage.setItem(change.doc.id, data.value);
+        changedAny = true;
+        if(change.doc.id === SITE_DATA_KEY) siteDataChanged = true;
+      }
+    });
+    if(changedAny) firebaseSyncRefreshVisibleViews();
+    // ریٹ لسٹ/Best Excel official صرف اسی وقت خودکار تازہ ہوں جب صارف اس
+    // وقت وہاں کچھ ٹائپ نہیں کر رہا — ورنہ ٹائپنگ کے دوران ڈیٹا اچانک بدل
+    // جانے کا خطرہ ہے۔
+    if(siteDataChanged && typeof window.restoreSiteData === 'function'){
+      const active = document.activeElement;
+      const typingHere = active && active.closest && active.closest('#tierListsContainer, #combinedTableContainer, #ledgerContainer');
+      if(!typingHere) window.restoreSiteData();
+    }
+  }, err=> console.warn('cloud sync listener error', err));
+}
+
+async function firebaseSyncInit(){
+  try{
+    await window.loadAuthSDKs(); // firebase-app/firestore SDKs (login itself stays disabled)
+  } catch(err){
+    console.warn('cloud sync: SDK load failed — this device will keep working locally only', err);
+    return;
+  }
+  if(typeof firebase === 'undefined') return;
+  try{
+    const firebaseConfig = {
+      apiKey: "AIzaSyAW9tWG0o6bCBwPTkoymInLpvM5T7idvxg",
+      authDomain: "best-excel.firebaseapp.com",
+      projectId: "best-excel",
+      storageBucket: "best-excel.firebasestorage.app",
+      messagingSenderId: "895860622346",
+      appId: "1:895860622346:web:01bd79b9459f4e70e10bf3",
+      measurementId: "G-2DMDL3R1DN"
+    };
+    if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    window.db = firebase.firestore();
+    window.db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+  } catch(err){
+    console.warn('cloud sync: firebase init failed', err);
+    return;
+  }
+  await firebaseSyncPullAll();
+  if(typeof window.initKataModuleLocal === 'function') window.initKataModuleLocal();
+  if(typeof window.restoreSiteData === 'function') window.restoreSiteData(); // ریٹ لسٹ + Best Excel official بھی اسی طرح کلاؤڈ سے تازہ ہوں
+  firebaseSyncRefreshVisibleViews();
+  firebaseSyncListenLive();
+}
+firebaseSyncInit();
+</script>
+<script>
+// ---------- تیر کے بٹنوں سے خانوں کے درمیان سفر (پوری ویب سائٹ) ----------
+// نیچے/اوپر تیر: اسی کالم میں نیچے/اوپر والے خانے پر — جو خانہ لاک ہے
+// (لکھا نہیں جا سکتا) اسے چھوڑ کر جتنے بھی ایسے خانے ہوں انہیں پھلانگ کر
+// اگلے قابلِ تحریر خانے تک۔ دائیں/بائیں تیر: اسی قطار میں دائیں/بائیں
+// طرف اسی طرح — بند خانے چھوڑ کر اگلے کھلے خانے تک۔ ٹیبل کے اندر دائیں/
+// بائیں پہلے متن کے شروع/آخر پر پہنچنے کے بعد ہی اگلے خانے پر جاتا ہے
+// (تاکہ ایک ہی خانے میں لکھے ہوئے متن کے اندر cursor بھی معمول کے مطابق
+// حرکت کر سکے)۔ سائٹ کے ہر ٹیبل (ریٹ لسٹ، Best Excel official، کھاتہ،
+// سرف کا ماہانہ حساب) میں کام کرتا ہے کیونکہ سب ایک ہی `.cell-input`
+// کلاس استعمال کرتے ہیں۔
+function cellNavIsUsable(input){
+  return !!(input && input.classList && input.classList.contains('cell-input') && !input.disabled);
+}
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  const el = e.target;
+  if(!el || !el.classList || !el.classList.contains('cell-input') || el.tagName !== 'INPUT') return;
+
+  if(e.key === 'ArrowLeft' || e.key === 'ArrowRight'){
+    const atStart = el.selectionStart === 0 && el.selectionEnd === 0;
+    const atEnd = el.selectionStart === (el.value || '').length && el.selectionEnd === (el.value || '').length;
+    const forward = e.key === 'ArrowRight';
+    if(forward && !atEnd) return;   // متن کے اندر ہی cursor حرکت کرنے دیں
+    if(!forward && !atStart) return;
+
+    const row = el.closest('tr');
+    let target = null;
+    if(row){
+      const cells = Array.from(row.children);
+      let idx = cells.indexOf(el.closest('td, th'));
+      if(idx !== -1){
+        while(true){
+          idx += forward ? 1 : -1;
+          if(idx < 0 || idx >= cells.length) break;
+          const input = cells[idx].querySelector('.cell-input');
+          if(cellNavIsUsable(input)){ target = input; break; }
+        }
+      }
+    } else {
+      // ٹیبل کے باہر (مثلاً Less/خرچ کے خانے) — اسی کارڈ کے اندر موجود
+      // ترتیب کے مطابق اگلا/پچھلا خانہ ڈھونڈیں۔
+      const scope = el.closest('.card') || document;
+      const all = Array.from(scope.querySelectorAll('.cell-input'));
+      let idx = all.indexOf(el);
+      if(idx !== -1){
+        while(true){
+          idx += forward ? 1 : -1;
+          if(idx < 0 || idx >= all.length) break;
+          if(cellNavIsUsable(all[idx])){ target = all[idx]; break; }
+        }
+      }
+    }
+    if(target){ e.preventDefault(); target.focus(); if(target.select) target.select(); }
+    return;
+  }
+
+  // ArrowDown / ArrowUp — اسی ٹیبل کے اسی کالم میں
+  const table = el.closest('table');
+  const row = el.closest('tr');
+  if(!table || !row) return;
+  const td = el.closest('td, th');
+  const colIdx = Array.from(row.children).indexOf(td);
+  const rows = Array.from(table.querySelectorAll('tr'));
+  let rIdx = rows.indexOf(row);
+  const down = e.key === 'ArrowDown';
+  let target = null;
+  let r = rIdx;
+  while(true){
+    r += down ? 1 : -1;
+    if(r < 0 || r >= rows.length) break;
+    const cell = rows[r].children[colIdx];
+    if(!cell) continue;
+    const input = cell.querySelector('.cell-input');
+    if(cellNavIsUsable(input)){ target = input; break; }
+  }
+  if(target){ e.preventDefault(); target.focus(); if(target.select) target.select(); }
 }, true);
 </script>
 <script>
