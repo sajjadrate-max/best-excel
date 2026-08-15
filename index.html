@@ -868,6 +868,7 @@ window.loadAuthSDKs = async function(){
   </section>
 
   <div class="scroll-fab" id="scrollFab" title="اوپر جائیں">⬆</div>
+  <div class="scroll-fab" id="colorModeFab" title="خانوں پر رنگ لگائیں" style="bottom:74px;background:linear-gradient(135deg,#ff5e5e,#ffd25e,#5ee6ff,#7a5eff);">🎨</div>
 
   <!-- ===================== FORMULATION ===================== -->
   <section id="formulation">
@@ -1771,6 +1772,11 @@ function kataEscape(s){
   d.textContent = String(s);
   return d.innerHTML;
 }
+// Same early-definition reason as kataEscape above — used by
+// msRenderEntryCard to re-apply a saved cell's persisted color.
+function kataColorStyleFor(cellColors, key){
+  return (cellColors && cellColors[key]) ? `background-color:${cellColors[key]};` : '';
+}
 
 const MS_ITEMS = [
   {key:'rs10',   name:'Surf Rs.10'},
@@ -1972,6 +1978,7 @@ function msOpen(id, name){
 function msRenderEntryCard(entry, isLast){
   let rows = '';
   let sumCtn = 0, sumProfit = 0, sumPrice = 0;
+  const cc = entry.cellColors || {};
   MS_ITEMS.forEach(item=>{
     const v = (entry.items && entry.items[item.key]) || {};
     const sabkaCtn = v.sabkaCtn || 0;
@@ -1982,18 +1989,18 @@ function msRenderEntryCard(entry, isLast){
     const totalPrice = (v.totalPrice != null) ? v.totalPrice : (sabkaPrice + (v.priceToday||0));
     sumCtn += totalCtn; sumProfit += totalProfit; sumPrice += totalPrice;
     rows += `<tr>
-      <td style="text-align:left;padding-left:6px;">${kataEscape(item.name)}</td>
-      <td class="kata-t-cell">${v.n||0}</td>
-      <td>${sabkaCtn}</td>
-      <td>${totalCtn}</td>
-      <td>${v.profitRate||0}</td>
-      <td>${v.profitToday||0}</td>
-      <td>${sabkaProfit}</td>
-      <td>${totalProfit}</td>
-      <td>${v.priceRate||0}</td>
-      <td>${v.priceToday||0}</td>
-      <td>${sabkaPrice}</td>
-      <td>${totalPrice}</td>
+      <td style="text-align:left;padding-left:6px;${kataColorStyleFor(cc, item.key+'-name')}">${kataEscape(item.name)}</td>
+      <td class="kata-t-cell" style="${kataColorStyleFor(cc, item.key+'-n')}">${v.n||0}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-sabkactn')}">${sabkaCtn}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-totalctn')}">${totalCtn}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-profitrate')}">${v.profitRate||0}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-profittoday')}">${v.profitToday||0}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-sabkaprofit')}">${sabkaProfit}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-totalprofit')}">${totalProfit}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-pricerate')}">${v.priceRate||0}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-pricetoday')}">${v.priceToday||0}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-sabkaprice')}">${sabkaPrice}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-totalprice')}">${totalPrice}</td>
     </tr>`;
   });
   sumCtn = Math.round(sumCtn * 100) / 100;
@@ -2038,18 +2045,18 @@ function msRenderNewEntryForm(prevTotal, prevItemData){
   MS_ITEMS.forEach(item=>{
     const prev = prevItemData[item.key] || {ctn:0, profit:0, price:0};
     rows += `<tr>
-      <td style="text-align:left;padding-left:6px;">${kataEscape(item.name)}</td>
-      <td class="kata-t-cell"><input type="text" inputmode="decimal" class="cell-input" data-ms-field="n" data-ms-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
-      <td data-ms-sabkactn="${item.key}">${prev.ctn}</td>
-      <td data-ms-totalctn="${item.key}">${prev.ctn}</td>
-      <td><input type="text" inputmode="decimal" class="cell-input" data-ms-field="profitRate" data-ms-item="${item.key}" style="border:1px solid var(--line);" value="${msCtnProfits[item.key]}"></td>
-      <td data-ms-profittoday="${item.key}">0</td>
-      <td data-ms-sabkaprofit="${item.key}">${prev.profit}</td>
-      <td data-ms-totalprofititem="${item.key}">${prev.profit}</td>
-      <td><input type="text" inputmode="decimal" class="cell-input" data-ms-field="priceRate" data-ms-item="${item.key}" style="border:1px solid var(--line);" value="${msPrices[item.key]}"></td>
-      <td data-ms-pricetoday="${item.key}">0</td>
-      <td data-ms-sabkaprice="${item.key}">${prev.price}</td>
-      <td data-ms-totalprice="${item.key}">${prev.price}</td>
+      <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;">${kataEscape(item.name)}</td>
+      <td data-color-key="${item.key}-n" class="kata-t-cell"><input type="text" inputmode="decimal" class="cell-input" data-ms-field="n" data-ms-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
+      <td data-color-key="${item.key}-sabkactn" data-ms-sabkactn="${item.key}">${prev.ctn}</td>
+      <td data-color-key="${item.key}-totalctn" data-ms-totalctn="${item.key}">${prev.ctn}</td>
+      <td data-color-key="${item.key}-profitrate"><input type="text" inputmode="decimal" class="cell-input" data-ms-field="profitRate" data-ms-item="${item.key}" style="border:1px solid var(--line);" value="${msCtnProfits[item.key]}"></td>
+      <td data-color-key="${item.key}-profittoday" data-ms-profittoday="${item.key}">0</td>
+      <td data-color-key="${item.key}-sabkaprofit" data-ms-sabkaprofit="${item.key}">${prev.profit}</td>
+      <td data-color-key="${item.key}-totalprofit" data-ms-totalprofititem="${item.key}">${prev.profit}</td>
+      <td data-color-key="${item.key}-pricerate"><input type="text" inputmode="decimal" class="cell-input" data-ms-field="priceRate" data-ms-item="${item.key}" style="border:1px solid var(--line);" value="${msPrices[item.key]}"></td>
+      <td data-color-key="${item.key}-pricetoday" data-ms-pricetoday="${item.key}">0</td>
+      <td data-color-key="${item.key}-sabkaprice" data-ms-sabkaprice="${item.key}">${prev.price}</td>
+      <td data-color-key="${item.key}-totalprice" data-ms-totalprice="${item.key}">${prev.price}</td>
     </tr>`;
   });
   return `
@@ -2182,6 +2189,13 @@ function msSaveEntry(prevTotal, prevItemData){
   todayN = Math.round(todayN * 100) / 100;
   todayProfit = Math.round(todayProfit * 100) / 100;
 
+  // اس انٹری کے فارم میں جو خانے رنگے گئے تھے (🎨 موڈ سے)، وہ رنگ اب اسی
+  // انٹری کے ساتھ ہمیشہ کے لیے محفوظ ہو جاتے ہیں۔
+  const cellColors = {};
+  document.querySelectorAll('#msDetailContainer [data-color-key]').forEach(td=>{
+    if(td.style.backgroundColor) cellColors[td.dataset.colorKey] = td.style.backgroundColor;
+  });
+
   const expenses = {};
   let expSum = 0;
   ['employees','transport','goods','other'].forEach(k=>{
@@ -2203,7 +2217,7 @@ function msSaveEntry(prevTotal, prevItemData){
   const entries = msLocalGetEntries(msOpenId);
   entries.push({
     id: 'e' + Date.now() + Math.random().toString(36).slice(2,7),
-    items, sabka, today, total, expenses, originalProfit,
+    items, sabka, today, total, expenses, originalProfit, cellColors,
     createdAt: new Date().toISOString(),
   });
   msLocalSaveEntries(msOpenId, entries);
@@ -3177,8 +3191,16 @@ async function kataDeleteWholeBook(name){
   }
 }
 
+// رنگ کی مستقل یاد رکھنے کی سہولت: کسی خانے کا رنگ اسی انٹری کے ساتھ محفوظ
+// ہو جاتا ہے (entry.cellColors) — صفحہ دوبارہ لوڈ ہونے یا فائل اپڈیٹ ہونے
+// پر بھی رنگ اسی جگہ لگا رہتا ہے، چونکہ یہ خود انٹری کے ڈیٹا کا حصہ ہے۔
+function kataColorStyleFor(cellColors, key){
+  return (cellColors && cellColors[key]) ? `background-color:${cellColors[key]};` : '';
+}
+
 function kataRenderEntryCard(entry, isLast){
   let rows = '';
+  const cc = entry.cellColors || {};
   KATA_ITEMS.forEach((item, idx)=>{
     const v = (entry.items && entry.items[item.key]) || {t:0, price:0, profit:0};
     if(!v.t && !v.price && !v.profit) return; // skip untouched rows to keep past entries compact
@@ -3190,19 +3212,19 @@ function kataRenderEntryCard(entry, isLast){
     const d = (v.d!=null) ? v.d : item.d;
     const name = (v.name!=null && v.name!=='') ? v.name : item.name;
     const weight = (v.weight!=null) ? v.weight : item.weight;
-    const td = d * v.t;
+    const tdVal = d * v.t;
     const nameColor = 'color:red;';
     rows += `<tr>
-      <td>${idx+1}</td>
-      <td style="text-align:left;padding-left:6px;${nameColor}">${kataEscape(name)}</td>
-      <td>${kataEscape(weight)}</td>
-      <td>${v.t}</td>
-      <td>${rate}</td>
-      <td>${v.price}</td>
-      <td>${prift}</td>
-      <td>${v.profit}</td>
-      <td>${d}</td>
-      <td>${td}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-idx')}">${idx+1}</td>
+      <td style="text-align:left;padding-left:6px;${nameColor}${kataColorStyleFor(cc, item.key+'-name')}">${kataEscape(name)}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-weight')}">${kataEscape(weight)}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-t')}">${v.t}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-rate')}">${rate}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-totalrate')}">${v.price}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-prift')}">${prift}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-totalprofit')}">${v.profit}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-d')}">${d}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-td')}">${tdVal}</td>
     </tr>`;
   });
   let saleRows = '';
@@ -3285,16 +3307,16 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman){
   KATA_ITEMS.forEach((item, idx)=>{
     const nameColor = 'color:red;';
     rows += `<tr>
-      <td>${idx+1}</td>
-      <td style="text-align:left;padding-left:6px;"><input type="text" class="cell-input" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(item.name)}"></td>
-      <td><input type="text" class="cell-input" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${kataEscape(item.weight)}"></td>
-      <td class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="t" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
-      <td><input type="number" inputmode="numeric" class="cell-input" data-kata-field="rate" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${item.rate}"></td>
-      <td data-kata-totalrate="${item.key}">0</td>
-      <td><input type="number" inputmode="numeric" class="cell-input" data-kata-field="prift" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${item.prift}"></td>
-      <td data-kata-totalprofit="${item.key}">0</td>
-      <td><input type="number" inputmode="numeric" class="cell-input" data-kata-field="d" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${item.d}"></td>
-      <td data-kata-td="${item.key}">0</td>
+      <td data-color-key="${item.key}-idx">${idx+1}</td>
+      <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(item.name)}"></td>
+      <td data-color-key="${item.key}-weight"><input type="text" class="cell-input" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${kataEscape(item.weight)}"></td>
+      <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="t" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
+      <td data-color-key="${item.key}-rate"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="rate" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${item.rate}"></td>
+      <td data-color-key="${item.key}-totalrate" data-kata-totalrate="${item.key}">0</td>
+      <td data-color-key="${item.key}-prift"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="prift" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${item.prift}"></td>
+      <td data-color-key="${item.key}-totalprofit" data-kata-totalprofit="${item.key}">0</td>
+      <td data-color-key="${item.key}-d"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="d" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${item.d}"></td>
+      <td data-color-key="${item.key}-td" data-kata-td="${item.key}">0</td>
     </tr>`;
   });
   let saleRows = '';
@@ -3568,6 +3590,12 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
     items[item.key] = {t, price, profit, rate: item.rate, prift: item.prift, d: item.d, name: item.name, weight: item.weight};
     todayT += t; todayRate += price; todayProfit += profit; todayTd += td;
   });
+  // اس انٹری کے فارم میں جو خانے رنگے گئے تھے (🎨 موڈ سے)، وہ رنگ اب اسی
+  // انٹری کے ساتھ ہمیشہ کے لیے محفوظ ہو جاتے ہیں۔
+  const cellColors = {};
+  document.querySelectorAll('#kataDetailContainer [data-color-key]').forEach(td=>{
+    if(td.style.backgroundColor) cellColors[td.dataset.colorKey] = td.style.backgroundColor;
+  });
   const lessInput = document.querySelector('[data-kata-field="less"]');
   const kharchInput = document.querySelector('[data-kata-field="kharch"]');
   const less = Number((lessInput && lessInput.value) || 0) || 0;
@@ -3605,7 +3633,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
     const entries = kataLocalGetEntries(kataOpenId);
     entries.push({
       id: 'e' + Date.now() + Math.random().toString(36).slice(2,7),
-      items, sabka, today, total, jamah, bqaya, salesman, less, kharch,
+      items, sabka, today, total, jamah, bqaya, salesman, less, kharch, cellColors,
       saleMahana, saleMahanaTotals: {todayCtn, sabkaCtn, totalCtn},
       createdAt: new Date().toISOString(),
     });
@@ -3618,7 +3646,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
 
   try{
     await kataCol().doc(kataOpenId).collection('entries').add({
-      items, sabka, today, total, jamah, bqaya, salesman, less, kharch,
+      items, sabka, today, total, jamah, bqaya, salesman, less, kharch, cellColors,
       saleMahana, saleMahanaTotals: {todayCtn, sabkaCtn, totalCtn},
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
@@ -3677,6 +3705,64 @@ const globalAutoSizeObserver = new MutationObserver((mutations)=>{
   });
 });
 globalAutoSizeObserver.observe(document.body, {childList:true, subtree:true});
+</script>
+<script>
+// ---------- کھاتوں کے خانوں پر مرضی کا رنگ لگانا ----------
+// 🎨 دبائیں → رنگ چنیں → کسی بھی کھاتے (سیلزمین/ربنواز/سرف کا ماہانہ حساب)
+// کے کسی بھی خانے پر ٹیپ کریں تو وہی رنگ لگ جائے۔ دوبارہ 🎨 دبائیں تو موڈ
+// بند ہو جائے۔ یہ صرف اسی نشست کے لیے ہے (صفحہ دوبارہ لوڈ ہونے پر رنگ ری
+// سیٹ ہو جاتے ہیں) — بالکل اسی طرح جیسے لاک کی حالتیں بھی ری لوڈ پر ری سیٹ
+// ہوتی ہیں، سائٹ کا پہلے سے طے شدہ اصول۔
+let kataColorModeActive = false;
+let kataColorModeValue = '#fff59d';
+const colorModeFab = document.getElementById('colorModeFab');
+
+function kataUpdateColorFab(){
+  if(kataColorModeActive){
+    colorModeFab.style.background = kataColorModeValue;
+    colorModeFab.style.color = '#000';
+    colorModeFab.textContent = '✓';
+    colorModeFab.title = 'رنگ موڈ فعال — خانے پر ٹیپ کریں، بند کرنے کے لیے دوبارہ دبائیں';
+  } else {
+    colorModeFab.style.background = 'linear-gradient(135deg,#ff5e5e,#ffd25e,#5ee6ff,#7a5eff)';
+    colorModeFab.style.color = '#fff';
+    colorModeFab.textContent = '🎨';
+    colorModeFab.title = 'خانوں پر رنگ لگائیں';
+  }
+}
+
+colorModeFab.addEventListener('click', ()=>{
+  if(kataColorModeActive){
+    kataColorModeActive = false;
+    kataUpdateColorFab();
+    return;
+  }
+  const picker = document.createElement('input');
+  picker.type = 'color';
+  picker.value = kataColorModeValue;
+  picker.style.cssText = 'position:fixed;opacity:0;pointer-events:none;left:-100px;top:-100px;';
+  document.body.appendChild(picker);
+  picker.addEventListener('change', ()=>{
+    kataColorModeValue = picker.value;
+    kataColorModeActive = true;
+    kataUpdateColorFab();
+    picker.remove();
+  });
+  picker.addEventListener('cancel', ()=> picker.remove());
+  picker.click();
+});
+
+// رنگ موڈ فعال ہو تو کسی بھی کھاتے کے خانے پر ٹیپ کرنے سے وہی رنگ لگ جائے —
+// نارمل کلک/ان پٹ کا کام نہ رکے، اس لیے صرف اس خانے کا بیک گراؤنڈ رنگ سیٹ
+// کرتے ہیں، باقی سب ویسے ہی چلتا رہتا ہے۔
+document.addEventListener('click', (e)=>{
+  if(!kataColorModeActive) return;
+  const scope = e.target.closest('#kataListView, #kataDetailView, #msListView, #msDetailView');
+  if(!scope) return;
+  const cell = e.target.closest('td, .totals > div, .n, .l');
+  if(!cell) return;
+  cell.style.backgroundColor = kataColorModeValue;
+}, true);
 </script>
 <script>
 if ('serviceWorker' in navigator) {
