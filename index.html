@@ -3650,6 +3650,35 @@ if(typeof LOGIN_TEMPORARILY_DISABLED !== 'undefined' && LOGIN_TEMPORARILY_DISABL
 }
 </script>
 <script>
+// ---------- سائٹ بھر میں خانوں کا خودکار سائز (مواد کے مطابق) ----------
+// کھاتہ اور سرف کا ماہانہ حساب میں پہلے سے یہ سہولت تھی (kataAutoSizeInput/
+// msAutoSizeInput) — یہ اسے پوری ویب سائٹ پر لاگو کرتا ہے: ریٹ لسٹ، Best
+// Excel official، ہر جگہ۔ ایک MutationObserver استعمال کیا ہے تاکہ یہ کسی
+// بھی ٹیبل کے دوبارہ بننے (لاک بٹن دبانے وغیرہ) پر بھی خودکار کام کرے،
+// ہر ٹیبل بنانے والے فنکشن میں الگ سے کوڈ ڈالنے کی ضرورت نہیں۔
+function globalAutoSizeInput(input){
+  if(!input) return;
+  const len = (input.value || input.placeholder || '0').toString().length;
+  input.style.width = Math.max(len + 1.5, 3) + 'ch';
+}
+document.querySelectorAll('.cell-input').forEach(globalAutoSizeInput);
+document.addEventListener('input', (e)=>{
+  if(e.target && e.target.classList && e.target.classList.contains('cell-input')){
+    globalAutoSizeInput(e.target);
+  }
+});
+const globalAutoSizeObserver = new MutationObserver((mutations)=>{
+  mutations.forEach(m=>{
+    m.addedNodes.forEach(node=>{
+      if(node.nodeType !== 1) return;
+      if(node.classList && node.classList.contains('cell-input')) globalAutoSizeInput(node);
+      if(node.querySelectorAll) node.querySelectorAll('.cell-input').forEach(globalAutoSizeInput);
+    });
+  });
+});
+globalAutoSizeObserver.observe(document.body, {childList:true, subtree:true});
+</script>
+<script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js');
