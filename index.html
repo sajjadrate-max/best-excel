@@ -318,15 +318,13 @@ window.loadAuthSDKs = async function(){
   }
   .kata-dots-menu{
     display:none;
-    position:absolute;
-    top:26px;
-    left:0;
+    position:fixed;
     background:#fff;
     border:1px solid var(--line);
     border-radius:6px;
     box-shadow:0 2px 8px rgba(0,0,0,.25);
-    z-index:20;
-    min-width:130px;
+    z-index:2000;
+    min-width:170px;
   }
   .kata-dots-menu.open{
     display:block;
@@ -3209,7 +3207,28 @@ if(!window._kataDotsMenuWired){
       const menu = dotsBtn.parentElement.querySelector('.kata-dots-menu');
       const wasOpen = menu.classList.contains('open');
       openMenus.forEach(m=>m.classList.remove('open'));
-      if(!wasOpen) menu.classList.add('open');
+      if(!wasOpen){
+        // position:fixed — والدین کے overflow:hidden (کارڈ کے گول کونوں کی
+        // وجہ سے) سے مینو کبھی کٹتا نہیں تھا، لیکن دو بٹن ہونے پر مینو
+        // کارڈ سے اونچا ہو کر نیچے والا بٹن (🗑 حذف کریں) چھپا دیتا تھا۔
+        // اب مینو کی جگہ ہر بار "⋮" کی اصل اسکرین پوزیشن سے حساب کی جاتی
+        // ہے، تو یہ کبھی کسی کارڈ کے اندر قید ہو کر نہیں کٹتا۔
+        const rect = dotsBtn.getBoundingClientRect();
+        menu.style.top = (rect.bottom + 4) + 'px';
+        menu.style.left = rect.left + 'px';
+        menu.classList.add('open');
+        // اگر نیچے جگہ کم ہو تو مینو اوپر کی طرف کھلے، تاکہ اسکرین سے باہر
+        // نہ نکلے۔
+        requestAnimationFrame(()=>{
+          const menuRect = menu.getBoundingClientRect();
+          if(menuRect.bottom > window.innerHeight){
+            menu.style.top = Math.max(4, rect.top - menuRect.height - 4) + 'px';
+          }
+          if(menuRect.right > window.innerWidth){
+            menu.style.left = Math.max(4, window.innerWidth - menuRect.width - 4) + 'px';
+          }
+        });
+      }
     } else if(!e.target.closest('.kata-dots-menu')){
       openMenus.forEach(m=>m.classList.remove('open'));
     }
