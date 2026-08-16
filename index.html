@@ -2490,9 +2490,11 @@ function msManualCloseBook(name){
 
 function msDeleteWholeBook(name){
   if(!confirm(`کیا آپ واقعی "${name || '(بلا نام)'}" کھاتہ مکمل طور پر حذف کرنا چاہتے ہیں؟ اس میں موجود تمام انٹریز بھی حذف ہو جائیں گی — یہ واپس نہیں ہو سکتا۔`)) return;
-  const remaining = msLocalGetBooks().filter(x=>x.id !== msOpenId);
-  msLocalSaveBooks(remaining);
-  localStorage.removeItem(msLocalEntriesKey(msOpenId));
+  const deletedId = msOpenId;
+  const remaining = msLocalGetBooks().filter(x=>x.id !== deletedId);
+  localStorage.setItem(msLocalBooksKey(), JSON.stringify(remaining));
+  if(window.firebaseSyncDeleteBook) window.firebaseSyncDeleteBook(msLocalBooksKey(), deletedId, remaining);
+  localStorage.removeItem(msLocalEntriesKey(deletedId));
   msShowList();
   msRenderList();
 }
@@ -3385,9 +3387,11 @@ async function kataDeleteEntry(){
 async function kataDeleteWholeBook(name){
   if(!confirm(`کیا آپ واقعی "${name || '(بلا نام)'}" کھاتہ مکمل طور پر حذف کرنا چاہتے ہیں؟ اس میں موجود تمام انٹریز بھی حذف ہو جائیں گی — یہ واپس نہیں ہو سکتا۔`)) return;
   if(kataLocalMode){
-    const remaining = kataLocalGetBooks().filter(x=>x.id !== kataOpenId);
-    kataLocalSaveBooks(remaining);
-    localStorage.removeItem(kataLocalEntriesKey(kataOpenId));
+    const deletedId = kataOpenId;
+    const remaining = kataLocalGetBooks().filter(x=>x.id !== deletedId);
+    localStorage.setItem(kataLocalBooksKey(), JSON.stringify(remaining));
+    if(window.firebaseSyncDeleteBook) window.firebaseSyncDeleteBook(kataLocalBooksKey(), deletedId, remaining);
+    localStorage.removeItem(kataLocalEntriesKey(deletedId));
     kataShowList();
     kataLocalRenderList();
   } else {
@@ -4088,6 +4092,25 @@ window.firebaseSyncSet = firebaseSyncSet;
 // کلاؤڈ سے تازہ ترین لسٹ منگوا کر، اپنے اور کلاؤڈ دونوں کے کھاتے (id کے
 // مطابق) ملا (merge) کر، تب محفوظ ہوتی ہے — کوئی کھاتہ کبھی غائب نہیں
 // ہوتا، دونوں طرف کے نئے کھاتے ہمیشہ محفوظ رہتے ہیں۔
+//
+// اہم: یہ merge صرف نئے کھاتے شامل کرتا ہے، کبھی کوئی کھاتہ خودکار نہیں
+// ہٹاتا — ورنہ ڈیلیٹ کیا ہوا کھاتہ دوسری ڈیوائس کے اگلے save پر واپس آ
+// جاتا۔ اس لیے حذف ("🗑 یہ کھاتہ حذف کریں") الگ سے ایک "tombstone" فہرست
+// (`<key>_deletedIds`) میں اس کھاتے کی id لکھتا ہے — یہ merge میں ہمیشہ
+// چیک ہوتی ہے، تاکہ حذف شدہ کھاتہ کبھی دوبارہ نمودار نہ ہو، چاہے دوسری
+// ڈیوائس نے ابھی حذف ہونے کی خبر نہ دیکھی ہو۔
+async function firebaseSyncFetchTombstones(key){
+  if(!window.db) return [];
+  try{
+    const tDoc = await window.db.collection('localSync').doc(key + '_deletedIds').get();
+    if(tDoc.exists){
+      const data = tDoc.data();
+      if(data && typeof data.value === 'string'){ try{ return JSON.parse(data.value) || []; }catch(e){ return []; } }
+    }
+  } catch(err){ console.warn('cloud sync tombstone fetch failed for', key, err); }
+  return [];
+}
+
 async function firebaseSyncMergeBooksSet(key, localArr, onMerged){
   localStorage.setItem(key, JSON.stringify(localArr)); // فوری مقامی نظر آنا — انتظار کی ضرورت نہیں
   if(!window.db) return;
@@ -4100,9 +4123,10 @@ async function firebaseSyncMergeBooksSet(key, localArr, onMerged){
         try{ cloudArr = JSON.parse(data.value) || []; }catch(e){ cloudArr = []; }
       }
     }
+    const tomb = await firebaseSyncFetchTombstones(key);
     const byId = {};
-    cloudArr.forEach(b=>{ if(b && b.id) byId[b.id] = b; });
-    localArr.forEach(b=>{ if(b && b.id) byId[b.id] = b; }); // تنازعے کی صورت میں یہی ڈیوائس کا ورژن رکھا جاتا ہے، باقی سب شامل رہتے ہیں
+    cloudArr.forEach(b=>{ if(b && b.id && !tomb.includes(b.id)) byId[b.id] = b; });
+    localArr.forEach(b=>{ if(b && b.id && !tomb.includes(b.id)) byId[b.id] = b; }); // تنازعے کی صورت میں یہی ڈیوائس کا ورژن رکھا جاتا ہے، باقی سب شامل رہتے ہیں (حذف شدہ کے سوا)
     const merged = Object.values(byId);
     const json = JSON.stringify(merged);
     localStorage.setItem(key, json);
@@ -4114,6 +4138,28 @@ async function firebaseSyncMergeBooksSet(key, localArr, onMerged){
   } catch(err){ console.warn('cloud sync merge-save failed for', key, err); }
 }
 window.firebaseSyncMergeBooksSet = firebaseSyncMergeBooksSet;
+
+// کھاتہ حذف کرنا — tombstone میں id لکھ کر، پھر فہرست سے نکال کر محفوظ
+// کرتا ہے۔ یہ ہمیشہ باقی سب merge logic سے پہلے چلتا ہے تاکہ حذف شدہ
+// کھاتہ کبھی merge کے ذریعے واپس نہ آئے۔
+async function firebaseSyncDeleteBook(key, bookId, remainingArr, onDone){
+  localStorage.setItem(key, JSON.stringify(remainingArr));
+  if(!window.db){ if(onDone) onDone(); return; }
+  try{
+    const tKey = key + '_deletedIds';
+    let localTomb = await firebaseSyncFetchTombstones(key);
+    if(!localTomb.includes(bookId)) localTomb.push(bookId);
+    localStorage.setItem(tKey, JSON.stringify(localTomb));
+    await window.db.collection('localSync').doc(tKey).set({
+      value: JSON.stringify(localTomb),
+      updatedAt: (typeof firebase !== 'undefined' && firebase.firestore) ? firebase.firestore.FieldValue.serverTimestamp() : Date.now()
+    });
+    // اب باقی ماندہ فہرست بھی اسی tombstone کو مدنظر رکھتے ہوئے merge-save کریں
+    await firebaseSyncMergeBooksSet(key, remainingArr.filter(b=> !localTomb.includes(b.id)));
+  } catch(err){ console.warn('cloud sync delete failed for', key, bookId, err); }
+  if(onDone) onDone();
+}
+window.firebaseSyncDeleteBook = firebaseSyncDeleteBook;
 
 async function firebaseSyncPullAll(){
   if(!window.db) return;
