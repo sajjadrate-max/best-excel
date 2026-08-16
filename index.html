@@ -1046,6 +1046,7 @@ const tiers = [
   {slug:"dukandar",label:"دکاندار", title:"دکاندار ریٹ لسٹ",    key:"dukandar", master:false},
 ];
 let masterColLocked = { name:true, tpcs:true, ctn:true, mrp:true, company:true }; // List A: per-column locks
+let tierAgencyLocked = { agencyB:true, agencyC:true, salman:true }; // B/C/سیلزمین کے Agency خانے — بالکل List A جیسا 🔒/🔓 (دستی طریقے سے، auto-relock نہیں)
 
 // کھاتہ (ledger) — transcribed from the handwritten account book page (#186).
 // Columns: ملتان ریٹ | تفصیل | موجودہ ریٹ | ٹوٹل وزن | ٹوٹل ریٹ
@@ -1075,11 +1076,11 @@ const ledgerRows = [
 const SITE_DATA_KEY = 'bestExcelSiteData';
 function saveSiteDataNow(){
   const state = {
-    packs: packs.map(p=>({tpcs:p.tpcs, ctn:p.ctn, mrp:p.mrp, company:p.company, name:p.name})),
+    packs: packs.map(p=>({tpcs:p.tpcs, ctn:p.ctn, mrp:p.mrp, company:p.company, name:p.name, agencyB:p.agencyB, agencyBManual:p.agencyBManual, agencyC:p.agencyC, agencyCManual:p.agencyCManual, salman:p.salman, salmanManual:p.salmanManual})),
     packagingRows: packagingRows.map(r=>({name:r.name, weight:r.weight, shopperWeight:r.shopperWeight})),
     costRows: costRows.map(r=>({name:r.name, rate:r.rate, remainingSurf:r.remainingSurf, perPieceRate:r.perPieceRate, companyProfit:r.companyProfit, bijli:r.bijli, tax:r.tax, ctnRate:r.ctnRate, shopperAmt:r.shopperAmt})),
     ledgerRows: ledgerRows.map(r=>({dateNo:r.dateNo, detail:r.detail, page:r.page, naam:r.naam})),
-    masterColLocked, colLocked, ledgerColLocked,
+    masterColLocked, colLocked, ledgerColLocked, tierAgencyLocked,
     weightLossKg: (document.getElementById('weightLossKgInput') || {}).value || '0',
   };
   const json = JSON.stringify(state);
@@ -1112,15 +1113,17 @@ function restoreSiteData(){
   if(saved.masterColLocked) Object.assign(masterColLocked, saved.masterColLocked);
   if(saved.colLocked) Object.assign(colLocked, saved.colLocked);
   if(saved.ledgerColLocked) Object.assign(ledgerColLocked, saved.ledgerColLocked);
+  if(saved.tierAgencyLocked) Object.assign(tierAgencyLocked, saved.tierAgencyLocked);
   packs.forEach(p=>{
-    p.agencyB   = p.company + p.diffB;
-    p.agencyC   = p.company + p.diffC;
-    p.salman    = p.company + p.diffSalman;
-    p.dukandar  = p.company + p.diffDukandar;
+    if(!p.agencyBManual) p.agencyB = p.company + p.diffB;
+    if(!p.agencyCManual) p.agencyC = p.company + p.diffC;
+    if(!p.salmanManual)  p.salman  = p.company + p.diffSalman;
+    p.dukandar = p.company + p.diffDukandar;
   });
   if(typeof buildAllTierTables === 'function') buildAllTierTables();
   if(typeof buildCombinedTable === 'function') buildCombinedTable();
   if(typeof buildLedgerTable === 'function') buildLedgerTable();
+  if(typeof syncKataItemsFromRateList === 'function') syncKataItemsFromRateList(); // کھاتہ کے Items/Weight/Profit/Price بھی تازہ ہوں (پہلی بار یہاں کچھ نہیں ہو گا چونکہ ابھی تعریف نہیں ہوا — بعد میں firebaseSyncInit کی کال کام کرے گی)
   const lossInput = document.getElementById('weightLossKgInput');
   if(lossInput && saved.weightLossKg !== undefined){
     lossInput.value = saved.weightLossKg;
@@ -1241,11 +1244,12 @@ function buildAllTierTables(){
         <col class="col-num">
         <col class="col-num">
         <col class="col-num">
+        <col class="col-num">
     `}));
 
     const thead = document.createElement('thead');
     const titleRow = document.createElement('tr');
-    titleRow.innerHTML = `<th colspan="${tier.slug === 'dukandar' ? 4 : 5}" class="sheet-title" dir="ltr"><span class="brand-badge"><span class="b-best">Best</span> <span class="b-excel">Excel</span></span> <span class="brand-red">washing powder</span></th>`;
+    titleRow.innerHTML = `<th colspan="${tier.slug === 'dukandar' ? 4 : 6}" class="sheet-title" dir="ltr"><span class="brand-badge"><span class="b-best">Best</span> <span class="b-excel">Excel</span></span> <span class="brand-red">washing powder</span></th>`;
     thead.appendChild(titleRow);
 
     const headRow = document.createElement('tr');
@@ -1276,20 +1280,44 @@ function buildAllTierTables(){
       headRow.appendChild(makeMasterHeaderCell('T.Pcs','ctn'));
       headRow.appendChild(makeMasterHeaderCell('Price CTN','mrp'));
       headRow.appendChild(makeMasterHeaderCell('Agency','company'));
+      // Profit ہمیشہ خودکار حساب سے بنتا ہے (Price CTN منفی Agency) —
+      // اس کالم پر لاک کی ضرورت نہیں، کچھ براہِ راست لکھا ہی نہیں جاتا۔
+      const profitTh = document.createElement('th');
+      profitTh.textContent = 'Profit';
+      headRow.appendChild(profitTh);
       headRow.lastElementChild.classList.add('corner-tri');
     } else {
-      headRow.innerHTML = tier.slug === 'dukandar' ? `
+      if(tier.slug === 'dukandar'){
+        headRow.innerHTML = `
           <th>Products Name</th>
           <th>Weight gram</th>
           <th>T.Pcs</th>
           <th class="corner-tri">Price CTN</th>
-      ` : `
+        `;
+      } else {
+        headRow.innerHTML = `
           <th>Products Name</th>
           <th>Weight gram</th>
           <th>T.Pcs</th>
           <th>Price CTN</th>
-          <th class="corner-tri">Agency</th>
-      `;
+          <th class="corner-tri">Profit</th>
+        `;
+        // Agency کالم — بالکل List A جیسا اپنا الگ 🔒/🔓 تالا (دستی طریقے
+        // سے، ری لوڈ پر بھی محفوظ رہتا ہے)۔
+        const agencyTh = document.createElement('th');
+        const lockBtn = document.createElement('button');
+        lockBtn.type = 'button';
+        lockBtn.className = 'row-lock-btn ' + (tierAgencyLocked[tier.key] ? 'is-locked' : 'is-unlocked');
+        lockBtn.textContent = tierAgencyLocked[tier.key] ? '🔒' : '🔓';
+        lockBtn.title = tierAgencyLocked[tier.key] ? 'یہ کالم ترمیم کے لیے کھولیں' : 'یہ کالم لاک کریں';
+        lockBtn.addEventListener('click', ()=>{
+          tierAgencyLocked[tier.key] = !tierAgencyLocked[tier.key];
+          buildAllTierTables();
+        });
+        agencyTh.appendChild(lockBtn);
+        agencyTh.appendChild(document.createTextNode('Agency'));
+        headRow.insertBefore(agencyTh, headRow.lastElementChild); // Price CTN کے بعد، Profit سے پہلے
+      }
     }
     thead.appendChild(headRow);
     table.appendChild(thead);
@@ -1316,6 +1344,35 @@ function buildAllTierTables(){
 
 // Editable cells: the master card (A) has its own per-column lock state;
 // every other card is always read-only.
+// ایجنسی ریٹ (B/C/سیلزمین) کا خانہ — makeCell سے الگ اس لیے کہ اسے پوری
+// ٹیبل دوبارہ بنائے بغیر صرف اسی قطار کا Profit خانہ تازہ کرنا ہوتا ہے،
+// ورنہ ٹائپنگ کے دوران خانہ فوکس کھو دیتا (recalcDependentTiers ہر بار
+// پوری ٹیبل دوبارہ بناتا ہے)۔
+function makeManualAgencyCell(p, tier){
+  const manualKey = tier.key + 'Manual';
+  const td = document.createElement('td');
+  td.className = 'edit-cell';
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.step = 'any';
+  input.value = p[tier.key];
+  input.className = 'cell-input';
+  input.disabled = !!tierAgencyLocked[tier.key];
+  input.addEventListener('input', ()=>{
+    p[tier.key] = Math.round((parseFloat(input.value) || 0) * 100) / 100;
+    p[manualKey] = true;
+    const row = td.parentElement;
+    const profitCell = row && row.querySelector('[data-profit-cell]');
+    if(profitCell){
+      const mrpNum = Number(p.mrp) || 0;
+      profitCell.textContent = Math.round((mrpNum - p[tier.key]) * 100) / 100;
+    }
+    if(typeof scheduleSiteDataSave === 'function') scheduleSiteDataSave();
+  });
+  td.appendChild(input);
+  return td;
+}
+
 function fillTierTableBody(tbody, tier){
   tbody.innerHTML = '';
   packs.forEach((p)=>{
@@ -1338,15 +1395,33 @@ function fillTierTableBody(tbody, tier){
         tr.appendChild(makeCell(p, k, false, false));
       });
       if(tier.slug !== 'dukandar'){
-        tr.appendChild(makeCell(p, tier.key, false, false));
+        // ایجنسی ریٹ (B/C/سیلزمین) اب براہِ راست لکھا جا سکتا ہے — ایک بار
+        // لکھیں تو وہی قدر ہمیشہ کے لیے رہتی ہے، List A بدلنے پر بھی
+        // خودکار واپس فارمولے پر نہیں جاتی۔ عام makeCell کے بجائے یہاں
+        // الگ فنکشن استعمال کیا ہے کیونکہ makeCell ہر بار پوری ٹیبل دوبارہ
+        // بنا دیتا (recalcDependentTiers) — جس سے ٹائپنگ کے دوران خانہ
+        // فوکس کھو دیتا؛ یہاں صرف اسی قطار کا Profit خانہ تازہ ہوتا ہے۔
+        tr.appendChild(makeManualAgencyCell(p, tier));
       }
+    }
+
+    // Profit — ہر کارڈ کے اپنے آخری دو خانوں (Price CTN منفی Agency) کا
+    // فرق، ہمیشہ خودکار حساب سے، کبھی براہِ راست نہیں لکھا جاتا۔ دکاندار
+    // کارڈ پر یہ کالم نہیں دکھایا جاتا (وہاں Agency کالم بھی نہیں ہے)۔
+    if(tier.slug !== 'dukandar'){
+      const profitTd = document.createElement('td');
+      profitTd.dataset.profitCell = '1';
+      const mrpNum = Number(p.mrp) || 0;
+      const agencyNum = Number(p[tier.key]) || 0;
+      profitTd.textContent = Math.round((mrpNum - agencyNum) * 100) / 100;
+      tr.appendChild(profitTd);
     }
 
     tbody.appendChild(tr);
   });
 }
 
-function makeCell(pack, field, isText, editable, extraClass){
+function makeCell(pack, field, isText, editable, extraClass, onInput){
   const td = document.createElement('td');
   td.className = 'edit-cell' + (extraClass ? ' ' + extraClass : '');
 
@@ -1362,6 +1437,7 @@ function makeCell(pack, field, isText, editable, extraClass){
       } else {
         pack[field] = Math.round((parseFloat(input.value) || 0) * 100) / 100; // consistent 2-decimal formatting everywhere
       }
+      if(onInput) onInput();
       recalcDependentTiers();
     });
     td.appendChild(input);
@@ -1377,19 +1453,23 @@ function makeCell(pack, field, isText, editable, extraClass){
 
 // Whenever List A changes (name, weight, T.Pcs, Price CTN, or Rate A),
 // recompute every other tier from A + its fixed difference, and redraw
-// their read-only tables so they always mirror A exactly.
+// their read-only tables so they always mirror A exactly — UNLESS that
+// tier's own Agency value has been manually typed in directly (see
+// AGENCY MANUAL OVERRIDE below), in which case it's left alone forever,
+// even when A changes.
 function recalcDependentTiers(){
   packs.forEach(p=>{
-    p.agencyB   = p.company + p.diffB;
-    p.agencyC   = p.company + p.diffC;
-    p.salman    = p.company + p.diffSalman;
-    p.dukandar  = p.company + p.diffDukandar;
+    if(!p.agencyBManual) p.agencyB = p.company + p.diffB;
+    if(!p.agencyCManual) p.agencyC = p.company + p.diffC;
+    if(!p.salmanManual)  p.salman  = p.company + p.diffSalman;
+    p.dukandar = p.company + p.diffDukandar;
   });
   tiers.forEach(tier=>{
     if(!tier.master){
       fillTierTableBody(tierBodies[tier.slug], tier);
     }
   });
+  if(typeof syncKataItemsFromRateList === 'function') syncKataItemsFromRateList(); // کھاتہ کے Items/Weight/Profit/Price بھی فوراً تازہ ہوں
 }
 
 // Draws one tier's table straight onto a <canvas> from the data itself —
@@ -3003,6 +3083,36 @@ const KATA_ITEMS = [
   {key:"znet1",  name:"Z Net Bill",  weight:"",      rate:0,    prift:0,   d:0},
   {key:"znet2",  name:"Z Net Bill",  weight:"",      rate:0,    prift:0,   d:0},
 ];
+
+// ---------- کھاتہ کے Items/Weight/Profit/Price اب ریٹ لسٹ کے کارڈ "B" سے
+// خودکار (2026-08-16، صارف کی درخواست) ----------
+// اوپر لکھی گئی قدریں صرف ابتدائی/فال بیک ہیں — پیج لوڈ ہوتے ہی اور جب
+// بھی ریٹ لسٹ کی "کمپنی ریٹ لسٹ A" میں کوئی تبدیلی ہو (جس سے B خودکار
+// اپڈیٹ ہوتا ہے)، یہ فنکشن KATA_ITEMS کے یہی object اندر سے اپڈیٹ کر دیتا
+// ہے — چونکہ یہ وہی object ہیں (نئے نہیں بنائے جاتے)، باقی پورا کھاتہ
+// ماڈیول (رینڈر/حساب) خودکار نئی قدریں استعمال کرتا ہے، کہیں اور کچھ
+// بدلنے کی ضرورت نہیں۔ صرف Z Net Bill کی دو قطاریں اس میں شامل نہیں
+// (ریٹ لسٹ میں ان کا کوئی متبادل پراڈکٹ نہیں)، اور "d" (فرق) کالم بھی
+// چھیڑا نہیں گیا — صرف name/weight/rate/prift۔
+const KATA_TO_RATELIST_KEY = {rs10:'rs10', rs50:'rs50', rs100:'rs100', rs150:'rs150', rs400:'rs400', rs1000:'rs1000', special:'kabotar', sada:'sada'};
+function syncKataItemsFromRateList(){
+  if(typeof packs === 'undefined' || !Array.isArray(packs)) return;
+  KATA_ITEMS.forEach(item=>{
+    const rlKey = KATA_TO_RATELIST_KEY[item.key];
+    if(!rlKey) return; // Z Net Bill — no ریٹ لسٹ equivalent, leave as-is
+    const p = packs.find(x=>x.key === rlKey);
+    if(!p) return;
+    const agencyB = Number(p.agencyB) || 0;
+    const company = Number(p.company) || 0;
+    item.name = p.name || item.name;
+    item.weight = p.tpcs || item.weight;
+    item.rate = agencyB; // Price — ریٹ لسٹ B کارڈ کا ایجنسی ریٹ
+    item.prift = Math.round((agencyB - company) * 100) / 100; // Profit — B ریٹ منفی Company ریٹ
+  });
+  if(typeof kataLocalRenderList === 'function' && document.getElementById('kataListView') && document.getElementById('kataListView').style.display !== 'none') kataLocalRenderList();
+}
+window.syncKataItemsFromRateList = syncKataItemsFromRateList;
+syncKataItemsFromRateList(); // اسی وقت — چونکہ ریٹ لسٹ کا ڈیٹا اس سے پہلے ہی لوڈ ہو چکا ہوتا ہے
 
 // Second table on the same page — "Sale Mahana Record" (monthly sale
 // tally). Separate item set/weights from the table above (note RS.300 CTN
