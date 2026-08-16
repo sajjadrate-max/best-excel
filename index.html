@@ -734,6 +734,50 @@ window.loadAuthSDKs = async function(){
 </style>
 </head>
 <body>
+<div id="siteTextPromptModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+  <div class="auth-box" style="text-align:center;">
+    <h2 id="siteTextPromptLabel" style="text-align:center;font-size:16px;border:none;"></h2>
+    <input type="text" id="siteTextPromptInput" style="text-align:center;width:100%;box-sizing:border-box;">
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button type="button" id="siteTextPromptOk" class="lock-btn" style="flex:1;">ٹھیک ہے</button>
+      <button type="button" id="siteTextPromptCancel" class="lock-btn" style="flex:1;background:#999;">منسوخ</button>
+    </div>
+  </div>
+</div>
+<script>
+// ---------- window.prompt() کا محفوظ متبادل (2026-08-16) ----------
+// window.prompt() انسٹالڈ PWA (Add to Home Screen) میں خاموشی سے دب جاتا
+// ہے — بٹن دبانے پر کچھ نظر نہیں آتا، جیسا کہ formulation والے پاس ورڈ
+// گیٹ کے لیے پہلے ہی نوٹ کیا جا چکا ہے۔ "+ نیا کھاتہ" بھی یہی prompt()
+// استعمال کر رہا تھا — اسی وجہ سے موبائل پر بعض اوقات نیا کھاتہ نظر ہی
+// نہیں آتا تھا (خاموشی سے فیل ہو جاتا)۔ اب سب جگہ یہی in-page modal
+// استعمال ہوتا ہے، ہر context میں یکساں کام کرتا ہے۔
+function siteTextPrompt(label, callback){
+  const modal = document.getElementById('siteTextPromptModal');
+  const input = document.getElementById('siteTextPromptInput');
+  document.getElementById('siteTextPromptLabel').textContent = label;
+  input.value = '';
+  modal.style.display = 'flex';
+  modal.classList.remove('hidden');
+  setTimeout(()=> input.focus(), 50);
+  function done(value){
+    modal.style.display = 'none';
+    modal.classList.add('hidden');
+    okBtn.removeEventListener('click', onOk);
+    cancelBtn.removeEventListener('click', onCancel);
+    input.removeEventListener('keydown', onKey);
+    callback(value);
+  }
+  const okBtn = document.getElementById('siteTextPromptOk');
+  const cancelBtn = document.getElementById('siteTextPromptCancel');
+  function onOk(){ done(input.value); }
+  function onCancel(){ done(null); }
+  function onKey(e){ if(e.key === 'Enter') onOk(); if(e.key === 'Escape') onCancel(); }
+  okBtn.addEventListener('click', onOk);
+  cancelBtn.addEventListener('click', onCancel);
+  input.addEventListener('keydown', onKey);
+}
+</script>
 <div id="siteAccessGate" style="position:fixed;inset:0;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:rgba(0,0,0,.9);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
   <div class="auth-box" style="text-align:center;">
     <h2 style="text-align:center;font-size:18px;">🔒 یہ ویب سائٹ محفوظ ہے</h2>
@@ -1425,21 +1469,32 @@ function printPdfBlob(blob){
   };
 }
 
+// موبائل (فون/ٹیبلٹ) اور کمپیوٹر میں فرق — چونکہ ونڈوز کا Edge/Chrome
+// براؤزر بھی navigator.share() سپورٹ کرتا ہے (اسی لیے پہلے کمپیوٹر پر
+// بھی موبائل کی طرح "Share" شیٹ کھل رہی تھی، پرنٹ ڈائیلاگ نہیں) — اب
+// پہلے یہ چیک کر لیتے ہیں کہ ڈیوائس واقعی موبائل ہے یا نہیں، صرف اسی
+// صورت میں native شیئر آزماتے ہیں، ورنہ کمپیوٹر پر ہمیشہ سیدھا پرنٹ
+// ڈائیلاگ ہی کھلے گا۔
+function isMobileDevice(){
+  return /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+}
+
 async function sharePdfDirectly(blob, fileName, title){
-  try{
-    if(navigator.canShare && window.File){
-      const file = new File([blob], fileName, {type:'application/pdf'});
-      if(navigator.canShare({files:[file]})){
-        await navigator.share({files:[file], title});
-        return;
+  if(isMobileDevice()){
+    try{
+      if(navigator.canShare && window.File){
+        const file = new File([blob], fileName, {type:'application/pdf'});
+        if(navigator.canShare({files:[file]})){
+          await navigator.share({files:[file], title});
+          return;
+        }
       }
+    } catch(shareErr){
+      // user cancelled the native share sheet — nothing else to do
+      return;
     }
-  } catch(shareErr){
-    // user cancelled the native share sheet — nothing else to do
-    return;
   }
-  // موبائل native شیئر نہ ہونے کی صورت میں (عام طور پر کمپیوٹر) — اب یہاں
-  // فائل ڈاؤن لوڈ کرنے کے بجائے سیدھا کمپیوٹر کا پرنٹ ڈائیلاگ کھولتے ہیں۔
+  // کمپیوٹر پر — سیدھا پرنٹ ڈائیلاگ (کبھی Share شیٹ نہیں)۔
   printPdfBlob(blob);
 }
 
@@ -1932,7 +1987,10 @@ function kataMonthKey(d){
 function msLocalBooksKey(){ return 'msLocalBooks'; }
 function msLocalEntriesKey(bookId){ return 'msLocalEntries_' + bookId; }
 function msLocalGetBooks(){ try{ return JSON.parse(localStorage.getItem(msLocalBooksKey())) || []; }catch(e){ return []; } }
-function msLocalSaveBooks(arr){ (window.firebaseSyncSet || ((k,v)=>localStorage.setItem(k,v)))(msLocalBooksKey(), JSON.stringify(arr)); }
+function msLocalSaveBooks(arr){
+  localStorage.setItem(msLocalBooksKey(), JSON.stringify(arr));
+  if(window.firebaseSyncMergeBooksSet) window.firebaseSyncMergeBooksSet(msLocalBooksKey(), arr, ()=>{ if(document.getElementById('msListView').style.display !== 'none') msRenderList(); });
+}
 function msLocalGetEntries(bookId){ try{ return JSON.parse(localStorage.getItem(msLocalEntriesKey(bookId))) || []; }catch(e){ return []; } }
 function msLocalSaveEntries(bookId, arr){ (window.firebaseSyncSet || ((k,v)=>localStorage.setItem(k,v)))(msLocalEntriesKey(bookId), JSON.stringify(arr)); }
 
@@ -2078,12 +2136,13 @@ function msRenderList(){
 }
 
 function msCreateNew(){
-  const name = prompt('نئے کھاتے کا نام لکھیں (مثلاً: اگست 2026)');
-  if(!name || !name.trim()) return;
-  const books = msLocalGetBooks();
-  books.push({id: 'm'+Date.now(), name: name.trim(), createdAt: new Date().toISOString()});
-  msLocalSaveBooks(books);
-  msRenderList();
+  siteTextPrompt('نئے کھاتے کا نام لکھیں (مثلاً: اگست 2026)', function(name){
+    if(!name || !name.trim()) return;
+    const books = msLocalGetBooks();
+    books.push({id: 'm'+Date.now(), name: name.trim(), createdAt: new Date().toISOString()});
+    msLocalSaveBooks(books);
+    msRenderList();
+  });
 }
 
 function msOpen(id, name){
@@ -2936,7 +2995,10 @@ function kataLocalEntriesKey(bookId){ return (kataInstance === 'salesman' ? 'kat
 function kataLocalGetBooks(){
   try{ return JSON.parse(localStorage.getItem(kataLocalBooksKey())) || []; }catch(e){ return []; }
 }
-function kataLocalSaveBooks(arr){ (window.firebaseSyncSet || ((k,v)=>localStorage.setItem(k,v)))(kataLocalBooksKey(), JSON.stringify(arr)); }
+function kataLocalSaveBooks(arr){
+  localStorage.setItem(kataLocalBooksKey(), JSON.stringify(arr));
+  if(window.firebaseSyncMergeBooksSet) window.firebaseSyncMergeBooksSet(kataLocalBooksKey(), arr, ()=>{ if(document.getElementById('kataListView').style.display !== 'none') kataLocalRenderList(); });
+}
 function kataLocalGetEntries(bookId){
   try{ return JSON.parse(localStorage.getItem(kataLocalEntriesKey(bookId))) || []; }catch(e){ return []; }
 }
@@ -2997,12 +3059,13 @@ function kataLocalRenderList(){
 }
 
 function kataLocalCreateNew(){
-  const name = prompt('نئے کھاتے کا نام لکھیں (مثلاً: حکیم سجاد احمد بھٹی)');
-  if(!name || !name.trim()) return;
-  const books = kataLocalGetBooks();
-  books.push({id: 'k'+Date.now(), name: name.trim(), createdAt: new Date().toISOString()});
-  kataLocalSaveBooks(books);
-  kataLocalRenderList();
+  siteTextPrompt('نئے کھاتے کا نام لکھیں (مثلاً: حکیم سجاد احمد بھٹی)', function(name){
+    if(!name || !name.trim()) return;
+    const books = kataLocalGetBooks();
+    books.push({id: 'k'+Date.now(), name: name.trim(), createdAt: new Date().toISOString()});
+    kataLocalSaveBooks(books);
+    kataLocalRenderList();
+  });
 }
 
 function kataLocalOpen(id, name){
@@ -4016,6 +4079,42 @@ function firebaseSyncSet(key, valueStr){
 }
 window.firebaseSyncSet = firebaseSyncSet;
 
+// ---------- کھاتوں کی فہرست کا خاص، محفوظ طریقہ (2026-08-16 بگ فکس) ----------
+// اصل مسئلہ: اگر دو ڈیوائسز ایک دوسرے سے ابھی تک نہ ملی ہوں اور دونوں پر
+// الگ الگ نیا کھاتہ بنایا جائے، تو عام firebaseSyncSet سیدھا پوری فہرست
+// (books array) کو overwrite کر دیتا تھا — یعنی جو ڈیوائس آخر میں محفوظ
+// کرے وہ دوسری ڈیوائس کا کھاتہ کلاؤڈ سے (اور اگلی بار پل ہونے پر خود اس
+// ڈیوائس سے بھی) مکمل غائب کر دیتی تھی۔ اب کھاتوں کی فہرست ہمیشہ پہلے
+// کلاؤڈ سے تازہ ترین لسٹ منگوا کر، اپنے اور کلاؤڈ دونوں کے کھاتے (id کے
+// مطابق) ملا (merge) کر، تب محفوظ ہوتی ہے — کوئی کھاتہ کبھی غائب نہیں
+// ہوتا، دونوں طرف کے نئے کھاتے ہمیشہ محفوظ رہتے ہیں۔
+async function firebaseSyncMergeBooksSet(key, localArr, onMerged){
+  localStorage.setItem(key, JSON.stringify(localArr)); // فوری مقامی نظر آنا — انتظار کی ضرورت نہیں
+  if(!window.db) return;
+  try{
+    const doc = await window.db.collection('localSync').doc(key).get();
+    let cloudArr = [];
+    if(doc.exists){
+      const data = doc.data();
+      if(data && typeof data.value === 'string'){
+        try{ cloudArr = JSON.parse(data.value) || []; }catch(e){ cloudArr = []; }
+      }
+    }
+    const byId = {};
+    cloudArr.forEach(b=>{ if(b && b.id) byId[b.id] = b; });
+    localArr.forEach(b=>{ if(b && b.id) byId[b.id] = b; }); // تنازعے کی صورت میں یہی ڈیوائس کا ورژن رکھا جاتا ہے، باقی سب شامل رہتے ہیں
+    const merged = Object.values(byId);
+    const json = JSON.stringify(merged);
+    localStorage.setItem(key, json);
+    await window.db.collection('localSync').doc(key).set({
+      value: json,
+      updatedAt: (typeof firebase !== 'undefined' && firebase.firestore) ? firebase.firestore.FieldValue.serverTimestamp() : Date.now()
+    });
+    if(merged.length !== localArr.length && typeof onMerged === 'function') onMerged(); // دوسری ڈیوائس کا کوئی کھاتہ بھی ملا تو فہرست فوراً دوبارہ دکھا دیں
+  } catch(err){ console.warn('cloud sync merge-save failed for', key, err); }
+}
+window.firebaseSyncMergeBooksSet = firebaseSyncMergeBooksSet;
+
 async function firebaseSyncPullAll(){
   if(!window.db) return;
   try{
@@ -4090,6 +4189,21 @@ async function firebaseSyncInit(){
   if(typeof window.restoreSiteData === 'function') window.restoreSiteData(); // ریٹ لسٹ + Best Excel official بھی اسی طرح کلاؤڈ سے تازہ ہوں
   firebaseSyncRefreshVisibleViews();
   firebaseSyncListenLive();
+  // ---------- یک بارگی مصالحت (2026-08-16) ----------
+  // جو کھاتے پہلے (اس فکس سے پہلے) الگ الگ ڈیوائسز پر بن کر ایک دوسرے کی
+  // جگہ overwrite کر چکے تھے، انہیں یہاں دوبارہ ملا دیا جاتا ہے — اس ڈیوائس
+  // کے موجودہ مقامی کھاتے کلاؤڈ کے ساتھ merge ہو کر واپس محفوظ ہوں گے، کوئی
+  // کھاتہ (کسی بھی طرف کا) ضائع نہیں ہو گا۔ نئے merge-aware طریقے کی بدولت
+  // آئندہ یہ مسئلہ خودکار ختم رہے گا، یہ صرف پرانی حالت ٹھیک کرنے کے لیے ہے۔
+  setTimeout(()=>{
+    try{
+      if(window.firebaseSyncMergeBooksSet){
+        window.firebaseSyncMergeBooksSet('kataLocalBooks', JSON.parse(localStorage.getItem('kataLocalBooks')||'[]'), ()=>{ if(typeof kataLocalRenderList==='function' && document.getElementById('kataListView').style.display !== 'none') kataLocalRenderList(); });
+        window.firebaseSyncMergeBooksSet('kataLocalBooks_ribnawaz', JSON.parse(localStorage.getItem('kataLocalBooks_ribnawaz')||'[]'), ()=>{ if(typeof kataLocalRenderList==='function' && document.getElementById('kataListView').style.display !== 'none') kataLocalRenderList(); });
+        window.firebaseSyncMergeBooksSet('msLocalBooks', JSON.parse(localStorage.getItem('msLocalBooks')||'[]'), ()=>{ if(typeof msRenderList==='function' && document.getElementById('msListView').style.display !== 'none') msRenderList(); });
+      }
+    } catch(err){ console.warn('one-time books reconcile failed', err); }
+  }, 1500); // firestore rules/connection کو مکمل تیار ہونے کا تھوڑا وقت دیتے ہیں
 }
 firebaseSyncInit();
 </script>
