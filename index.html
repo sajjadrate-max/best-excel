@@ -2260,11 +2260,11 @@ function msRenderNewEntryForm(prevTotal, prevItemData){
       <td data-color-key="${item.key}-n" class="kata-t-cell"><input type="text" inputmode="decimal" class="cell-input" data-ms-field="n" data-ms-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
       <td data-color-key="${item.key}-sabkactn" data-ms-sabkactn="${item.key}">${prev.ctn}</td>
       <td data-color-key="${item.key}-totalctn" data-ms-totalctn="${item.key}">${prev.ctn}</td>
-      <td data-color-key="${item.key}-profitrate"><input type="text" inputmode="decimal" class="cell-input" data-ms-field="profitRate" data-ms-item="${item.key}" style="border:1px solid var(--line);" value="${msCtnProfits[item.key]}"></td>
+      <td data-color-key="${item.key}-profitrate"><input type="text" inputmode="decimal" class="cell-input" data-ms-field="profitRate" data-ms-item="${item.key}" style="border:1px solid var(--line);" value="${msCtnProfits[item.key]}" disabled></td>
       <td data-color-key="${item.key}-profittoday" data-ms-profittoday="${item.key}">0</td>
       <td data-color-key="${item.key}-sabkaprofit" data-ms-sabkaprofit="${item.key}">${prev.profit}</td>
       <td data-color-key="${item.key}-totalprofit" data-ms-totalprofititem="${item.key}">${prev.profit}</td>
-      <td data-color-key="${item.key}-pricerate"><input type="text" inputmode="decimal" class="cell-input" data-ms-field="priceRate" data-ms-item="${item.key}" style="border:1px solid var(--line);" value="${msPrices[item.key]}"></td>
+      <td data-color-key="${item.key}-pricerate"><input type="text" inputmode="decimal" class="cell-input" data-ms-field="priceRate" data-ms-item="${item.key}" style="border:1px solid var(--line);" value="${msPrices[item.key]}" disabled></td>
       <td data-color-key="${item.key}-pricetoday" data-ms-pricetoday="${item.key}">0</td>
       <td data-color-key="${item.key}-sabkaprice" data-ms-sabkaprice="${item.key}">${prev.price}</td>
       <td data-color-key="${item.key}-totalprice" data-ms-totalprice="${item.key}">${prev.price}</td>
@@ -2275,7 +2275,7 @@ function msRenderNewEntryForm(prevTotal, prevItemData){
       <h2 style="border:none;text-align:center;">+ نئی انٹری</h2>
       <div class="edit-table wide-table">
         <table dir="ltr">
-          <thead><tr><th>Items</th><th>Today CTN</th><th>Sabka CTN</th><th>Total CTN</th><th>Profit</th><th>Today Profit</th><th>Sabka Profit</th><th>Total Profit</th><th>Price</th><th>Today Price</th><th>Sabka Price</th><th>Total Price</th></tr></thead>
+          <thead><tr><th>Items</th><th>Today CTN</th><th>Sabka CTN</th><th>Total CTN</th><th><button type="button" class="row-lock-btn is-locked" data-ms-lockbtn="profitRate">🔒</button>Profit</th><th>Today Profit</th><th>Sabka Profit</th><th>Total Profit</th><th><button type="button" class="row-lock-btn is-locked" data-ms-lockbtn="priceRate">🔒</button>Price</th><th>Today Price</th><th>Sabka Price</th><th>Total Price</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -2312,6 +2312,27 @@ function msWireLiveFormulas(prevTotal, prevItemData){
   document.querySelectorAll('#msDetailContainer .cell-input').forEach(msAutoSizeInput);
   document.querySelectorAll('#msDetailContainer .cell-input').forEach(inp=>{
     inp.addEventListener('input', ()=> msAutoSizeInput(inp));
+  });
+
+  // Profit/Price ریٹ کے خانے ہمیشہ لاک (بند) رہتے ہیں تاکہ غلطی سے رقم نہ
+  // بدل جائے۔ 🔒 دبا کر کھولیں، نیا ریٹ لکھیں — لکھنا ختم کر کے خانے سے
+  // باہر جاتے ہی (blur) خودکار دوبارہ لاک ہو جائے گا، الگ سے بند کرنے کی
+  // ضرورت نہیں۔
+  ['profitRate','priceRate'].forEach(field=>{
+    const btn = document.querySelector(`[data-ms-lockbtn="${field}"]`);
+    const inputs = document.querySelectorAll(`#msDetailContainer [data-ms-field="${field}"]`);
+    function setLocked(locked){
+      inputs.forEach(inp=> inp.disabled = locked);
+      if(btn){
+        btn.className = 'row-lock-btn ' + (locked ? 'is-locked' : 'is-unlocked');
+        btn.textContent = locked ? '🔒' : '🔓';
+        btn.title = locked ? 'یہ ریٹ ترمیم کے لیے کھولیں' : 'ترمیم کے بعد خودکار دوبارہ لاک ہو جائے گا';
+      }
+    }
+    if(btn) btn.addEventListener('click', ()=> setLocked(btn.classList.contains('is-locked') ? false : true));
+    inputs.forEach(inp=> inp.addEventListener('change', ()=>{
+      if(!inp.disabled) setLocked(true); // ترمیم مکمل (blur) — خودکار دوبارہ لاک
+    }));
   });
 
   function recalc(){
@@ -3792,6 +3813,21 @@ function kataWireLiveFormulas(prevTotal){
       kataColLocked[field] = !kataColLocked[field];
       applyKataColLock(field);
     });
+    // حوالہ جاتی خانے (نام/وزن/ریٹ/منافع/فرق) جو ڈیفالٹ میں لاک ہوتے ہیں —
+    // انہیں کھول کر ترمیم کرنے کے بعد خانے سے باہر جاتے ہی (blur) خودکار
+    // دوبارہ لاک ہو جاتے ہیں، الگ سے بند کرنے کی ضرورت نہیں۔ روزانہ کی
+    // معمول کی انٹری کے خانے (t, salesman) اس میں شامل نہیں — وہ ہمیشہ کی
+    // طرح دستی طریقے سے ہی لاک/ان لاک ہوتے ہیں۔
+    if(['name','weight','rate','prift','d'].includes(field)){
+      document.querySelectorAll(`[data-kata-field="${field}"]`).forEach(input=>{
+        input.addEventListener('change', ()=>{
+          if(!input.disabled && kataColLocked[field] === false){
+            kataColLocked[field] = true;
+            applyKataColLock(field);
+          }
+        });
+      });
+    }
   });
 
   SALE_MAHANA_ITEMS.forEach(item=>{
