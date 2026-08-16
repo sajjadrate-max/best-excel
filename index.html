@@ -1971,8 +1971,36 @@ const MS_ITEMS = [
 // session-wide like KATA_ITEMS.rate) that multiplies with Today CTN to give
 // Today Profit/Today Price — which then carry forward via Sabka/Total,
 // same simple-addition pattern as CTN itself.
+// Profit and Price each have their own rate input (per-unit) that
+// multiplies with Today CTN to give Today Profit/Today Price — which then
+// carry forward via Sabka/Total, same simple-addition pattern as CTN
+// itself. These rates persist across sessions/devices (localStorage +
+// cloud sync, like everything else) — 2026-08-16: previously they were
+// only in-memory (reset to 0 on every page reload), so "+ نئی انٹری" on a
+// fresh visit always showed 0 even though the user had typed real rates
+// last time.
 let msCtnProfits = {rs10:0, rs50:0, rs100:0, rs150:0, rs400:0, rs1000:0, rs20kg:0, sada20kg:0};
 let msPrices = {rs10:0, rs50:0, rs100:0, rs150:0, rs400:0, rs1000:0, rs20kg:0, sada20kg:0};
+const MS_RATES_KEY = 'msRates';
+(function msLoadRates(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(MS_RATES_KEY));
+    if(saved && saved.profits) Object.assign(msCtnProfits, saved.profits);
+    if(saved && saved.prices) Object.assign(msPrices, saved.prices);
+  } catch(e){}
+})();
+function msSaveRates(){
+  const json = JSON.stringify({profits: msCtnProfits, prices: msPrices});
+  (window.firebaseSyncSet || ((k,v)=>localStorage.setItem(k,v)))(MS_RATES_KEY, json);
+}
+function msReloadRatesFromStorage(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(MS_RATES_KEY));
+    if(saved && saved.profits) Object.assign(msCtnProfits, saved.profits);
+    if(saved && saved.prices) Object.assign(msPrices, saved.prices);
+  } catch(e){}
+}
+window.msReloadRatesFromStorage = msReloadRatesFromStorage;
 let msOpenId = null, msOpenName = '', msOpenEntries = [];
 let msOpenCarryForward = null; // set from the opened book's .carryForward when it has no entries yet (after an automatic monthly rollover)
 let msOpenClosed = false; // true once this book has been auto-closed by a monthly rollover — view only, no new entries
@@ -2371,6 +2399,7 @@ function msSaveEntry(prevTotal, prevItemData){
   });
   todayN = Math.round(todayN * 100) / 100;
   todayProfit = Math.round(todayProfit * 100) / 100;
+  msSaveRates(); // Profit/Price ریٹس اگلی انٹری کے لیے بھی یاد رہیں — ری لوڈ یا نئی ڈیوائس پر بھی
 
   // اس انٹری کے فارم میں جو خانے رنگے گئے تھے (🎨 موڈ سے)، وہ رنگ اب اسی
   // انٹری کے ساتھ ہمیشہ کے لیے محفوظ ہو جاتے ہیں۔
@@ -4256,6 +4285,7 @@ async function firebaseSyncInit(){
   await firebaseSyncPullAll();
   if(typeof window.initKataModuleLocal === 'function') window.initKataModuleLocal();
   if(typeof window.restoreSiteData === 'function') window.restoreSiteData(); // ریٹ لسٹ + Best Excel official بھی اسی طرح کلاؤڈ سے تازہ ہوں
+  if(typeof window.msReloadRatesFromStorage === 'function') window.msReloadRatesFromStorage(); // سرف کا ماہانہ حساب کے Price/Profit ریٹس بھی کلاؤڈ سے تازہ
   firebaseSyncRefreshVisibleViews();
   firebaseSyncListenLive();
   // ---------- یک بارگی مصالحت (2026-08-16) ----------
