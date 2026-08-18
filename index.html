@@ -2083,6 +2083,12 @@ const MS_ITEMS = [
   {key:'rs20kg', name:'Best Excel Special'},
   {key:'sada20kg', name:'Best Excel sada'},
 ];
+// موجودہ اسٹاک کی قیمت اب ریٹ لسٹ کے "ایجنسی ریٹ لسٹ B" کارڈ کے ریٹ کے
+// مطابق نکالی جاتی ہے (پہلے ms module کے اپنے "Price rate" خانے سے آتی
+// تھی) — یہی نقشہ (mapping) کھاتہ کے syncKataItemsFromRateList میں بھی
+// استعمال ہوتا ہے، بس کلید کے نام تھوڑے مختلف ہیں (rs20kg→kabotar،
+// sada20kg→sada)۔
+const MS_TO_RATELIST_KEY = {rs10:'rs10', rs50:'rs50', rs100:'rs100', rs150:'rs150', rs400:'rs400', rs1000:'rs1000', rs20kg:'kabotar', sada20kg:'sada'};
 // Profit and Price each have their own rate input (per-unit, remembered
 // session-wide like KATA_ITEMS.rate) that multiplies with Today CTN to give
 // Today Profit/Today Price — which then carry forward via Sabka/Total,
@@ -2212,26 +2218,29 @@ function msComputeStock(){
   const sold = soldSalesman.map((v,i)=> Math.round((v + soldRibnawaz[i] + soldAgency[i]) * 100) / 100);
 
   const produced = [0,0,0,0,0,0,0,0];
-  const priceRate = [0,0,0,0,0,0,0,0];
   msLocalGetBooks().forEach(book=>{
     const entries = msLocalGetEntries(book.id);
     if(!entries.length) return;
     const last = entries[entries.length-1];
     MS_ITEMS.forEach((item, idx)=>{
       const v = last.items && last.items[item.key];
-      if(v){
-        produced[idx] += Number(v.totalCtn) || 0;
-        if(v.priceRate) priceRate[idx] = Number(v.priceRate) || 0; // latest known rate for that item
-      }
+      if(v) produced[idx] += Number(v.totalCtn) || 0;
     });
   });
 
   let totalRemaining = 0, totalPrice = 0;
   const items = MS_ITEMS.map((item, idx)=>{
     const remaining = Math.round((produced[idx] - sold[idx]) * 100) / 100;
+    // ریٹ لسٹ B کارڈ کا موجودہ ایجنسی ریٹ — یہی وہ قیمت ہے جس پر یہ مال
+    // اصل میں خریدا/فروخت ہوتا ہے، اس لیے بچے ہوئے مال کی مالیت اسی کے
+    // مطابق نکالی جاتی ہے۔
+    const rlKey = MS_TO_RATELIST_KEY[item.key];
+    const pack = (typeof packs !== 'undefined' && Array.isArray(packs)) ? packs.find(p=>p.key===rlKey) : null;
+    const rate = pack ? (Number(pack.agencyB) || 0) : 0;
+    const value = Math.round(remaining * rate * 100) / 100;
     totalRemaining += remaining;
-    totalPrice += remaining * priceRate[idx];
-    return {name: item.name, remaining};
+    totalPrice += value;
+    return {name: item.name, remaining, value};
   });
   totalRemaining = Math.round(totalRemaining * 100) / 100;
   totalPrice = Math.round(totalPrice * 100) / 100;
@@ -2242,20 +2251,20 @@ function msRenderStockCard(){
   const stock = msComputeStock();
   let rows = '';
   stock.items.forEach(it=>{
-    rows += `<tr><td style="text-align:left;padding-left:6px;">${kataEscape(it.name)}</td><td>${it.remaining}</td></tr>`;
+    rows += `<tr><td style="text-align:left;padding-left:6px;">${kataEscape(it.name)}</td><td>${it.remaining}</td><td>${it.value}</td></tr>`;
   });
   return `
     <div class="card">
       <h2 style="border:none;text-align:center;">📦 موجودہ اسٹاک</h2>
       <div class="edit-table wide-table">
         <table dir="ltr">
-          <thead><tr><th>Items</th><th>Remaining CTN</th></tr></thead>
+          <thead><tr><th>Items</th><th>Remaining CTN</th><th>Value (B ریٹ)</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
       <div class="totals" style="grid-template-columns:1fr 1fr;">
         <div><div class="n">${stock.totalRemaining}</div><div class="l">Total CTN</div></div>
-        <div><div class="n">${stock.totalPrice}</div><div class="l">Total Price</div></div>
+        <div><div class="n">${stock.totalPrice}</div><div class="l">Total Value</div></div>
       </div>
     </div>`;
 }
