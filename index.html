@@ -1185,7 +1185,14 @@ async function saveSiteDataNow(){
       }
       if(cloudSnapshot){
         const merged = mergeByBaseline(localSnapshot, cloudSnapshot, siteDataBaseline);
-        applySiteDataSnapshot(merged);
+        // اگر صارف ابھی اسی حصے میں کچھ ٹائپ کر رہا ہے تو ٹیبل کو دوبارہ نہ
+        // بنائیں — ورنہ ہر تھوڑی دیر بعد (سنک کی وجہ سے) خانے سے فوکس ہٹ
+        // جاتا اور نمبر ادھورا/کٹا ہوا نظر آتا تھا (اسی وجہ سے یہ بگ ہوا
+        // تھا)۔ ڈیٹا پھر بھی درست محفوظ ہو جاتا ہے، بس صفحہ فوراً دوبارہ
+        // نہیں بنتا — اگلی بار (ٹائپنگ رکنے پر) خودکار تازہ ہو جائے گا۔
+        const active = document.activeElement;
+        const typingHere = active && active.closest && active.closest('#tierListsContainer, #combinedTableContainer, #ledgerContainer');
+        if(!typingHere) applySiteDataSnapshot(merged);
         siteDataBaseline = JSON.parse(JSON.stringify(merged));
         const json = JSON.stringify(merged);
         localStorage.setItem(SITE_DATA_KEY, json);
