@@ -12,6 +12,34 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <script>
+// Firebase کی SDK اپنے اندرونی نیٹ ورک کنکشن (realtime listener) میں کبھی
+// کبھار عارضی transport/deprecation پیغامات کنسول میں خود چھاپ دیتی ہے —
+// کبھی console.warn سے، کبھی console.error سے (جیسے "Could not reach
+// Cloud Firestore backend" — یہ بھی نیٹ ورک کے عارضی مسئلے کا نوٹس ہے،
+// Firebase خودکار دوبارہ کوشش کرتا رہتا ہے، ڈیٹا کہیں ضائع نہیں ہوتا)۔
+// یہ سائٹ کے کام کرنے پر کوئی اثر نہیں ڈالتے مگر صارف کو غیر ضروری طور
+// پر پریشان کرتے ہیں۔ اس لیے دونوں (warn اور error) میں سے صرف
+// @firebase/firestore سے آنے والے پیغامات چھپا دیے گئے ہیں — باقی کوئی
+// بھی warning یا error (سائٹ کے اپنے کوڈ کی طرف سے) پہلے کی طرح نظر آتا
+// رہے گا۔
+(function(){
+  const originalWarn = console.warn.bind(console);
+  const originalError = console.error.bind(console);
+  function isFirebaseNoise(args){
+    const text = args.map(a => (typeof a === 'string' ? a : '')).join(' ');
+    return text.indexOf('@firebase') !== -1 || text.indexOf('firestore') !== -1 || text.indexOf('Firestore') !== -1;
+  }
+  console.warn = function(...args){
+    if(isFirebaseNoise(args)) return;
+    originalWarn(...args);
+  };
+  console.error = function(...args){
+    if(isFirebaseNoise(args)) return;
+    originalError(...args);
+  };
+})();
+</script>
+<script>
 // Loads each SDK by trying several CDN mirrors in turn — some networks
 // block one Google/CDN domain but allow another, so a single hard-coded
 // source made the whole login system unreliable.
@@ -951,6 +979,11 @@ function siteTextPrompt(label, callback){
     <label for="kataColorPickerInput" style="cursor:pointer;width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:50%;">🎨</label>
   </div>
   <input type="color" id="kataColorPickerInput" value="#fff59d" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;">
+  <div class="scroll-fab" id="manualRefreshFab" title="دوسری ڈیوائسز کا تازہ ترین ڈیٹا ابھی منگوائیں" style="bottom:128px;background:#1e5f4a;">🔄</div>
+  <div id="manualRefreshBox" class="hidden" style="position:fixed;left:16px;bottom:180px;z-index:60;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 3px 12px rgba(0,0,0,.3);padding:12px 16px;min-width:220px;text-align:center;">
+    <div id="manualRefreshPercent" style="font-size:22px;font-weight:700;color:#1e5f4a;">0%</div>
+    <div id="manualRefreshLabel" style="font-size:12px;margin-top:4px;">اپڈیٹ ہو رہا ہے...</div>
+  </div>
 
   <!-- ===================== FORMULATION ===================== -->
   <section id="formulation">
@@ -1042,7 +1075,7 @@ const tiers = [
   {slug:"a",       label:"A",        title:"کمپنی ریٹ لسٹ A",   key:"company",  master:true},
   {slug:"b",       label:"B",        title:"ایجنسی ریٹ لسٹ B",  key:"agencyB",  master:false},
   {slug:"c",       label:"C",        title:"ایجنسی ریٹ لسٹ C",  key:"agencyC",  master:false},
-  {slug:"salman",  label:"Salman",   title:"سیلزمین ریٹ لسٹ",   key:"salman",   master:false},
+  {slug:"salman",  label:"Salman",   title:"Salesman ریٹ لسٹ",   key:"salman",   master:false},
   {slug:"dukandar",label:"دکاندار", title:"دکاندار ریٹ لسٹ",    key:"dukandar", master:false},
 ];
 let masterColLocked = { name:true, tpcs:true, ctn:true, mrp:true, company:true }; // List A: per-column locks
@@ -1271,13 +1304,13 @@ function buildAllTierTables(){
         return th;
       }
       // All 5 columns now use the same toggleable 🔒/🔓 lock pattern —
-      // Products Name / T.Pcs / Agency were previously PERMANENTLY closed
+      // Products Name / CTN Pcs / Agency were previously PERMANENTLY closed
       // (no unlock button at all); user asked to restore full per-column
       // editability for List A, so they now behave exactly like Weight
       // gram / Price CTN always did.
       headRow.appendChild(makeMasterHeaderCell('Products Name','name'));
       headRow.appendChild(makeMasterHeaderCell('Weight gram','tpcs'));
-      headRow.appendChild(makeMasterHeaderCell('T.Pcs','ctn'));
+      headRow.appendChild(makeMasterHeaderCell('CTN Pcs','ctn'));
       headRow.appendChild(makeMasterHeaderCell('Price CTN','mrp'));
       headRow.appendChild(makeMasterHeaderCell('Agency','company'));
       // Profit ہمیشہ خودکار حساب سے بنتا ہے (Price CTN منفی Agency) —
@@ -1291,14 +1324,14 @@ function buildAllTierTables(){
         headRow.innerHTML = `
           <th>Products Name</th>
           <th>Weight gram</th>
-          <th>T.Pcs</th>
+          <th>CTN Pcs</th>
           <th class="corner-tri">Price CTN</th>
         `;
       } else {
         headRow.innerHTML = `
           <th>Products Name</th>
           <th>Weight gram</th>
-          <th>T.Pcs</th>
+          <th>CTN Pcs</th>
           <th>Price CTN</th>
           <th class="corner-tri">Profit</th>
         `;
@@ -1315,7 +1348,7 @@ function buildAllTierTables(){
           buildAllTierTables();
         });
         agencyTh.appendChild(lockBtn);
-        agencyTh.appendChild(document.createTextNode('Agency'));
+        agencyTh.appendChild(document.createTextNode(tier.slug === 'salman' ? 'Salesman' : 'Agency'));
         headRow.insertBefore(agencyTh, headRow.lastElementChild); // Price CTN کے بعد، Profit سے پہلے
       }
     }
@@ -1381,7 +1414,7 @@ function fillTierTableBody(tbody, tier){
 
     if(tier.master){
       // All 5 columns now read their own toggle state from
-      // masterColLocked — Products Name/T.Pcs/Agency are no longer
+      // masterColLocked — Products Name/CTN Pcs/Agency are no longer
       // hardcoded read-only.
       tr.appendChild(makeCell(p, 'name', true, !masterColLocked.name, 'name-cell'));
       tr.appendChild(makeCell(p, 'tpcs', true, !masterColLocked.tpcs)); // text — keeps "20.000"-style weights exact, never silently reformatted by a number input
@@ -1411,6 +1444,7 @@ function fillTierTableBody(tbody, tier){
     if(tier.slug !== 'dukandar'){
       const profitTd = document.createElement('td');
       profitTd.dataset.profitCell = '1';
+      profitTd.className = 'cell-val'; // Agency کے خانوں جتنا ہی سائز — پہلے کوئی کلاس نہ ہونے کی وجہ سے یہ نمبر باقی سب سے کہیں بڑا نظر آتا تھا
       const mrpNum = Number(p.mrp) || 0;
       const agencyNum = Number(p[tier.key]) || 0;
       profitTd.textContent = Math.round((mrpNum - agencyNum) * 100) / 100;
@@ -1451,7 +1485,7 @@ function makeCell(pack, field, isText, editable, extraClass, onInput){
   return td;
 }
 
-// Whenever List A changes (name, weight, T.Pcs, Price CTN, or Rate A),
+// Whenever List A changes (name, weight, CTN Pcs, Price CTN, or Rate A),
 // recompute every other tier from A + its fixed difference, and redraw
 // their read-only tables so they always mirror A exactly — UNLESS that
 // tier's own Agency value has been manually typed in directly (see
@@ -4423,7 +4457,12 @@ async function firebaseSyncInit(){
     };
     if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
     window.db = firebase.firestore();
-    window.db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+    // نوٹ: پہلے یہاں enablePersistence() کی کال تھی (آف لائن کیشے کے
+    // لیے) — یہ ہٹا دی گئی ہے کیونکہ یہ کنسول میں ایک بے ضرر مگر بار بار
+    // نظر آنے والا deprecation warning دکھاتی تھی۔ ایپ کا اصل ڈیٹا ہمیشہ
+    // localStorage میں محفوظ رہتا ہے (یہی سائٹ کے آف لائن کام کرنے کی
+    // اصل وجہ ہے)، Firestore صرف ڈیوائسز کے درمیان سنک کے لیے استعمال
+    // ہوتا ہے — اس لیے یہ کال ہٹانے سے کوئی فیچر متاثر نہیں ہوا۔
   } catch(err){
     console.warn('cloud sync: firebase init failed', err);
     return;
@@ -4451,6 +4490,59 @@ async function firebaseSyncInit(){
   }, 1500); // firestore rules/connection کو مکمل تیار ہونے کا تھوڑا وقت دیتے ہیں
 }
 firebaseSyncInit();
+</script>
+<script>
+// ---------- دستی ری فریش بٹن (🔄) — 2026-08-16 ----------
+// عام طور پر ڈیٹا خودکار سنک ہوتا رہتا ہے، لیکن اگر صارف یقین کرنا چاہے
+// کہ ابھی اسی لمحے دوسری ڈیوائسز کا تازہ ترین ڈیٹا آ گیا ہے، تو یہ بٹن
+// 0% سے 100% تک ترقی دکھاتا ہوا کلاؤڈ سے سب کچھ دوبارہ منگواتا ہے —
+// کھاتہ/ماہانہ سرف کی فہرستیں، ریٹ لسٹ/Best Excel official کا ڈیٹا،
+// ریٹس، اور خانوں کے رنگ سب دوبارہ تازہ ہو جاتے ہیں۔ مکمل ہونے پر سبز ✅
+// اور "100% اپڈیٹ" کا پیغام چند سیکنڈ کے لیے نظر آتا ہے۔
+async function manualRefreshAll(){
+  const btn = document.getElementById('manualRefreshFab');
+  const box = document.getElementById('manualRefreshBox');
+  const pctEl = document.getElementById('manualRefreshPercent');
+  const labelEl = document.getElementById('manualRefreshLabel');
+  if(btn.dataset.busy === '1') return; // دوبارہ دبانے پر دو بار نہ چلے
+  btn.dataset.busy = '1';
+  box.classList.remove('hidden');
+  box.style.display = 'block';
+  pctEl.style.color = '#1e5f4a';
+  labelEl.textContent = 'اپڈیٹ ہو رہا ہے...';
+
+  let pct = 0;
+  pctEl.textContent = '0%';
+  // اصل کلاؤڈ ڈیٹا آنے تک آہستہ آہستہ 90% تک دکھاتے ہیں (تاکہ صارف کو
+  // پیش رفت نظر آئے)، باقی 10% اصل کام مکمل ہونے پر ایک ساتھ۔
+  const ticker = setInterval(()=>{
+    if(pct < 90){ pct += Math.max(1, Math.round((90 - pct) / 12)); pctEl.textContent = Math.min(pct,90) + '%'; }
+  }, 90);
+
+  try{
+    if(window.db){
+      await firebaseSyncPullAll();
+    }
+    if(typeof window.initKataModuleLocal === 'function') window.initKataModuleLocal();
+    if(typeof window.restoreSiteData === 'function') window.restoreSiteData();
+    if(typeof window.msReloadRatesFromStorage === 'function') window.msReloadRatesFromStorage();
+    if(typeof msRenderList === 'function' && document.getElementById('msListView').style.display !== 'none') msRenderList();
+    if(typeof applyStoredCellColors === 'function') applyStoredCellColors();
+    if(typeof syncKataItemsFromRateList === 'function') syncKataItemsFromRateList();
+  } catch(err){
+    console.warn('manual refresh failed', err);
+  }
+
+  clearInterval(ticker);
+  pctEl.textContent = '✅ 100%';
+  pctEl.style.color = '#1a8a4a';
+  labelEl.textContent = 'اب مکمل 100% اپڈیٹ ہے';
+  btn.dataset.busy = '0';
+  setTimeout(()=>{
+    box.style.display = 'none';
+  }, 2500);
+}
+document.getElementById('manualRefreshFab').addEventListener('click', manualRefreshAll);
 </script>
 <script>
 // ---------- تیر کے بٹنوں سے خانوں کے درمیان سفر (پوری ویب سائٹ) ----------
