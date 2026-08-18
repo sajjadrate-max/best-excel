@@ -4417,7 +4417,8 @@ function firebaseSyncRefreshVisibleViews(){
 
 function firebaseSyncListenLive(){
   if(!window.db) return;
-  window.db.collection('localSync').onSnapshot(snap=>{
+  if(window._kataListenUnsub){ try{ window._kataListenUnsub(); }catch(e){} }
+  window._kataListenUnsub = window.db.collection('localSync').onSnapshot(snap=>{
     let changedAny = false;
     let siteDataChanged = false;
     snap.docChanges().forEach(change=>{
@@ -4438,8 +4439,27 @@ function firebaseSyncListenLive(){
       const typingHere = active && active.closest && active.closest('#tierListsContainer, #combinedTableContainer, #ledgerContainer');
       if(!typingHere) window.restoreSiteData();
     }
-  }, err=> console.warn('cloud sync listener error', err));
+  }, err=>{
+    // کبھی کبھار (خاص طور پر کمپیوٹر پر لمبے عرصے تک کھلا ٹیب) یہ realtime
+    // کنکشن نیٹ ورک کی معمولی رکاوٹ سے خاموشی سے مر جاتا تھا اور خودکار
+    // دوبارہ کبھی نہیں جڑتا تھا — یہی وہ اصل وجہ تھی کہ "موبائل پر فوراً
+    // اپڈیٹ ہوتا ہے، کمپیوٹر پر نہیں" کی شکایت باقی رہتی تھی۔ اب یہاں غلطی
+    // آنے پر خود ہی چند سیکنڈ بعد نیا کنکشن دوبارہ بنا لیا جاتا ہے — ہمیشہ
+    // کے لیے، صارف کو کچھ کرنے کی ضرورت نہیں۔
+    console.warn('cloud sync listener error — reconnecting', err);
+    setTimeout(firebaseSyncListenLive, 4000);
+  });
 }
+
+// جب یہ ٹیب لمبے عرصے بعد دوبارہ دیکھا جائے (منیمائز سے واپس، یا کسی اور
+// ٹیب سے واپس اسی پر آنے پر) تو فوراً ایک بار خاموشی سے سب کچھ تازہ منگوا
+// لیا جاتا ہے — تاکہ اگر پس منظر میں realtime کنکشن کہیں رکا ہوا ہو تو
+// بھی صارف کو واپس آتے ہی صحیح ڈیٹا نظر آئے۔
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && window.db && typeof window.silentRefreshAll === 'function'){
+    window.silentRefreshAll().catch(err=> console.warn('visibility refresh failed', err));
+  }
+});
 
 async function firebaseSyncInit(){
   try{
@@ -4503,6 +4523,22 @@ firebaseSyncInit();
 // کھاتہ/ماہانہ سرف کی فہرستیں، ریٹ لسٹ/Best Excel official کا ڈیٹا،
 // ریٹس، اور خانوں کے رنگ سب دوبارہ تازہ ہو جاتے ہیں۔ مکمل ہونے پر سبز ✅
 // اور "100% اپڈیٹ" کا پیغام چند سیکنڈ کے لیے نظر آتا ہے۔
+// یہ اصل "سب کچھ دوبارہ منگوانے" کا کام ہے — 🔄 بٹن اور خودکار بحالی
+// (نیچے) دونوں اسی ایک فنکشن کو استعمال کرتے ہیں، تاکہ ہر جگہ ایک جیسا
+// اور مکمل تازہ ڈیٹا ملے۔
+async function silentRefreshAll(){
+  if(window.db){
+    await firebaseSyncPullAll();
+  }
+  if(typeof window.initKataModuleLocal === 'function') window.initKataModuleLocal();
+  if(typeof window.restoreSiteData === 'function') window.restoreSiteData();
+  if(typeof window.msReloadRatesFromStorage === 'function') window.msReloadRatesFromStorage();
+  if(typeof msRenderList === 'function' && document.getElementById('msListView').style.display !== 'none') msRenderList();
+  if(typeof applyStoredCellColors === 'function') applyStoredCellColors();
+  if(typeof syncKataItemsFromRateList === 'function') syncKataItemsFromRateList();
+}
+window.silentRefreshAll = silentRefreshAll;
+
 async function manualRefreshAll(){
   const btn = document.getElementById('manualRefreshFab');
   const box = document.getElementById('manualRefreshBox');
@@ -4524,15 +4560,7 @@ async function manualRefreshAll(){
   }, 90);
 
   try{
-    if(window.db){
-      await firebaseSyncPullAll();
-    }
-    if(typeof window.initKataModuleLocal === 'function') window.initKataModuleLocal();
-    if(typeof window.restoreSiteData === 'function') window.restoreSiteData();
-    if(typeof window.msReloadRatesFromStorage === 'function') window.msReloadRatesFromStorage();
-    if(typeof msRenderList === 'function' && document.getElementById('msListView').style.display !== 'none') msRenderList();
-    if(typeof applyStoredCellColors === 'function') applyStoredCellColors();
-    if(typeof syncKataItemsFromRateList === 'function') syncKataItemsFromRateList();
+    await silentRefreshAll();
   } catch(err){
     console.warn('manual refresh failed', err);
   }
