@@ -592,6 +592,18 @@ window.loadAuthSDKs = async function(){
     outline:none;
     box-sizing:border-box;
   }
+  /* کمپیوٹر پر type="number" کے خانوں کے ساتھ خودکار اوپر/نیچے تیر (spinner)
+     نظر آتے ہیں — یہ خانے کی تنگ چوڑائی میں جگہ لے کر نمبر کو کٹا ہوا
+     دکھاتے تھے (اصل قدر درست رہتی تھی، صرف نظر آنا متاثر ہوتا تھا)۔ سائٹ
+     کی ہر جگہ یہ تیر مستقل چھپا دیے گئے ہیں۔ */
+  .cell-input::-webkit-outer-spin-button,
+  .cell-input::-webkit-inner-spin-button{
+    -webkit-appearance:none;
+    margin:0;
+  }
+  .cell-input[type="number"]{
+    -moz-appearance:textfield;
+  }
   .edit-table .cell-input:focus{
     border-color:var(--brand-red);
     background:#fff;
@@ -4504,6 +4516,31 @@ async function firebaseSyncInit(){
   await firebaseSyncPullAll();
   if(typeof window.initKataModuleLocal === 'function') window.initKataModuleLocal();
   if(typeof window.restoreSiteData === 'function') window.restoreSiteData(); // ریٹ لسٹ + Best Excel official بھی اسی طرح کلاؤڈ سے تازہ ہوں
+  // ---------- ٹوٹے ہوئے دستی Agency نمبروں کی خودکار مرمت (2026-08-16) ----------
+  // آج ایک بگ کی وجہ سے B/C/Salesman کارڈز میں کمپیوٹر پر دستی طور پر
+  // لکھے گئے ریٹ کچھ دیر کے لیے کٹی ہوئی شکل میں محفوظ ہو گئے تھے (مثلاً
+  // 2220 کی جگہ صرف 21 محفوظ ہوا)۔ چونکہ صحیح اصل نمبر اب کہیں معلوم نہیں،
+  // سب سے محفوظ حل یہی ہے کہ ان تینوں کالمز کو ان کے قابلِ بھروسہ فارمولے
+  // (کمپنی ریٹ + مقررہ فرق) پر واپس لے جایا جائے — یہی وہ نمبر تھے جو
+  // دستی تبدیلی سے پہلے ہمیشہ صحیح رہے۔ یہ مرمت صرف ایک بار چلتی ہے۔
+  if(typeof packs !== 'undefined' && Array.isArray(packs) && !localStorage.getItem('agencyManualCorruptionFixed_v1')){
+    let anyManual = false;
+    packs.forEach(p=>{
+      if(p.agencyBManual || p.agencyCManual || p.salmanManual) anyManual = true;
+      p.agencyBManual = false;
+      p.agencyCManual = false;
+      p.salmanManual = false;
+      p.agencyB = p.company + p.diffB;
+      p.agencyC = p.company + p.diffC;
+      p.salman  = p.company + p.diffSalman;
+    });
+    localStorage.setItem('agencyManualCorruptionFixed_v1', '1');
+    if(anyManual){
+      if(typeof buildAllTierTables === 'function') buildAllTierTables();
+      if(typeof syncKataItemsFromRateList === 'function') syncKataItemsFromRateList();
+      if(typeof scheduleSiteDataSave === 'function') scheduleSiteDataSave(); // یہ درست حالت اب کلاؤڈ پر بھی محفوظ ہو جائے
+    }
+  }
   if(typeof window.msReloadRatesFromStorage === 'function') window.msReloadRatesFromStorage(); // سرف کا ماہانہ حساب کے Price/Profit ریٹس بھی کلاؤڈ سے تازہ
   firebaseSyncRefreshVisibleViews();
   firebaseSyncListenLive();
