@@ -3137,11 +3137,15 @@ function syncKataItemsFromRateList(){
     const p = packs.find(x=>x.key === rlKey);
     if(!p) return;
     const agencyB = Number(p.agencyB) || 0;
-    const company = Number(p.company) || 0;
+    const mrp = Number(p.mrp) || 0;
     item.name = p.name || item.name;
     item.weight = p.tpcs || item.weight;
     item.rate = agencyB; // Price — ریٹ لسٹ B کارڈ کا ایجنسی ریٹ
-    item.prift = Math.round((agencyB - company) * 100) / 100; // Profit — B ریٹ منفی Company ریٹ
+    // Profit — اب بالکل ریٹ لسٹ B کارڈ کے اپنے "Profit" کالم جتنا ہی
+    // (Price CTN منفی Agency)، پہلے کی "B منفی Company" فارمولے کی بجائے
+    // (2026-08-16 تبدیل کیا گیا، تصویر میں B کارڈ کے Profit کالم سے
+    // موازنہ کر کے)۔
+    item.prift = Math.round((mrp - agencyB) * 100) / 100;
   });
   if(typeof kataLocalRenderList === 'function' && document.getElementById('kataListView') && document.getElementById('kataListView').style.display !== 'none') kataLocalRenderList();
 }
