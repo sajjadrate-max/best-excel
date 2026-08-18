@@ -944,6 +944,7 @@ function siteTextPrompt(label, callback){
 <nav>
   <button data-tab="kata" data-kata-instance="salesman" class="active">سیلزمین کھاتے</button>
   <button data-tab="kata" data-kata-instance="ribnawaz">ربنواز سیلزمین</button>
+  <button data-tab="kata" data-kata-instance="agency">Agency</button>
   <button data-tab="rate">ریٹ لسٹ</button>
   <button data-tab="formulation">Best Excel official</button>
   <button data-tab="monthlysurf">سرف کا ماہانہ حساب</button>
@@ -984,6 +985,7 @@ function siteTextPrompt(label, callback){
     <div id="manualRefreshPercent" style="font-size:22px;font-weight:700;color:#1e5f4a;">0%</div>
     <div id="manualRefreshLabel" style="font-size:12px;margin-top:4px;">اپڈیٹ ہو رہا ہے...</div>
   </div>
+  <div class="scroll-fab" id="siteUndoFab" title="پچھلی تبدیلی واپس کریں (پوری ویب سائٹ)" style="bottom:182px;background:#7a4a1e;">↩</div>
 
   <!-- ===================== FORMULATION ===================== -->
   <section id="formulation">
@@ -2206,7 +2208,8 @@ function kataSumSoldByProduct(booksKey, entriesPrefix){
 function msComputeStock(){
   const soldSalesman = kataSumSoldByProduct('kataLocalBooks', 'kataLocalEntries_');
   const soldRibnawaz = kataSumSoldByProduct('kataLocalBooks_ribnawaz', 'kataLocalEntries_ribnawaz_');
-  const sold = soldSalesman.map((v,i)=> Math.round((v + soldRibnawaz[i]) * 100) / 100);
+  const soldAgency = kataSumSoldByProduct('kataLocalBooks_agency', 'kataLocalEntries_agency_');
+  const sold = soldSalesman.map((v,i)=> Math.round((v + soldRibnawaz[i] + soldAgency[i]) * 100) / 100);
 
   const produced = [0,0,0,0,0,0,0,0];
   const priceRate = [0,0,0,0,0,0,0,0];
@@ -3511,7 +3514,7 @@ function kataRenderDetail(name){
   if(kataOpenClosed){
     html += '<div class="card"><div class="note" style="text-align:center;">یہ کھاتہ بند ہو چکا ہے — نیا مہینہ شروع ہونے پر خودکار نیا کھاتہ بن گیا، اب یہاں صرف پرانا ریکارڈ دیکھا جا سکتا ہے۔</div></div>';
   } else {
-    html += kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman);
+    html += kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, kataOpenEntries.length === 0);
   }
 
   container.innerHTML = html;
@@ -3640,17 +3643,14 @@ function kataRenderEntryCard(entry, isLast){
   let rows = '';
   const cc = entry.cellColors || {};
   KATA_ITEMS.forEach((item, idx)=>{
-    const v = (entry.items && entry.items[item.key]) || {t:0, price:0, profit:0};
-    if(!v.t && !v.price && !v.profit) return; // skip untouched rows to keep past entries compact
+    const v = (entry.items && entry.items[item.key]) || {t:0, price:0};
+    if(!v.t && !v.price) return; // skip untouched rows to keep past entries compact
     // Older entries (saved before reference fields became per-row snapshots)
-    // won't have v.rate/v.prift/v.d/v.name/v.weight — fall back to today's
-    // KATA_ITEMS values for those so old cards still render.
+    // won't have v.rate/v.name/v.weight — fall back to today's KATA_ITEMS
+    // values for those so old cards still render.
     const rate = (v.rate!=null) ? v.rate : item.rate;
-    const prift = (v.prift!=null) ? v.prift : item.prift;
-    const d = (v.d!=null) ? v.d : item.d;
     const name = (v.name!=null && v.name!=='') ? v.name : item.name;
     const weight = (v.weight!=null) ? v.weight : item.weight;
-    const tdVal = d * v.t;
     const nameColor = 'color:red;';
     rows += `<tr>
       <td style="${kataColorStyleFor(cc, item.key+'-idx')}">${idx+1}</td>
@@ -3659,57 +3659,22 @@ function kataRenderEntryCard(entry, isLast){
       <td style="${kataColorStyleFor(cc, item.key+'-t')}">${v.t}</td>
       <td style="${kataColorStyleFor(cc, item.key+'-rate')}">${rate}</td>
       <td style="${kataColorStyleFor(cc, item.key+'-totalrate')}">${v.price}</td>
-      <td style="${kataColorStyleFor(cc, item.key+'-prift')}">${prift}</td>
-      <td style="${kataColorStyleFor(cc, item.key+'-totalprofit')}">${v.profit}</td>
-      <td style="${kataColorStyleFor(cc, item.key+'-d')}">${d}</td>
-      <td style="${kataColorStyleFor(cc, item.key+'-td')}">${tdVal}</td>
     </tr>`;
   });
-  let saleRows = '';
-  SALE_MAHANA_ITEMS.forEach((item, idx)=>{
-    const v = (entry.saleMahana && entry.saleMahana[item.key]) || {today:0, sabka:0, total:0};
-    if(!v.today && !v.sabka && !v.total) return;
-    const mirror = KATA_ITEMS[idx];
-    const displayName = mirror ? mirror.name : item.name;
-    const displayWeight = mirror ? mirror.weight : item.weight;
-    const nameColor = 'color:red;';
-    saleRows += `<tr>
-      <td>${idx+1}</td>
-      <td style="text-align:left;padding-left:6px;${nameColor}">${kataEscape(displayName)}</td>
-      <td>${kataEscape(displayWeight)}</td>
-      <td>${v.today}</td>
-      <td>${v.sabka}</td>
-      <td>${v.total}</td>
-    </tr>`;
-  });
-  const smt = entry.saleMahanaTotals || {todayCtn:0, sabkaCtn:0, totalCtn:0};
   const entryDomId = `kataEntry_${entry.id || Math.random().toString(36).slice(2)}`;
   return `
     <div class="card kata-entry-card" id="${entryDomId}">
       ${isLast ? kataDotsMenuHtml([{cls:'kata-delete-entry-btn', label:'🗑 حذف کریں'}]) : ''}
       <div class="note" style="text-align:center;font-weight:700;">${kataFormatWhen(entry.createdAt)}</div>
       ${entry.salesman ? `<div class="note" style="text-align:center;">سیلزمین: ${kataEscape(entry.salesman)}</div>` : ''}
-      ${(entry.less || entry.kharch) ? `<div class="note" style="text-align:center;">Less: ${entry.less||0} | خرچ: ${entry.kharch||0}</div>` : ''}
       <div class="edit-table wide-table">
         <table dir="ltr">
-          <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>T CTN</th><th>Rate</th><th>Total Rate</th><th>Profit</th><th>Total Profit</th><th>Discount</th><th>T.D</th></tr></thead>
+          <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>T CTN</th><th>Rate</th><th>Total Rate</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
+      ${entry.kharch ? `<div class="note" style="text-align:center;margin-top:8px;">کرایہ: ${entry.kharch}</div>` : ''}
       ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya)}
-      ${saleRows ? `
-      <h2 style="border:none;text-align:center;font-size:15px;margin-top:14px;">Sale Mahana Record</h2>
-      <div class="edit-table wide-table">
-        <table dir="ltr">
-          <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>Today</th><th>Sabka</th><th>Total</th></tr></thead>
-          <tbody>${saleRows}</tbody>
-        </table>
-      </div>
-      <div class="totals" style="grid-template-columns:1fr 1fr 1fr;">
-        <div><div class="n">${smt.todayCtn}</div><div class="l">Today CTN</div></div>
-        <div><div class="n">${smt.sabkaCtn}</div><div class="l">Sabka CTN</div></div>
-        <div><div class="n">${smt.totalCtn}</div><div class="l">Total CTN</div></div>
-      </div>` : ''}
       <div class="kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
         <button type="button" class="kata-print-entry-btn" style="padding:5px 14px;font-size:12px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 پرنٹ</button>
       </div>
@@ -3722,25 +3687,25 @@ function kataRenderEntryCard(entry, isLast){
 // to the two money columns (Price, T.Prift) — T (piece count) has no
 // payment tracking, matching the photo where that column is blank there.
 function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya){
-  jamah = jamah || {price:[0,0], profit:[0,0], td:[0,0]};
-  bqaya = bqaya || {price:0, profit:0, td:0};
+  jamah = jamah || {price:[0,0]};
+  bqaya = bqaya || {price:0};
   return `
       <div class="edit-table" style="margin-top:8px;">
         <table dir="ltr">
-          <thead><tr><th></th><th>T</th><th>Price</th><th>T.Profit</th><th>T.D</th></tr></thead>
+          <thead><tr><th></th><th>Price</th></tr></thead>
           <tbody>
-            <tr><td style="text-align:right;padding-right:6px;">Sabka</td><td>${sabka.t}</td><td>${sabka.price}</td><td>${sabka.profit}</td><td>${sabka.td||0}</td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Today</td><td>${today.t}</td><td>${today.price}</td><td>${today.profit}</td><td>${today.td||0}</td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Total</td><td>${total.t}</td><td>${total.price}</td><td>${total.profit}</td><td>${total.td||0}</td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td></td><td>${jamah.price[0]||0}</td><td>${jamah.profit[0]||0}</td><td>${(jamah.td&&jamah.td[0])||0}</td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td></td><td>${jamah.price[1]||0}</td><td>${jamah.profit[1]||0}</td><td>${(jamah.td&&jamah.td[1])||0}</td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Bqaya</td><td></td><td>${bqaya.price}</td><td>${bqaya.profit}</td><td>${bqaya.td||0}</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Sabka</td><td>${sabka.price}</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Today</td><td>${today.price}</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Total</td><td>${total.price}</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td>${jamah.price[0]||0}</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td>${jamah.price[1]||0}</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Bqaya</td><td>${bqaya.price}</td></tr>
           </tbody>
         </table>
       </div>`;
 }
 
-function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman){
+function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirstEntry){
   let rows = '';
   KATA_ITEMS.forEach((item, idx)=>{
     const nameColor = 'color:red;';
@@ -3751,28 +3716,15 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman){
       <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="t" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
       <td data-color-key="${item.key}-rate"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="rate" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${item.rate}"></td>
       <td data-color-key="${item.key}-totalrate" data-kata-totalrate="${item.key}">0</td>
-      <td data-color-key="${item.key}-prift"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="prift" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${item.prift}"></td>
-      <td data-color-key="${item.key}-totalprofit" data-kata-totalprofit="${item.key}">0</td>
-      <td data-color-key="${item.key}-d"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="d" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${item.d}"></td>
-      <td data-color-key="${item.key}-td" data-kata-td="${item.key}">0</td>
     </tr>`;
   });
-  let saleRows = '';
-  SALE_MAHANA_ITEMS.forEach((item, idx)=>{
-    const sabka = (prevSaleMahana && prevSaleMahana[item.key] && prevSaleMahana[item.key].total) || 0;
-    const mirror = KATA_ITEMS[idx];
-    const displayName = mirror ? mirror.name : item.name;
-    const displayWeight = mirror ? mirror.weight : item.weight;
-    const nameColor = 'color:red;';
-    saleRows += `<tr>
-      <td>${idx+1}</td>
-      <td style="text-align:left;padding-left:6px;"><input type="text" class="cell-input" data-sale-name="${item.key}" data-sale-row-idx="${idx}" ${mirror ? 'disabled' : ''} style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(displayName)}"></td>
-      <td><input type="text" class="cell-input" data-sale-weight="${item.key}" data-sale-row-idx="${idx}" ${mirror ? 'disabled' : ''} style="border:1px solid var(--line);" value="${kataEscape(displayWeight)}"></td>
-      <td><input type="number" inputmode="numeric" class="cell-input" data-sale-item="${item.key}" data-sale-row-idx="${idx}" ${mirror ? 'disabled' : ''} style="border:1px solid var(--line);" value="0"></td>
-      <td>${sabka}</td>
-      <td data-sale-total="${item.key}" data-sale-sabka="${sabka}">${sabka}</td>
-    </tr>`;
-  });
+  // پہلی انٹری (اس کھاتے میں ابھی تک کوئی ریکارڈ نہیں) میں "سابقہ" کی قطار
+  // خود لکھی جا سکتی ہے (شروعاتی بیلنس کے طور پر) — اس کے بعد ہمیشہ کی
+  // طرح خودکار پچھلی انٹری سے چلی آتی ہے، دستی تبدیلی کی ضرورت نہیں رہتی۔
+  const sabkaRow = isFirstEntry
+    ? `<tr><td style="text-align:right;padding-right:6px;">Sabka</td><td><input type="number" inputmode="numeric" class="cell-input" data-kata-sabka="price" style="border:1px solid var(--line);" value="${prevTotal.price}"><input type="hidden" data-kata-sabka="t" value="${prevTotal.t}"></td></tr>`
+    : `<tr><td style="text-align:right;padding-right:6px;">Sabka</td><td>${prevTotal.price}</td></tr>`;
+  const nameLabel = kataInstance === 'agency' ? 'Agency کا نام' : 'سیلزمین کا نام';
   return `
     <div class="card">
       <h2 style="border:none;text-align:center;">+ نئی انٹری</h2>
@@ -3780,7 +3732,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman){
         <button type="button" class="share-btn" id="kataUndoBtn" style="width:auto;padding:4px 16px;font-size:13px;">↩ پچھلی تبدیلی واپس کریں</button>
       </div>
       <div class="note" style="text-align:center;">
-        <div style="margin-bottom:4px;">سیلزمین کا نام</div>
+        <div style="margin-bottom:4px;">${nameLabel}</div>
         <button type="button" class="row-lock-btn" data-kata-lockbtn="salesman"></button>
         <input type="text" class="cell-input" data-kata-field="salesman" style="border:1px solid var(--line);text-align:center;" value="${kataEscape(prevSalesman||'')}">
       </div>
@@ -3793,42 +3745,25 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman){
             <th><button type="button" class="row-lock-btn" data-kata-lockbtn="t"></button>T CTN</th>
             <th><button type="button" class="row-lock-btn" data-kata-lockbtn="rate"></button>Rate</th>
             <th>Total Rate</th>
-            <th><button type="button" class="row-lock-btn" data-kata-lockbtn="prift"></button>Profit</th>
-            <th>Total Profit</th>
-            <th><button type="button" class="row-lock-btn" data-kata-lockbtn="d"></button>Discount</th>
-            <th>T.D</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
-      <div style="display:flex;gap:8px;justify-content:center;margin-top:8px;">
-        <div style="text-align:center;">
-          <div style="font-size:12px;margin-bottom:2px;">Less</div>
-          <input type="number" inputmode="numeric" class="cell-input" data-kata-field="less" style="border:1px solid var(--line);min-width:14ch;" value="0">
-        </div>
-        <div style="text-align:center;">
-          <div style="font-size:12px;margin-bottom:2px;">خرچ</div>
-          <input type="number" inputmode="numeric" class="cell-input" data-kata-field="kharch" style="border:1px solid var(--line);min-width:14ch;" value="0">
-        </div>
+      <div style="text-align:center;margin-top:10px;">
+        <div style="font-size:14px;margin-bottom:4px;">کرایہ</div>
+        <input type="number" inputmode="numeric" class="cell-input" data-kata-field="kharch" style="border:1px solid var(--line);min-width:28ch;font-size:16px;padding:6px;" value="0">
       </div>
       <div class="edit-table" style="margin-top:8px;">
         <table dir="ltr">
-          <thead><tr><th></th><th>T</th><th>Price</th><th>T.Profit</th><th>T.D</th></tr></thead>
+          <thead><tr><th></th><th>Price</th></tr></thead>
           <tbody>
-            <tr><td style="text-align:right;padding-right:6px;">Sabka</td><td>${prevTotal.t}</td><td>${prevTotal.price}</td><td>${prevTotal.profit}</td><td>${prevTotal.td||0}</td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Today</td><td data-kata-today-t>0</td><td data-kata-today-price>0</td><td data-kata-today-profit>0</td><td data-kata-today-td>0</td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Total</td><td data-kata-tot-t>${prevTotal.t}</td><td data-kata-tot-price>${prevTotal.price}</td><td data-kata-tot-profit>${prevTotal.profit}</td><td data-kata-tot-td>${prevTotal.td||0}</td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price0" style="border:1px solid var(--line);" value="0"></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="profit0" style="border:1px solid var(--line);" value="0"></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="td0" style="border:1px solid var(--line);" value="0"></td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price1" style="border:1px solid var(--line);" value="0"></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="profit1" style="border:1px solid var(--line);" value="0"></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="td1" style="border:1px solid var(--line);" value="0"></td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Bqaya</td><td></td><td data-kata-bqaya-price>${prevTotal.price}</td><td data-kata-bqaya-profit>${prevTotal.profit}</td><td data-kata-bqaya-td>${prevTotal.td||0}</td></tr>
+            ${sabkaRow}
+            <tr><td style="text-align:right;padding-right:6px;">Today</td><td data-kata-today-price>0</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Total</td><td data-kata-tot-price>${prevTotal.price}</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price0" style="border:1px solid var(--line);" value="0"></td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price1" style="border:1px solid var(--line);" value="0"></td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Bqaya</td><td data-kata-bqaya-price>${prevTotal.price}</td></tr>
           </tbody>
-        </table>
-      </div>
-      <h2 style="border:none;text-align:center;font-size:15px;margin-top:14px;">Sale Mahana Record</h2>
-      <div class="edit-table wide-table">
-        <table dir="ltr">
-          <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>Today</th><th>Sabka</th><th>Total</th></tr></thead>
-          <tbody>${saleRows}</tbody>
         </table>
       </div>
       <button type="button" class="share-btn" id="kataSaveEntryBtn" style="width:100%;">انٹری محفوظ کریں</button>
@@ -3839,7 +3774,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman){
 // Sabka/Today/Total/Jamah/Jamah/Bqaya block all live-updated as the person
 // types, without a full re-render.
 function kataWireLiveFormulas(prevTotal){
-  prevTotal = prevTotal || {t:0, price:0, profit:0, td:0};
+  prevTotal = prevTotal || {t:0, price:0};
 
   // خانے مواد (نمبر/الفاظ) کے سائز کے مطابق خودکار چھوٹے بڑے ہوں — ہر ان پٹ کی
   // چوڑائی اس کے اپنے موجودہ متن کے مطابق مقرر کی جاتی ہے، فکسڈ 100% کی بجائے۔
@@ -3857,87 +3792,59 @@ function kataWireLiveFormulas(prevTotal){
   });
 
   function recomputeTotalsBlock(){
-    let todayT = 0, todayRate = 0, todayProfit = 0, todayTd = 0;
+    let todayT = 0, todayRate = 0;
     KATA_ITEMS.forEach(item=>{
       const tI = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`);
       const t = Number((tI && tI.value) || 0) || 0;
       todayT += t;
       todayRate += item.rate * t;
-      todayProfit += item.prift * t;
-      todayTd += item.d * t;
     });
-    const lessInput = document.querySelector('[data-kata-field="less"]');
     const kharchInput = document.querySelector('[data-kata-field="kharch"]');
-    const less = Number((lessInput && lessInput.value) || 0) || 0;
     const kharch = Number((kharchInput && kharchInput.value) || 0) || 0;
-    const todayPrice = todayRate + (todayProfit + todayTd) - less - kharch;
-    const totT = prevTotal.t + todayT, totPrice = prevTotal.price + todayPrice, totProfit = prevTotal.profit + todayProfit, totTd = (prevTotal.td||0) + todayTd;
+    const todayPrice = todayRate + kharch;
+    // پہلی انٹری میں "سابقہ" خود لکھی جا سکتی ہے — تب اسی خانے سے پڑھیں،
+    // ورنہ ہمیشہ کی طرح پچھلی انٹری کی قدر (prevTotal) استعمال ہو۔
+    const sabkaTI = document.querySelector('[data-kata-sabka="t"]');
+    const sabkaBase = sabkaTI ? {
+      t: Number(sabkaTI.value) || 0,
+      price: Number((document.querySelector('[data-kata-sabka="price"]')||{}).value) || 0,
+    } : prevTotal;
+    const totT = sabkaBase.t + todayT, totPrice = sabkaBase.price + todayPrice;
     const set = (sel, val)=>{ const el = document.querySelector(sel); if(el) el.textContent = val; };
     set('[data-kata-today-t]', todayT);
     set('[data-kata-today-price]', todayPrice);
-    set('[data-kata-today-profit]', todayProfit);
-    set('[data-kata-today-td]', todayTd);
     set('[data-kata-tot-t]', totT);
     set('[data-kata-tot-price]', totPrice);
-    set('[data-kata-tot-profit]', totProfit);
-    set('[data-kata-tot-td]', totTd);
     const j = (sel)=>{ const el = document.querySelector(sel); return el ? (Number(el.value)||0) : 0; };
     const jamahPrice = j('[data-jamah="price0"]') + j('[data-jamah="price1"]');
-    const jamahProfit = j('[data-jamah="profit0"]') + j('[data-jamah="profit1"]');
-    const jamahTd = j('[data-jamah="td0"]') + j('[data-jamah="td1"]');
     set('[data-kata-bqaya-price]', totPrice - jamahPrice);
-    set('[data-kata-bqaya-profit]', totProfit - jamahProfit);
-    set('[data-kata-bqaya-td]', totTd - jamahTd);
   }
+  document.querySelectorAll('[data-kata-sabka]').forEach(input=>{
+    input.addEventListener('input', recomputeTotalsBlock);
+  });
 
   KATA_ITEMS.forEach((item, idx)=>{
     const tInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`);
     const nameInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="name"]`);
     const weightInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="weight"]`);
     const rateInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="rate"]`);
-    const priftInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="prift"]`);
-    const dInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="d"]`);
-    const tdCell = document.querySelector(`[data-kata-td="${item.key}"]`);
     const totalRateCell = document.querySelector(`[data-kata-totalrate="${item.key}"]`);
-    const totalProfitCell = document.querySelector(`[data-kata-totalprofit="${item.key}"]`);
 
     const getT = ()=> Number((tInput && tInput.value)||0)||0;
     const refreshRow = ()=>{
-      if(tdCell) tdCell.textContent = item.d * getT();
       if(totalRateCell) totalRateCell.textContent = item.rate * getT();
-      if(totalProfitCell) totalProfitCell.textContent = item.prift * getT();
-      const saleTodayInput = document.querySelector(`[data-sale-row-idx="${idx}"][data-sale-item]`);
-      if(saleTodayInput){
-        saleTodayInput.value = getT();
-        kataAutoSizeInput(saleTodayInput);
-        const saleTotalCell = document.querySelector(`[data-sale-total="${saleTodayInput.dataset.saleItem}"]`);
-        if(saleTotalCell){
-          const sabka = Number(saleTotalCell.dataset.saleSabka)||0;
-          saleTotalCell.textContent = sabka + getT();
-        }
-      }
       recomputeTotalsBlock();
     };
 
-    if(nameInput) nameInput.addEventListener('input', ()=>{
-      item.name = nameInput.value;
-      const saleNameInput = document.querySelector(`[data-sale-row-idx="${idx}"][data-sale-name]`);
-      if(saleNameInput){ saleNameInput.value = nameInput.value; kataAutoSizeInput(saleNameInput); }
-    });
-    if(weightInput) weightInput.addEventListener('input', ()=>{
-      item.weight = weightInput.value;
-      const saleWeightInput = document.querySelector(`[data-sale-row-idx="${idx}"][data-sale-weight]`);
-      if(saleWeightInput){ saleWeightInput.value = weightInput.value; kataAutoSizeInput(saleWeightInput); }
-    });
+    if(nameInput) nameInput.addEventListener('input', ()=>{ item.name = nameInput.value; });
+    if(weightInput) weightInput.addEventListener('input', ()=>{ item.weight = weightInput.value; });
     if(rateInput) rateInput.addEventListener('input', ()=>{ item.rate = Number(rateInput.value)||0; refreshRow(); });
-    if(priftInput) priftInput.addEventListener('input', ()=>{ item.prift = Number(priftInput.value)||0; refreshRow(); });
-    if(dInput) dInput.addEventListener('input', ()=>{ item.d = Number(dInput.value)||0; refreshRow(); });
     if(tInput) tInput.addEventListener('input', refreshRow);
   });
   document.querySelectorAll('[data-jamah]').forEach(input=>{
     input.addEventListener('input', recomputeTotalsBlock);
   });
-  ['less','kharch'].forEach(field=>{
+  ['kharch'].forEach(field=>{
     const input = document.querySelector(`[data-kata-field="${field}"]`);
     if(input) input.addEventListener('input', recomputeTotalsBlock);
   });
@@ -3954,19 +3861,19 @@ function kataWireLiveFormulas(prevTotal){
       btn.title = locked ? 'یہ کالم ترمیم کے لیے کھولیں' : 'یہ کالم لاک کریں';
     }
   }
-  ['name','weight','t','rate','prift','d','salesman'].forEach(field=>{
+  ['name','weight','t','rate','salesman'].forEach(field=>{
     applyKataColLock(field);
     const btn = document.querySelector(`[data-kata-lockbtn="${field}"]`);
     if(btn) btn.addEventListener('click', ()=>{
       kataColLocked[field] = !kataColLocked[field];
       applyKataColLock(field);
     });
-    // حوالہ جاتی خانے (نام/وزن/ریٹ/منافع/فرق) جو ڈیفالٹ میں لاک ہوتے ہیں —
-    // انہیں کھول کر ترمیم کرنے کے بعد خانے سے باہر جاتے ہی (blur) خودکار
-    // دوبارہ لاک ہو جاتے ہیں، الگ سے بند کرنے کی ضرورت نہیں۔ روزانہ کی
-    // معمول کی انٹری کے خانے (t, salesman) اس میں شامل نہیں — وہ ہمیشہ کی
-    // طرح دستی طریقے سے ہی لاک/ان لاک ہوتے ہیں۔
-    if(['name','weight','rate','prift','d'].includes(field)){
+    // حوالہ جاتی خانے (نام/وزن/ریٹ) جو ڈیفالٹ میں لاک ہوتے ہیں — انہیں
+    // کھول کر ترمیم کرنے کے بعد خانے سے باہر جاتے ہی (blur) خودکار دوبارہ
+    // لاک ہو جاتے ہیں، الگ سے بند کرنے کی ضرورت نہیں۔ روزانہ کی معمول کی
+    // انٹری کے خانے (t, salesman) اس میں شامل نہیں — وہ ہمیشہ کی طرح دستی
+    // طریقے سے ہی لاک/ان لاک ہوتے ہیں۔
+    if(['name','weight','rate'].includes(field)){
       document.querySelectorAll(`[data-kata-field="${field}"]`).forEach(input=>{
         input.addEventListener('change', ()=>{
           if(!input.disabled && kataColLocked[field] === false){
@@ -3974,17 +3881,6 @@ function kataWireLiveFormulas(prevTotal){
             applyKataColLock(field);
           }
         });
-      });
-    }
-  });
-
-  SALE_MAHANA_ITEMS.forEach(item=>{
-    const todayInput = document.querySelector(`[data-sale-item="${item.key}"]`);
-    const totalCell = document.querySelector(`[data-sale-total="${item.key}"]`);
-    if(todayInput && totalCell){
-      const sabka = Number(totalCell.dataset.saleSabka)||0;
-      todayInput.addEventListener('input', ()=>{
-        totalCell.textContent = sabka + (Number(todayInput.value)||0);
       });
     }
   });
@@ -4018,6 +3914,7 @@ function kataWireLiveFormulas(prevTotal){
     entry.input.dispatchEvent(new Event('input', {bubbles:true}));
     kataUndoRestoring = false;
   }
+  window.kataUndo = kataUndo; // سائٹ کے مشترکہ ↩ بٹن سے بھی رسائی کے لیے
 
   const undoBtn = document.getElementById('kataUndoBtn');
   if(undoBtn) undoBtn.addEventListener('click', kataUndo);
@@ -4034,14 +3931,12 @@ function kataWireLiveFormulas(prevTotal){
 
 async function kataSaveEntry(prevTotal, prevSaleMahana){
   const items = {};
-  let todayT = 0, todayRate = 0, todayProfit = 0, todayTd = 0;
+  let todayT = 0, todayRate = 0;
   KATA_ITEMS.forEach(item=>{
     const t = Number(document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`).value) || 0;
     const price = item.rate * t;
-    const profit = item.prift * t;
-    const td = item.d * t;
-    items[item.key] = {t, price, profit, rate: item.rate, prift: item.prift, d: item.d, name: item.name, weight: item.weight};
-    todayT += t; todayRate += price; todayProfit += profit; todayTd += td;
+    items[item.key] = {t, price, rate: item.rate, name: item.name, weight: item.weight};
+    todayT += t; todayRate += price;
   });
   // اس انٹری کے فارم میں جو خانے رنگے گئے تھے (🎨 موڈ سے)، وہ رنگ اب اسی
   // انٹری کے ساتھ ہمیشہ کے لیے محفوظ ہو جاتے ہیں۔
@@ -4049,35 +3944,31 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
   document.querySelectorAll('#kataDetailContainer [data-color-key]').forEach(td=>{
     if(td.style.backgroundColor) cellColors[td.dataset.colorKey] = td.style.backgroundColor;
   });
-  const lessInput = document.querySelector('[data-kata-field="less"]');
   const kharchInput = document.querySelector('[data-kata-field="kharch"]');
-  const less = Number((lessInput && lessInput.value) || 0) || 0;
   const kharch = Number((kharchInput && kharchInput.value) || 0) || 0;
-  const todayPrice = todayRate + (todayProfit + todayTd) - less - kharch;
+  const todayPrice = todayRate + kharch;
   const salesmanInput = document.querySelector('[data-kata-field="salesman"]');
   const salesman = salesmanInput ? salesmanInput.value : '';
 
-  const saleMahana = {};
-  let todayCtn = 0, sabkaCtn = 0, totalCtn = 0;
-  SALE_MAHANA_ITEMS.forEach(item=>{
-    const today = Number(document.querySelector(`[data-sale-item="${item.key}"]`).value) || 0;
-    const sabka = (prevSaleMahana && prevSaleMahana[item.key] && prevSaleMahana[item.key].total) || 0;
-    const total = sabka + today;
-    saleMahana[item.key] = {today, sabka, total};
-    todayCtn += today; sabkaCtn += sabka; totalCtn += total;
-  });
-
-  if(todayT === 0 && todayPrice === 0 && todayProfit === 0 && todayCtn === 0){
+  if(todayT === 0 && todayPrice === 0){
     alert('کم از کم ایک آئٹم میں کوئی مقدار درج کریں۔');
     return;
   }
-  const sabka = {t: prevTotal.t||0, price: prevTotal.price||0, profit: prevTotal.profit||0, td: prevTotal.td||0};
-  const today = {t: todayT, price: todayPrice, profit: todayProfit, td: todayTd};
-  const total = {t: sabka.t + today.t, price: sabka.price + today.price, profit: sabka.profit + today.profit, td: sabka.td + today.td};
+  // پہلی انٹری میں "سابقہ" خود لکھی گئی ہو تو وہیں سے پڑھیں، ورنہ ہمیشہ کی
+  // طرح پچھلی انٹری کی قدر (prevTotal)۔
+  const sabkaTInput = document.querySelector('[data-kata-sabka="t"]');
+  const sabka = sabkaTInput
+    ? {
+        t: Number(sabkaTInput.value) || 0,
+        price: Number((document.querySelector('[data-kata-sabka="price"]')||{}).value) || 0,
+      }
+    : {t: prevTotal.t||0, price: prevTotal.price||0};
+  const today = {t: todayT, price: todayPrice};
+  const total = {t: sabka.t + today.t, price: sabka.price + today.price};
 
   const jVal = (name)=>{ const el = document.querySelector(`[data-jamah="${name}"]`); return el ? (Number(el.value)||0) : 0; };
-  const jamah = {price: [jVal('price0'), jVal('price1')], profit: [jVal('profit0'), jVal('profit1')], td: [jVal('td0'), jVal('td1')]};
-  const bqaya = {price: total.price - (jamah.price[0]+jamah.price[1]), profit: total.profit - (jamah.profit[0]+jamah.profit[1]), td: total.td - (jamah.td[0]+jamah.td[1])};
+  const jamah = {price: [jVal('price0'), jVal('price1')]};
+  const bqaya = {price: total.price - (jamah.price[0]+jamah.price[1])};
 
   const btn = document.getElementById('kataSaveEntryBtn');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ محفوظ ہو رہا ہے...'; }
@@ -4086,8 +3977,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
     const entries = kataLocalGetEntries(kataOpenId);
     entries.push({
       id: 'e' + Date.now() + Math.random().toString(36).slice(2,7),
-      items, sabka, today, total, jamah, bqaya, salesman, less, kharch, cellColors,
-      saleMahana, saleMahanaTotals: {todayCtn, sabkaCtn, totalCtn},
+      items, sabka, today, total, jamah, bqaya, salesman, kharch, cellColors,
       createdAt: new Date().toISOString(),
     });
     kataLocalSaveEntries(kataOpenId, entries);
@@ -4099,8 +3989,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
 
   try{
     await kataCol().doc(kataOpenId).collection('entries').add({
-      items, sabka, today, total, jamah, bqaya, salesman, less, kharch, cellColors,
-      saleMahana, saleMahanaTotals: {todayCtn, sabkaCtn, totalCtn},
+      items, sabka, today, total, jamah, bqaya, salesman, kharch, cellColors,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
     kataShowSavedToast();
@@ -4158,6 +4047,51 @@ const globalAutoSizeObserver = new MutationObserver((mutations)=>{
   });
 });
 globalAutoSizeObserver.observe(document.body, {childList:true, subtree:true});
+</script>
+<script>
+// ---------- پوری ویب سائٹ میں "↩ واپس کریں" بٹن (Ctrl+Z کا کام) ----------
+// کھاتہ ماڈیول میں پہلے سے اپنا الگ undo موجود ہے (اسی طرح کام کرتا رہے
+// گا) — یہ اس کے علاوہ باقی ہر جگہ (ریٹ لسٹ، Best Excel official، سرف کا
+// ماہانہ حساب) کے لیے ایک مشترکہ، ہمیشہ نظر آنے والا فلوٹنگ بٹن ہے، تاکہ
+// موبائل پر Ctrl+Z کی بورڈ شارٹ کٹ کے بغیر بھی آخری تبدیلی واپس کی جا سکے۔
+window.siteUndoStack = [];
+window._siteUndoRestoring = false;
+document.addEventListener('focusin', (e)=>{
+  if(e.target && e.target.classList && e.target.classList.contains('cell-input')){
+    e.target.dataset.siteUndoPrev = e.target.value;
+  }
+});
+document.addEventListener('change', (e)=>{
+  if(window._siteUndoRestoring) return;
+  if(e.target && e.target.classList && e.target.classList.contains('cell-input')){
+    if(e.target.dataset.siteUndoPrev !== undefined && e.target.dataset.siteUndoPrev !== e.target.value){
+      window.siteUndoStack.push({input: e.target, oldValue: e.target.dataset.siteUndoPrev});
+      if(window.siteUndoStack.length > 100) window.siteUndoStack.shift();
+    }
+    e.target.dataset.siteUndoPrev = e.target.value;
+  }
+});
+window.siteUndo = function(){
+  let entry = window.siteUndoStack.pop();
+  while(entry && !document.body.contains(entry.input)) entry = window.siteUndoStack.pop(); // ہٹائی گئی قطاروں کے پرانے اندراج چھوڑ دیں
+  if(!entry) return;
+  window._siteUndoRestoring = true;
+  entry.input.value = entry.oldValue;
+  entry.input.dataset.siteUndoPrev = entry.oldValue;
+  entry.input.dispatchEvent(new Event('input', {bubbles:true}));
+  entry.input.dispatchEvent(new Event('change', {bubbles:true}));
+  window._siteUndoRestoring = false;
+};
+document.getElementById('siteUndoFab').addEventListener('click', ()=>{
+  // اگر کھاتہ کا اپنا مخصوص undo کھلا ہوا ہے (اسی سیکشن میں ہیں) تو وہی
+  // چلائیں، تاکہ Sale/Jamah جیسے خاص خانے بھی صحیح واپس آئیں — ورنہ سائٹ
+  // کا مشترکہ undo استعمال ہو۔
+  if(document.getElementById('kataDetailView') && document.getElementById('kataDetailView').style.display !== 'none' && typeof window.kataUndo === 'function'){
+    window.kataUndo();
+  } else {
+    window.siteUndo();
+  }
+});
 </script>
 <script>
 // ---------- کھاتوں کے خانوں پر مرضی کا رنگ لگانا ----------
@@ -4508,6 +4442,7 @@ async function firebaseSyncInit(){
       if(window.firebaseSyncMergeBooksSet){
         window.firebaseSyncMergeBooksSet('kataLocalBooks', JSON.parse(localStorage.getItem('kataLocalBooks')||'[]'), ()=>{ if(typeof kataLocalRenderList==='function' && document.getElementById('kataListView').style.display !== 'none') kataLocalRenderList(); });
         window.firebaseSyncMergeBooksSet('kataLocalBooks_ribnawaz', JSON.parse(localStorage.getItem('kataLocalBooks_ribnawaz')||'[]'), ()=>{ if(typeof kataLocalRenderList==='function' && document.getElementById('kataListView').style.display !== 'none') kataLocalRenderList(); });
+        window.firebaseSyncMergeBooksSet('kataLocalBooks_agency', JSON.parse(localStorage.getItem('kataLocalBooks_agency')||'[]'), ()=>{ if(typeof kataLocalRenderList==='function' && document.getElementById('kataListView').style.display !== 'none') kataLocalRenderList(); });
         window.firebaseSyncMergeBooksSet('msLocalBooks', JSON.parse(localStorage.getItem('msLocalBooks')||'[]'), ()=>{ if(typeof msRenderList==='function' && document.getElementById('msListView').style.display !== 'none') msRenderList(); });
       }
     } catch(err){ console.warn('one-time books reconcile failed', err); }
