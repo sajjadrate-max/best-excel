@@ -1109,8 +1109,9 @@ const ledgerRows = [
 // کھلتے ہی محفوظ شدہ ڈیٹا واپس انہی arrays میں بھر دیا جاتا ہے، پھر
 // متعلقہ ٹیبلز خودکار دوبارہ بن جاتی ہیں تاکہ فوراً نظر آئے۔
 const SITE_DATA_KEY = 'bestExcelSiteData';
-function saveSiteDataNow(){
-  const state = {
+
+function buildSiteDataSnapshot(){
+  return {
     packs: packs.map(p=>({tpcs:p.tpcs, ctn:p.ctn, mrp:p.mrp, company:p.company, name:p.name, agencyB:p.agencyB, agencyBManual:p.agencyBManual, agencyC:p.agencyC, agencyCManual:p.agencyCManual, salman:p.salman, salmanManual:p.salmanManual})),
     packagingRows: packagingRows.map(r=>({name:r.name, weight:r.weight, shopperWeight:r.shopperWeight})),
     costRows: costRows.map(r=>({name:r.name, rate:r.rate, remainingSurf:r.remainingSurf, perPieceRate:r.perPieceRate, companyProfit:r.companyProfit, bijli:r.bijli, tax:r.tax, ctnRate:r.ctnRate, shopperAmt:r.shopperAmt})),
@@ -1118,7 +1119,87 @@ function saveSiteDataNow(){
     masterColLocked, colLocked, ledgerColLocked, tierAgencyLocked,
     weightLossKg: (document.getElementById('weightLossKgInput') || {}).value || '0',
   };
-  const json = JSON.stringify(state);
+}
+
+function applySiteDataSnapshot(saved){
+  if(!saved) return;
+  if(Array.isArray(saved.packs)) saved.packs.forEach((row,i)=>{ if(packs[i]) Object.assign(packs[i], row); });
+  if(Array.isArray(saved.packagingRows)) saved.packagingRows.forEach((row,i)=>{ if(packagingRows[i]) Object.assign(packagingRows[i], row); });
+  if(Array.isArray(saved.costRows)) saved.costRows.forEach((row,i)=>{ if(costRows[i]) Object.assign(costRows[i], row); });
+  if(Array.isArray(saved.ledgerRows)) saved.ledgerRows.forEach((row,i)=>{ if(ledgerRows[i]) Object.assign(ledgerRows[i], row); });
+  if(saved.masterColLocked) Object.assign(masterColLocked, saved.masterColLocked);
+  if(saved.colLocked) Object.assign(colLocked, saved.colLocked);
+  if(saved.ledgerColLocked) Object.assign(ledgerColLocked, saved.ledgerColLocked);
+  if(saved.tierAgencyLocked) Object.assign(tierAgencyLocked, saved.tierAgencyLocked);
+  packs.forEach(p=>{
+    if(!p.agencyBManual) p.agencyB = p.company + p.diffB;
+    if(!p.agencyCManual) p.agencyC = p.company + p.diffC;
+    if(!p.salmanManual)  p.salman  = p.company + p.diffSalman;
+    p.dukandar = p.company + p.diffDukandar;
+  });
+  if(typeof buildAllTierTables === 'function') buildAllTierTables();
+  if(typeof buildCombinedTable === 'function') buildCombinedTable();
+  if(typeof buildLedgerTable === 'function') buildLedgerTable();
+  if(typeof syncKataItemsFromRateList === 'function') syncKataItemsFromRateList();
+  const lossInput = document.getElementById('weightLossKgInput');
+  if(lossInput && saved.weightLossKg !== undefined){
+    lossInput.value = saved.weightLossKg;
+    lossInput.dispatchEvent(new Event('input'));
+  }
+}
+
+// دو ڈیوائسز کے درمیان صحیح ملاپ: ہر خانے کے لیے، اگر اس ڈیوائس پر وہ
+// خانہ آخری سنک کے بعد سے تبدیل نہیں ہوا (یعنی baseline جیسا ہی ہے) تو
+// کلاؤڈ کی موجودہ (شاید نئی) قدر لی جاتی ہے؛ اگر اسی ڈیوائس پر تبدیل ہوا
+// ہے تو اسی ڈیوائس کی نئی قدر رکھی جاتی ہے۔ اس کے بغیر پہلے پوری فہرست
+// ایک ساتھ overwrite ہوتی تھی — جو ڈیوائس آخر میں save کرے وہ دوسری
+// ڈیوائس کی حالیہ تبدیلی خاموشی سے مٹا دیتی تھی (اسی وجہ سے "آدھے نمبر"
+// والا مسئلہ ہو رہا تھا)۔
+function mergeByBaseline(local, cloud, baseline){
+  if(Array.isArray(local)){
+    return local.map((item, i)=> mergeByBaseline(item, (cloud && cloud[i]) || {}, (baseline && baseline[i]) || {}));
+  }
+  if(local && typeof local === 'object'){
+    const result = {};
+    const keys = new Set([...Object.keys(local||{}), ...Object.keys(cloud||{})]);
+    keys.forEach(k=>{
+      result[k] = mergeByBaseline(local[k], cloud ? cloud[k] : undefined, baseline ? baseline[k] : undefined);
+    });
+    return result;
+  }
+  if(cloud === undefined) return local; // کلاؤڈ میں یہ خانہ کبھی محفوظ نہیں ہوا — مقامی قدر ہی درست
+  return (local === baseline) ? cloud : local;
+}
+
+let siteDataBaseline = null; // آخری بار کلاؤڈ کے ساتھ مکمل ملاپ کے وقت کی حالت
+
+async function saveSiteDataNow(){
+  const localSnapshot = buildSiteDataSnapshot();
+  if(window.db && siteDataBaseline){
+    try{
+      const doc = await window.db.collection('localSync').doc(SITE_DATA_KEY).get();
+      let cloudSnapshot = null;
+      if(doc.exists){
+        const data = doc.data();
+        if(data && typeof data.value === 'string'){ try{ cloudSnapshot = JSON.parse(data.value); }catch(e){} }
+      }
+      if(cloudSnapshot){
+        const merged = mergeByBaseline(localSnapshot, cloudSnapshot, siteDataBaseline);
+        applySiteDataSnapshot(merged);
+        siteDataBaseline = JSON.parse(JSON.stringify(merged));
+        const json = JSON.stringify(merged);
+        localStorage.setItem(SITE_DATA_KEY, json);
+        await window.db.collection('localSync').doc(SITE_DATA_KEY).set({
+          value: json,
+          updatedAt: (typeof firebase !== 'undefined' && firebase.firestore) ? firebase.firestore.FieldValue.serverTimestamp() : Date.now()
+        });
+        return;
+      }
+    } catch(err){ console.warn('site data merge-save failed, falling back to plain save', err); }
+  }
+  // کلاؤڈ ابھی تک نہیں ملا (baseline موجود نہیں، یا نیٹ ورک مسئلہ) — سیدھا
+  // محفوظ کریں، اگلی بار جب کلاؤڈ سے پہلی بار ڈیٹا آئے گا تبھی سے ملاپ شروع ہو گا۔
+  const json = JSON.stringify(localSnapshot);
   localStorage.setItem(SITE_DATA_KEY, json);
   (window.firebaseSyncSet || (()=>{}))(SITE_DATA_KEY, json);
 }
@@ -1141,29 +1222,8 @@ function restoreSiteData(){
   let saved = null;
   try{ saved = JSON.parse(localStorage.getItem(SITE_DATA_KEY)); }catch(e){ saved = null; }
   if(!saved) return false;
-  if(Array.isArray(saved.packs)) saved.packs.forEach((row,i)=>{ if(packs[i]) Object.assign(packs[i], row); });
-  if(Array.isArray(saved.packagingRows)) saved.packagingRows.forEach((row,i)=>{ if(packagingRows[i]) Object.assign(packagingRows[i], row); });
-  if(Array.isArray(saved.costRows)) saved.costRows.forEach((row,i)=>{ if(costRows[i]) Object.assign(costRows[i], row); });
-  if(Array.isArray(saved.ledgerRows)) saved.ledgerRows.forEach((row,i)=>{ if(ledgerRows[i]) Object.assign(ledgerRows[i], row); });
-  if(saved.masterColLocked) Object.assign(masterColLocked, saved.masterColLocked);
-  if(saved.colLocked) Object.assign(colLocked, saved.colLocked);
-  if(saved.ledgerColLocked) Object.assign(ledgerColLocked, saved.ledgerColLocked);
-  if(saved.tierAgencyLocked) Object.assign(tierAgencyLocked, saved.tierAgencyLocked);
-  packs.forEach(p=>{
-    if(!p.agencyBManual) p.agencyB = p.company + p.diffB;
-    if(!p.agencyCManual) p.agencyC = p.company + p.diffC;
-    if(!p.salmanManual)  p.salman  = p.company + p.diffSalman;
-    p.dukandar = p.company + p.diffDukandar;
-  });
-  if(typeof buildAllTierTables === 'function') buildAllTierTables();
-  if(typeof buildCombinedTable === 'function') buildCombinedTable();
-  if(typeof buildLedgerTable === 'function') buildLedgerTable();
-  if(typeof syncKataItemsFromRateList === 'function') syncKataItemsFromRateList(); // کھاتہ کے Items/Weight/Profit/Price بھی تازہ ہوں (پہلی بار یہاں کچھ نہیں ہو گا چونکہ ابھی تعریف نہیں ہوا — بعد میں firebaseSyncInit کی کال کام کرے گی)
-  const lossInput = document.getElementById('weightLossKgInput');
-  if(lossInput && saved.weightLossKg !== undefined){
-    lossInput.value = saved.weightLossKg;
-    lossInput.dispatchEvent(new Event('input'));
-  }
+  applySiteDataSnapshot(saved);
+  siteDataBaseline = JSON.parse(JSON.stringify(saved)); // اب یہ حالت "آخری معلوم مشترکہ حالت" بن گئی
   return true;
 }
 window.restoreSiteData = restoreSiteData;
