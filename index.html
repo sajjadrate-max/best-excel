@@ -214,6 +214,12 @@ window.loadAuthSDKs = async function(){
     padding:16px 14px;
     max-width:760px; margin:0 auto;
   }
+  /* اب صرف موجودہ (منتخب شدہ) صفحے کا نام اوپر نظر آتا ہے — باقی سب نام
+     چھپا دیے گئے ہیں، دوسرے صفحوں پر جانے کے لیے اوپر بائیں طرف کا 🔽 بٹن
+     استعمال ہوتا ہے (اس میں سب کے نام موجود ہیں)۔ */
+  nav button:not(.active){
+    display:none;
+  }
   nav button{
     font-family:"Noto Naskh Arabic",serif;
     font-size:14px;
@@ -481,12 +487,12 @@ window.loadAuthSDKs = async function(){
     background:var(--paper-dark);
     border:1px solid var(--line);
     border-radius:3px;
-    padding:10px 6px;
+    padding:7px 5px; /* خانے کو مواد کے بالکل قریب رکھنے کے لیے تھوڑا تنگ کر دیا */
     text-align:center;
   }
   .totals .n{
     font-family:"Courier Prime",monospace;
-    font-size:17px;font-weight:700;color:var(--maroon-deep);
+    font-size:17px;font-weight:900;color:var(--maroon-deep);
     direction:ltr;
   }
   .totals .l{font-size:11px;color:#5b5346;margin-top:2px;}
@@ -587,10 +593,15 @@ window.loadAuthSDKs = async function(){
     padding:0px 0px;
     border-radius:1px;
     color:#000;
-    font-weight:700;
-    -webkit-text-stroke:.35px currentColor;
+    font-weight:900;
+    -webkit-text-stroke:.6px currentColor; /* font-weight:900 CSS کی سب سے موٹی حد ہے — اس سے مزید موٹا دکھانے کے لیے حروف کے گرد یہ اضافی خط (stroke) بڑھا دیا ہے */
     outline:none;
     box-sizing:border-box;
+    line-height:1.2; /* غیر فعال (disabled) اور فعال خانوں کی اونچائی ہمیشہ بالکل ایک جیسی رکھنے کے لیے — ورنہ بعض براؤزر disabled input کو تھوڑا مختلف اونچائی دیتے ہیں، جس سے قطار میں خانے تھوڑا اوپر نیچے نظر آتے تھے۔ */
+    vertical-align:middle;
+  }
+  .edit-table .cell-input:disabled{
+    opacity:1 !important;
   }
   /* کمپیوٹر پر type="number" کے خانوں کے ساتھ خودکار اوپر/نیچے تیر (spinner)
      نظر آتے ہیں — یہ خانے کی تنگ چوڑائی میں جگہ لے کر نمبر کو کٹا ہوا
@@ -617,6 +628,39 @@ window.loadAuthSDKs = async function(){
   }
   .kata-t-cell{
     background:rgba(76,175,80,.25) !important;
+  }
+  /* پوری ویب سائٹ کا ہر نمبر اور لفظ زیادہ سے زیادہ موٹا (bold) کر دیا ہے —
+     تاکہ کمزور نظر والوں کو بھی آسانی سے پڑھنے میں مدد ملے۔ font-weight:900
+     CSS کی سب سے زیادہ موٹی قدر ہے (اس سے زیادہ موٹا ممکن نہیں)۔ کھاتہ
+     (سیلزمین/ربنواز/Agency)، ریٹ لسٹ، Best Excel official، اور سرف کا
+     ماہانہ حساب — سب جگہ لاگو ہے۔ */
+  #kataListView, #kataDetailView,
+  #tierListsContainer, #combinedTableContainer, #ledgerContainer,
+  #msListView, #msDetailView{
+    font-weight:900 !important;
+  }
+  #kataListView .edit-table th, #kataDetailView .edit-table th,
+  #tierListsContainer .edit-table th, #combinedTableContainer .edit-table th, #ledgerContainer .edit-table th,
+  #msListView .edit-table th, #msDetailView .edit-table th,
+  #kataListView .edit-table td, #kataDetailView .edit-table td,
+  #tierListsContainer .edit-table td, #combinedTableContainer .edit-table td, #ledgerContainer .edit-table td,
+  #msListView .edit-table td, #msDetailView .edit-table td,
+  #kataListView .cell-input, #kataDetailView .cell-input,
+  #tierListsContainer .cell-input, #combinedTableContainer .cell-input, #ledgerContainer .cell-input,
+  #msListView .cell-input, #msDetailView .cell-input,
+  #kataListView .totals .n, #kataDetailView .totals .n,
+  #tierListsContainer .totals .n, #combinedTableContainer .totals .n, #ledgerContainer .totals .n,
+  #msListView .totals .n, #msDetailView .totals .n,
+  #kataListView .totals .l, #kataDetailView .totals .l,
+  #tierListsContainer .totals .l, #combinedTableContainer .totals .l, #ledgerContainer .totals .l,
+  #msListView .totals .l, #msDetailView .totals .l,
+  #kataListView .note, #kataDetailView .note,
+  #tierListsContainer .note, #combinedTableContainer .note, #ledgerContainer .note,
+  #msListView .note, #msDetailView .note,
+  #kataListView h2, #kataDetailView h2,
+  #tierListsContainer h2, #combinedTableContainer h2, #ledgerContainer h2,
+  #msListView h2, #msDetailView h2{
+    font-weight:900 !important;
   }
   .edit-table td.name-cell .cell-input{
     text-align:center;
@@ -654,16 +698,25 @@ window.loadAuthSDKs = async function(){
   .scroll-fab{
     position:fixed;
     bottom:20px; left:16px;
-    width:48px;height:48px;
+    width:44px;height:44px;
     border-radius:50%;
     background:var(--brand-red);
     color:#fff;
-    border:2px solid #fff;
-    box-shadow:0 3px 10px rgba(0,0,0,.3);
-    font-size:20px;
+    border:none;
+    box-shadow:0 2px 8px rgba(0,0,0,.25);
+    font-size:17px;
     display:flex;align-items:center;justify-content:center;
     cursor:pointer;
     z-index:50;
+  }
+  /* 🔄 بٹن پر خود گھومنے کی حرکت — اپڈیٹ ہونے کے دوران، جیسے عام
+     "ریفریش" آئیکن گھومتے ہیں۔ */
+  @keyframes siteRefreshSpin{
+    from{ transform:rotate(0deg); }
+    to{ transform:rotate(360deg); }
+  }
+  #manualRefreshFab.spinning{
+    animation:siteRefreshSpin 0.9s linear infinite;
   }
   .perforation{
     height:14px;
@@ -953,13 +1006,18 @@ function siteTextPrompt(label, callback){
   </div>
 </header>
 
+<div id="topJumpFab" title="کسی بھی صفحے پر فوراً جائیں" style="position:fixed;top:10px;left:10px;z-index:70;width:34px;height:34px;border-radius:50%;background:var(--maroon-deep);color:#fff;border:none;box-shadow:0 2px 6px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;cursor:pointer;">
+  <svg width="12" height="8" viewBox="0 0 12 8" style="display:block;"><path d="M1 1 L6 6.5 L11 1" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+</div>
+<div id="topJumpMenu" class="hidden" style="position:fixed;top:48px;left:10px;z-index:70;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 3px 14px rgba(0,0,0,.28);min-width:200px;overflow:hidden;">
+</div>
 <nav>
   <button data-tab="kata" data-kata-instance="salesman" class="active">سیلزمین کھاتے</button>
   <button data-tab="kata" data-kata-instance="ribnawaz">ربنواز سیلزمین</button>
-  <button data-tab="kata" data-kata-instance="agency">Agency</button>
+  <button data-tab="kata" data-kata-instance="agency">ایجنسیاں</button>
   <button data-tab="rate">ریٹ لسٹ</button>
-  <button data-tab="formulation">Best Excel official</button>
   <button data-tab="monthlysurf">سرف کا ماہانہ حساب</button>
+  <button data-tab="formulation">Best Excel Washing powder</button>
 </nav>
 
 <main>
@@ -988,16 +1046,26 @@ function siteTextPrompt(label, callback){
   </section>
 
   <div class="scroll-fab" id="scrollFab" title="اوپر جائیں">⬆</div>
-  <div class="scroll-fab" id="colorModeFab" title="خانوں پر رنگ لگائیں" style="bottom:74px;background:linear-gradient(135deg,#ff5e5e,#ffd25e,#5ee6ff,#7a5eff);padding:0;">
-    <label for="kataColorPickerInput" style="cursor:pointer;width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:50%;">🎨</label>
+  <div class="scroll-fab" id="colorModeFab" title="خانوں پر رنگ لگائیں" style="bottom:70px;background:#3d3d52;padding:0;">
+    <label for="kataColorPickerInput" style="cursor:pointer;width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:17px;">🎨</label>
   </div>
   <input type="color" id="kataColorPickerInput" value="#fff59d" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;">
-  <div class="scroll-fab" id="manualRefreshFab" title="دوسری ڈیوائسز کا تازہ ترین ڈیٹا ابھی منگوائیں" style="bottom:128px;background:#1e5f4a;">🔄</div>
-  <div id="manualRefreshBox" class="hidden" style="position:fixed;left:16px;bottom:180px;z-index:60;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 3px 12px rgba(0,0,0,.3);padding:12px 16px;min-width:220px;text-align:center;">
+  <div class="scroll-fab" id="manualRefreshFab" title="دوسری ڈیوائسز کا تازہ ترین ڈیٹا ابھی منگوائیں" style="bottom:120px;background:#1e5f4a;">🔄</div>
+  <div id="manualRefreshBox" class="hidden" style="position:fixed;left:16px;bottom:170px;z-index:60;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 3px 12px rgba(0,0,0,.25);padding:12px 16px;min-width:220px;text-align:center;">
     <div id="manualRefreshPercent" style="font-size:22px;font-weight:700;color:#1e5f4a;">0%</div>
     <div id="manualRefreshLabel" style="font-size:12px;margin-top:4px;">اپڈیٹ ہو رہا ہے...</div>
   </div>
-  <div class="scroll-fab" id="siteUndoFab" title="پچھلی تبدیلی واپس کریں (پوری ویب سائٹ)" style="bottom:182px;background:#7a4a1e;">↩</div>
+  <div class="scroll-fab" id="siteUndoFab" title="پچھلی تبدیلی واپس کریں (پوری ویب سائٹ)" style="bottom:170px;background:#6b4a2e;">↩</div>
+  <div class="scroll-fab" id="sizeAdjustFab" title="سائٹ کا سائز چھوٹا/بڑا کریں" style="bottom:220px;background:#4a3a6b;">🔍</div>
+  <div id="sizeAdjustBox" class="hidden" style="position:fixed;left:16px;bottom:270px;z-index:60;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 3px 12px rgba(0,0,0,.25);padding:14px 16px;min-width:230px;text-align:center;">
+    <div style="font-size:12px;margin-bottom:8px;">سائٹ کے تمام الفاظ، نمبر اور خانے — چھوٹے بڑے کریں</div>
+    <input type="range" id="sizeAdjustSlider" min="50" max="200" step="5" value="100" style="width:100%;">
+    <div id="sizeAdjustPercent" style="font-size:16px;font-weight:700;color:#5e3a8c;margin-top:4px;">100%</div>
+    <div style="display:flex;gap:6px;margin-top:8px;">
+      <button type="button" id="sizeAdjustResetBtn" style="flex:1;padding:6px;font-size:12px;border:1px solid var(--line);border-radius:4px;background:#f4efe2;">اصل سائز</button>
+      <button type="button" id="sizeAdjustCloseBtn" style="flex:1;padding:6px;font-size:12px;border:none;border-radius:4px;background:#5e3a8c;color:#fff;">بند کریں</button>
+    </div>
+  </div>
 
   <!-- ===================== FORMULATION ===================== -->
   <section id="formulation">
@@ -1476,10 +1544,10 @@ function makeManualAgencyCell(p, tier){
     p[tier.key] = Math.round((parseFloat(input.value) || 0) * 100) / 100;
     p[manualKey] = true;
     const row = td.parentElement;
-    const profitCell = row && row.querySelector('[data-profit-cell]');
+    const profitCell = row && row.querySelector('[data-profit-cell] input');
     if(profitCell){
       const mrpNum = Number(p.mrp) || 0;
-      profitCell.textContent = Math.round((mrpNum - p[tier.key]) * 100) / 100;
+      profitCell.value = Math.round((mrpNum - p[tier.key]) * 100) / 100;
     }
     if(typeof scheduleSiteDataSave === 'function') scheduleSiteDataSave();
   });
@@ -1525,10 +1593,14 @@ function fillTierTableBody(tbody, tier){
     if(tier.slug !== 'dukandar'){
       const profitTd = document.createElement('td');
       profitTd.dataset.profitCell = '1';
-      profitTd.className = 'cell-val'; // Agency کے خانوں جتنا ہی سائز — پہلے کوئی کلاس نہ ہونے کی وجہ سے یہ نمبر باقی سب سے کہیں بڑا نظر آتا تھا
+      const profitInput = document.createElement('input');
+      profitInput.type = 'text';
+      profitInput.className = 'cell-input'; // Agency کے خانوں جتنا ہی سائز اور قطار میں بالکل ایک ہی جگہ (اوپر/نیچے) رہے — پہلے پلین متن ہونے کی وجہ سے یہ خانہ باقی خانوں سے اوپر نیچے ہو کر نظر آتا تھا
+      profitInput.disabled = true;
       const mrpNum = Number(p.mrp) || 0;
       const agencyNum = Number(p[tier.key]) || 0;
-      profitTd.textContent = Math.round((mrpNum - agencyNum) * 100) / 100;
+      profitInput.value = Math.round((mrpNum - agencyNum) * 100) / 100;
+      profitTd.appendChild(profitInput);
       tr.appendChild(profitTd);
     }
 
@@ -1622,12 +1694,31 @@ async function renderTierCanvas(btn){
   // Make sure the site's webfonts are fully loaded before the screenshot,
   // otherwise html2canvas can capture a fallback font mid-swap.
   try{ await document.fonts.ready; } catch(e){ /* proceed anyway */ }
+  // فونٹ لوڈ ہونے سے پہلے خانوں کا سائز شاید غلط فونٹ کی پیمائش پر طے ہوا
+  // ہو — اب اصل فونٹ آ جانے کے بعد دوبارہ درست سائز کر لیتے ہیں، تاکہ
+  // پرنٹ/شیئر شدہ تصویر میں بھی خانے بالکل اسی طرح صحیح نظر آئیں جیسے
+  // صفحے پر نظر آتے ہیں۔
+  if(typeof window.measureAndSizeInput === 'function'){
+    el.querySelectorAll('.cell-input').forEach(window.measureAndSizeInput);
+  }
+  // چوڑی ٹیبل (موبائل پر سائیڈ سکرول والی) کو html2canvas صرف نظر آنے
+  // والا حصہ ہی کھینچتا تھا، پورا نہیں — اسی لیے کچھ کالم کٹے ہوئے آتے
+  // تھے۔ کھینچنے سے پہلے مکمل چوڑا (بغیر سکرول) کر دیتے ہیں، بعد میں
+  // واپس پہلے جیسا۔
+  const prevOverflow = el.style.overflowX, prevWidth = el.style.width;
+  el.style.overflowX = 'visible';
+  el.style.width = 'max-content';
 
-  return await html2canvas(el, {
-    scale: 3,                 // high-res export
-    backgroundColor: '#F4EFE2', // matches the card's cream background
-    useCORS: true,
-  });
+  try{
+    return await html2canvas(el, {
+      scale: 3,                 // high-res export
+      backgroundColor: '#F4EFE2', // matches the card's cream background
+      useCORS: true,
+    });
+  } finally {
+    el.style.overflowX = prevOverflow;
+    el.style.width = prevWidth;
+  }
 }
 
 
@@ -2510,9 +2601,11 @@ function msWireLiveFormulas(prevTotal, prevItemData){
   // خانے مواد (نمبر/الفاظ) کے سائز کے مطابق خودکار چھوٹے بڑے ہوں — same
   // mechanism as کھاتہ's own kataAutoSizeInput, applied here to #msDetailContainer.
   function msAutoSizeInput(input){
-    if(!input) return;
-    const len = (input.value || input.placeholder || '0').toString().length;
-    input.style.width = Math.max(len + 1.5, 3) + 'ch';
+    (window.measureAndSizeInput || function(inp){
+      if(!inp) return;
+      const len = (inp.value || inp.placeholder || '0').toString().length;
+      inp.style.width = Math.max(len + 1.5, 3) + 'ch';
+    })(input);
   }
   document.querySelectorAll('#msDetailContainer .cell-input').forEach(msAutoSizeInput);
   document.querySelectorAll('#msDetailContainer .cell-input').forEach(inp=>{
@@ -3239,6 +3332,22 @@ function syncKataItemsFromRateList(){
     item.prift = Math.round((mrp - agencyB) * 100) / 100;
   });
   if(typeof kataLocalRenderList === 'function' && document.getElementById('kataListView') && document.getElementById('kataListView').style.display !== 'none') kataLocalRenderList();
+  // اگر کوئی کھاتہ اسی وقت کھلا ہوا ہے تو "Rate"/"Total Rate" کے خانے بھی
+  // فوراً تازہ کر دیتے ہیں — بغیر پوری فارم دوبارہ بنائے (تاکہ اگر کوئی
+  // اسی وقت T CTN میں کچھ لکھ رہا ہو تو اس میں رکاوٹ نہ آئے)۔ یہی وہ اصل
+  // خودکار ربط ہے جو صارف نے مانگا: Rate ہمیشہ ریٹ لسٹ B سے آتا رہے،
+  // کھاتے میں کبھی دستی تبدیل نہ ہو سکے۔
+  const detailView = document.getElementById('kataDetailView');
+  if(detailView && detailView.style.display !== 'none'){
+    KATA_ITEMS.forEach(item=>{
+      const rateCell = document.querySelector(`[data-kata-rate="${item.key}"]`);
+      if(rateCell) rateCell.value = item.rate;
+      const tInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`);
+      const totalRateCell = document.querySelector(`[data-kata-totalrate="${item.key}"]`);
+      if(totalRateCell) totalRateCell.textContent = item.rate * (Number((tInput && tInput.value)||0) || 0);
+    });
+    if(typeof window.kataRecomputeTotalsBlock === 'function') window.kataRecomputeTotalsBlock();
+  }
 }
 window.syncKataItemsFromRateList = syncKataItemsFromRateList;
 syncKataItemsFromRateList(); // اسی وقت — چونکہ ریٹ لسٹ کا ڈیٹا اس سے پہلے ہی لوڈ ہو چکا ہوتا ہے
@@ -3641,8 +3750,23 @@ async function kataPrintEntry(btn){
   const actions = card.querySelector('.kata-entry-actions');
   const prevDisplay = actions ? actions.style.display : '';
   if(actions) actions.style.display = 'none'; // don't capture the print/delete buttons themselves
+  // موبائل پر چوڑی ٹیبل کو دیکھنے کے لیے سائیڈ میں سکرول کرنا پڑتا ہے
+  // (.edit-table کا overflow-x:auto) — html2canvas صرف اسی وقت نظر آنے
+  // والا حصہ ہی کھینچتا ہے، پوری چوڑائی نہیں — اسی لیے پرنٹ میں کچھ کالم
+  // (جیسے #/Items) کٹے ہوئے آ رہے تھے۔ کھینچنے سے پہلے چند لمحوں کے لیے
+  // ٹیبل کو مکمل چوڑا (بغیر سکرول کے) کر دیتے ہیں، تصویر بننے کے بعد واپس
+  // پہلے جیسا کر دیتے ہیں — صفحے پر نظر نہیں آتا، صرف پرنٹ کے وقت۔
+  const cardOverflow = card.style.overflow, cardWidth = card.style.width;
+  card.style.overflow = 'visible';
+  card.style.width = 'max-content';
+  const editTables = card.querySelectorAll('.edit-table');
+  const prevTableStyles = Array.from(editTables).map(et=>({el: et, overflowX: et.style.overflowX, width: et.style.width}));
+  editTables.forEach(et=>{ et.style.overflowX = 'visible'; et.style.width = 'max-content'; });
   try{
     try{ await document.fonts.ready; } catch(e){ /* proceed anyway */ }
+    if(typeof window.measureAndSizeInput === 'function'){
+      card.querySelectorAll('.cell-input').forEach(window.measureAndSizeInput);
+    }
     const canvas = await html2canvas(card, {scale:3, backgroundColor:'#F4EFE2', useCORS:true});
     if(typeof jspdf === 'undefined' || !jspdf.jsPDF) throw new Error('jsPDF-not-loaded');
     const { jsPDF } = jspdf;
@@ -3660,6 +3784,9 @@ async function kataPrintEntry(btn){
     alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
     console.warn(err);
   } finally {
+    card.style.overflow = cardOverflow;
+    card.style.width = cardWidth;
+    prevTableStyles.forEach(({el, overflowX, width})=>{ el.style.overflowX = overflowX; el.style.width = width; });
     if(actions) actions.style.display = prevDisplay;
     btn.textContent = originalLabel; btn.disabled = false;
   }
@@ -3729,10 +3856,12 @@ function kataColorStyleFor(cellColors, key){
 
 function kataRenderEntryCard(entry, isLast){
   let rows = '';
+  let sumT = 0;
   const cc = entry.cellColors || {};
   KATA_ITEMS.forEach((item, idx)=>{
     const v = (entry.items && entry.items[item.key]) || {t:0, price:0};
     if(!v.t && !v.price) return; // skip untouched rows to keep past entries compact
+    sumT += Number(v.t) || 0;
     // Older entries (saved before reference fields became per-row snapshots)
     // won't have v.rate/v.name/v.weight — fall back to today's KATA_ITEMS
     // values for those so old cards still render.
@@ -3761,7 +3890,16 @@ function kataRenderEntryCard(entry, isLast){
           <tbody>${rows}</tbody>
         </table>
       </div>
-      ${entry.kharch ? `<div class="note" style="text-align:center;margin-top:8px;">کرایہ: ${entry.kharch}</div>` : ''}
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">${entry.kharch||0}</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">کرایہ</div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">${sumT}</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
+        </div>
+      </div>
       ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya)}
       <div class="kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
         <button type="button" class="kata-print-entry-btn" style="padding:5px 14px;font-size:12px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 پرنٹ</button>
@@ -3802,7 +3940,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(item.name)}"></td>
       <td data-color-key="${item.key}-weight"><input type="text" class="cell-input" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${kataEscape(item.weight)}"></td>
       <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="t" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
-      <td data-color-key="${item.key}-rate"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="rate" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${item.rate}"></td>
+      <td data-color-key="${item.key}-rate"><input type="text" class="cell-input" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${item.rate}" disabled></td>
       <td data-color-key="${item.key}-totalrate" data-kata-totalrate="${item.key}">0</td>
     </tr>`;
   });
@@ -3831,15 +3969,21 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
             <th><button type="button" class="row-lock-btn" data-kata-lockbtn="name"></button>Items</th>
             <th><button type="button" class="row-lock-btn" data-kata-lockbtn="weight"></button>Weight</th>
             <th><button type="button" class="row-lock-btn" data-kata-lockbtn="t"></button>T CTN</th>
-            <th><button type="button" class="row-lock-btn" data-kata-lockbtn="rate"></button>Rate</th>
+            <th>Rate</th>
             <th>Total Rate</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
-      <div style="text-align:center;margin-top:10px;">
-        <div style="font-size:14px;margin-bottom:4px;">کرایہ</div>
-        <input type="number" inputmode="numeric" class="cell-input" data-kata-field="kharch" style="border:1px solid var(--line);font-size:16px;padding:6px;" value="0">
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;box-sizing:border-box;">
+          <input type="number" inputmode="numeric" class="cell-input" data-kata-field="kharch" style="border:none;background:transparent;font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;width:100%;box-sizing:border-box;text-align:center;padding:0;" value="0">
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">کرایہ</div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div class="n" data-kata-sum-t style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
+        </div>
       </div>
       <div class="edit-table" style="margin-top:8px;">
         <table dir="ltr">
@@ -3867,9 +4011,11 @@ function kataWireLiveFormulas(prevTotal){
   // خانے مواد (نمبر/الفاظ) کے سائز کے مطابق خودکار چھوٹے بڑے ہوں — ہر ان پٹ کی
   // چوڑائی اس کے اپنے موجودہ متن کے مطابق مقرر کی جاتی ہے، فکسڈ 100% کی بجائے۔
   function kataAutoSizeInput(input){
-    if(!input) return;
-    const len = (input.value || input.placeholder || '0').toString().length;
-    input.style.width = Math.max(len + 1.5, 3) + 'ch';
+    (window.measureAndSizeInput || function(inp){
+      if(!inp) return;
+      const len = (inp.value || inp.placeholder || '0').toString().length;
+      inp.style.width = Math.max(len + 1.5, 3) + 'ch';
+    })(input);
   }
   function kataAutoSizeAll(){
     document.querySelectorAll('#kataDetailView .cell-input').forEach(kataAutoSizeInput);
@@ -3887,6 +4033,8 @@ function kataWireLiveFormulas(prevTotal){
       todayT += t;
       todayRate += item.rate * t;
     });
+    const sumTEl = document.querySelector('[data-kata-sum-t]');
+    if(sumTEl) sumTEl.textContent = todayT;
     const kharchInput = document.querySelector('[data-kata-field="kharch"]');
     const kharch = Number((kharchInput && kharchInput.value) || 0) || 0;
     const todayPrice = todayRate + kharch;
@@ -3907,6 +4055,7 @@ function kataWireLiveFormulas(prevTotal){
     const jamahPrice = j('[data-jamah="price0"]') + j('[data-jamah="price1"]');
     set('[data-kata-bqaya-price]', totPrice - jamahPrice);
   }
+  window.kataRecomputeTotalsBlock = recomputeTotalsBlock; // ریٹ لسٹ B میں تبدیلی پر فوری تازہ کاری کے لیے (syncKataItemsFromRateList)
   document.querySelectorAll('[data-kata-sabka]').forEach(input=>{
     input.addEventListener('input', recomputeTotalsBlock);
   });
@@ -3915,7 +4064,6 @@ function kataWireLiveFormulas(prevTotal){
     const tInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`);
     const nameInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="name"]`);
     const weightInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="weight"]`);
-    const rateInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="rate"]`);
     const totalRateCell = document.querySelector(`[data-kata-totalrate="${item.key}"]`);
 
     const getT = ()=> Number((tInput && tInput.value)||0)||0;
@@ -3926,7 +4074,6 @@ function kataWireLiveFormulas(prevTotal){
 
     if(nameInput) nameInput.addEventListener('input', ()=>{ item.name = nameInput.value; });
     if(weightInput) weightInput.addEventListener('input', ()=>{ item.weight = weightInput.value; });
-    if(rateInput) rateInput.addEventListener('input', ()=>{ item.rate = Number(rateInput.value)||0; refreshRow(); });
     if(tInput) tInput.addEventListener('input', refreshRow);
   });
   document.querySelectorAll('[data-jamah]').forEach(input=>{
@@ -3949,19 +4096,20 @@ function kataWireLiveFormulas(prevTotal){
       btn.title = locked ? 'یہ کالم ترمیم کے لیے کھولیں' : 'یہ کالم لاک کریں';
     }
   }
-  ['name','weight','t','rate','salesman'].forEach(field=>{
+  ['name','weight','t','salesman'].forEach(field=>{
     applyKataColLock(field);
     const btn = document.querySelector(`[data-kata-lockbtn="${field}"]`);
     if(btn) btn.addEventListener('click', ()=>{
       kataColLocked[field] = !kataColLocked[field];
       applyKataColLock(field);
     });
-    // حوالہ جاتی خانے (نام/وزن/ریٹ) جو ڈیفالٹ میں لاک ہوتے ہیں — انہیں
-    // کھول کر ترمیم کرنے کے بعد خانے سے باہر جاتے ہی (blur) خودکار دوبارہ
-    // لاک ہو جاتے ہیں، الگ سے بند کرنے کی ضرورت نہیں۔ روزانہ کی معمول کی
-    // انٹری کے خانے (t, salesman) اس میں شامل نہیں — وہ ہمیشہ کی طرح دستی
-    // طریقے سے ہی لاک/ان لاک ہوتے ہیں۔
-    if(['name','weight','rate'].includes(field)){
+    // حوالہ جاتی خانے (نام/وزن) جو ڈیفالٹ میں لاک ہوتے ہیں — انہیں کھول کر
+    // ترمیم کرنے کے بعد خانے سے باہر جاتے ہی (blur) خودکار دوبارہ لاک ہو
+    // جاتے ہیں، الگ سے بند کرنے کی ضرورت نہیں۔ روزانہ کی معمول کی انٹری
+    // کے خانے (t, salesman) اس میں شامل نہیں — وہ ہمیشہ کی طرح دستی طریقے
+    // سے ہی لاک/ان لاک ہوتے ہیں۔ "Rate" اب اس فہرست میں بالکل شامل نہیں —
+    // یہ ہمیشہ ریٹ لسٹ B سے خودکار آتا ہے، کبھی دستی تبدیل نہیں ہو سکتا۔
+    if(['name','weight'].includes(field)){
       document.querySelectorAll(`[data-kata-field="${field}"]`).forEach(input=>{
         input.addEventListener('change', ()=>{
           if(!input.disabled && kataColLocked[field] === false){
@@ -4114,10 +4262,29 @@ if(typeof LOGIN_TEMPORARILY_DISABLED !== 'undefined' && LOGIN_TEMPORARILY_DISABL
 // Excel official، ہر جگہ۔ ایک MutationObserver استعمال کیا ہے تاکہ یہ کسی
 // بھی ٹیبل کے دوبارہ بننے (لاک بٹن دبانے وغیرہ) پر بھی خودکار کام کرے،
 // ہر ٹیبل بنانے والے فنکشن میں الگ سے کوڈ ڈالنے کی ضرورت نہیں۔
-function globalAutoSizeInput(input){
+//
+// پہلے یہ صرف "ch" اکائی (موجودہ فونٹ کے "0" حرف کی چوڑائی) پر انحصار
+// کرتا تھا — لیکن اگر انٹرنیٹ کمزور ہونے کی وجہ سے اصل فونٹ (Courier
+// Prime) وقت پر لوڈ نہ ہو تو براؤزر عارضی طور پر ایک مختلف (اکثر چوڑی)
+// فونٹ دکھاتا ہے، جس سے خانے حقیقت سے بڑے نظر آتے تھے (یہی وجہ تھی کہ
+// لائیو سائٹ پر خانے Claude کے اپنے پیش نظارے سے بڑے نظر آ رہے تھے)۔ اب
+// canvas کے ذریعے متن کی اصل، فونٹ سے آزاد پکسل چوڑائی ناپی جاتی ہے —
+// نتیجہ ہر ڈیوائس/فونٹ لوڈنگ کی حالت میں یکساں رہتا ہے۔
+const _sizeMeasureCanvas = document.createElement('canvas');
+const _sizeMeasureCtx = _sizeMeasureCanvas.getContext('2d');
+function measureAndSizeInput(input){
   if(!input) return;
-  const len = (input.value || input.placeholder || '0').toString().length;
-  input.style.width = Math.max(len + 1.5, 3) + 'ch';
+  const text = (input.value || input.placeholder || '0').toString();
+  const cs = getComputedStyle(input);
+  _sizeMeasureCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const textWidth = _sizeMeasureCtx.measureText(text).width;
+  const paddingH = (parseFloat(cs.paddingLeft)||0) + (parseFloat(cs.paddingRight)||0);
+  const borderH = (parseFloat(cs.borderLeftWidth)||0) + (parseFloat(cs.borderRightWidth)||0);
+  input.style.width = Math.max(textWidth + paddingH + borderH + 4, 14) + 'px'; /* خانے کو مواد کے بالکل قریب، تنگ رکھنے کے لیے اضافی جگہ کم کر دی */
+}
+window.measureAndSizeInput = measureAndSizeInput;
+function globalAutoSizeInput(input){
+  measureAndSizeInput(input);
 }
 document.querySelectorAll('.cell-input').forEach(globalAutoSizeInput);
 document.addEventListener('input', (e)=>{
@@ -4182,6 +4349,83 @@ document.getElementById('siteUndoFab').addEventListener('click', ()=>{
 });
 </script>
 <script>
+// ---------- سائٹ کا سائز خود چھوٹا/بڑا کرنے کا آزمائشی کنٹرول (🔍) ----------
+// یہ صرف اسی ڈیوائس/براؤزر پر عارضی طور پر پورا صفحہ بڑا/چھوٹا دکھاتا ہے
+// (CSS "zoom" — تمام الفاظ، نمبر، خانے، سب ایک ساتھ متناسب طریقے سے چھوٹے
+// بڑے ہوتے ہیں) — تاکہ صارف آزما کر بہترین سائز ڈھونڈ سکے۔ یہ کہیں محفوظ
+// یا کلاؤڈ پر سنک نہیں ہوتا — صرف دیکھنے کے لیے ہے۔ جب پسندیدہ سائز مل
+// جائے تو وہ نمبر (%) بتا دیں، وہی سائز پھر مستقل طور پر کوڈ میں لاگو کر
+// دیا جائے گا۔
+(function(){
+  const slider = document.getElementById('sizeAdjustSlider');
+  const pctEl = document.getElementById('sizeAdjustPercent');
+  const fab = document.getElementById('sizeAdjustFab');
+  const box = document.getElementById('sizeAdjustBox');
+  const resetBtn = document.getElementById('sizeAdjustResetBtn');
+  const closeBtn = document.getElementById('sizeAdjustCloseBtn');
+
+  function applyZoom(pct){
+    document.body.style.zoom = pct + '%';
+    pctEl.textContent = pct + '%';
+  }
+
+  const savedPct = localStorage.getItem('siteZoomPreview_v1');
+  if(savedPct){
+    slider.value = savedPct;
+    applyZoom(savedPct);
+  }
+
+  slider.addEventListener('input', ()=>{
+    applyZoom(slider.value);
+    localStorage.setItem('siteZoomPreview_v1', slider.value);
+  });
+  resetBtn.addEventListener('click', ()=>{
+    slider.value = 100;
+    applyZoom(100);
+    localStorage.removeItem('siteZoomPreview_v1');
+  });
+  fab.addEventListener('click', ()=>{
+    const isHidden = box.style.display !== 'block';
+    box.style.display = isHidden ? 'block' : 'none';
+    box.classList.remove('hidden');
+  });
+  closeBtn.addEventListener('click', ()=>{ box.style.display = 'none'; });
+})();
+</script>
+<script>
+// ---------- 🔽 فوری صفحہ منتقلی (اوپر بائیں، ہمیشہ نظر آنے والا) ----------
+// یہ بٹن کہیں سے بھی (چاہے صفحہ نیچے تک اسکرول ہو) موجودہ 6 صفحوں میں سے
+// کسی پر بھی سیدھا لے جاتا ہے — نیچے دی گئی فہرست میں سے کوئی نام دبانے
+// پر وہی کام ہوتا ہے جو اوپر والے اصل nav بٹن پر ٹیپ کرنے سے ہوتا ہے
+// (btn.click() کے ذریعے) — پاس ورڈ گیٹ، کھاتہ instance بدلنا، سب کچھ
+// بالکل ویسے ہی کام کرتا ہے، الگ سے کوئی نیا کوڈ نہیں لکھا۔
+(function(){
+  const fab = document.getElementById('topJumpFab');
+  const menu = document.getElementById('topJumpMenu');
+  const navButtons = Array.from(document.querySelectorAll('nav button'));
+  navButtons.forEach((btn, idx)=>{
+    const item = document.createElement('div');
+    item.textContent = btn.textContent;
+    item.style.cssText = 'padding:11px 16px;text-align:center;cursor:pointer;font-size:13.5px;color:var(--ink);transition:background .12s;' + (idx < navButtons.length-1 ? 'border-bottom:1px solid var(--line);' : '');
+    item.addEventListener('mouseenter', ()=>{ item.style.background = 'var(--paper-dark)'; });
+    item.addEventListener('mouseleave', ()=>{ item.style.background = ''; });
+    item.addEventListener('click', ()=>{
+      btn.click();
+      menu.style.display = 'none';
+    });
+    menu.appendChild(item);
+  });
+  fab.addEventListener('click', ()=>{
+    const isHidden = menu.style.display !== 'block';
+    menu.style.display = isHidden ? 'block' : 'none';
+    menu.classList.remove('hidden');
+  });
+  document.addEventListener('click', (e)=>{
+    if(!fab.contains(e.target) && !menu.contains(e.target)) menu.style.display = 'none';
+  });
+})();
+</script>
+<script>
 // ---------- کھاتوں کے خانوں پر مرضی کا رنگ لگانا ----------
 // 🎨 دبائیں → رنگ چنیں → کسی بھی کھاتے (سیلزمین/ربنواز/سرف کا ماہانہ حساب)
 // کے کسی بھی خانے پر ٹیپ کریں تو وہی رنگ لگ جائے۔ دوبارہ 🎨 دبائیں تو موڈ
@@ -4201,7 +4445,7 @@ function kataUpdateColorFab(){
     colorModeFabLabel.textContent = '✓';
     colorModeFab.title = 'رنگ موڈ فعال — خانے پر ٹیپ کریں، بند کرنے کے لیے دوبارہ دبائیں';
   } else {
-    colorModeFab.style.background = 'linear-gradient(135deg,#ff5e5e,#ffd25e,#5ee6ff,#7a5eff)';
+    colorModeFab.style.background = '#3d3d52';
     colorModeFabLabel.style.color = '#fff';
     colorModeFabLabel.textContent = '🎨';
     colorModeFab.title = 'خانوں پر رنگ لگائیں';
@@ -4594,6 +4838,7 @@ async function manualRefreshAll(){
   const labelEl = document.getElementById('manualRefreshLabel');
   if(btn.dataset.busy === '1') return; // دوبارہ دبانے پر دو بار نہ چلے
   btn.dataset.busy = '1';
+  btn.classList.add('spinning'); // بٹن خود گھومنا شروع
   box.classList.remove('hidden');
   box.style.display = 'block';
   pctEl.style.color = '#1e5f4a';
@@ -4614,6 +4859,7 @@ async function manualRefreshAll(){
   }
 
   clearInterval(ticker);
+  btn.classList.remove('spinning'); // گھومنا رک جائے — اپڈیٹ مکمل
   pctEl.textContent = '✅ 100%';
   pctEl.style.color = '#1a8a4a';
   labelEl.textContent = 'اب مکمل 100% اپڈیٹ ہے';
