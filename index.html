@@ -1648,6 +1648,11 @@ function makeManualAgencyCell(p, tier){
       profitCell.textContent = Math.round((mrpNum - p[tier.key]) * 100) / 100;
     }
     if(typeof scheduleSiteDataSave === 'function') scheduleSiteDataSave();
+    // کھاتہ کے Items/Weight/Price ہمیشہ B کارڈ کے Agency ریٹ سے آتے ہیں —
+    // پہلے یہ صرف اسی وقت تازہ ہوتے تھے جب List A بدلے (recalcDependentTiers
+    // کے ذریعے)؛ اگر B کا Agency خانہ براہِ راست دستی لکھا جائے (یہاں) تو
+    // بھی فوراً تازہ ہونا چاہیے۔
+    if(tier.key === 'agencyB' && typeof syncKataItemsFromRateList === 'function') syncKataItemsFromRateList();
   });
   td.appendChild(input);
   return td;
@@ -4367,8 +4372,12 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
   const salesmanInput = document.querySelector('[data-kata-field="salesman"]');
   const salesman = salesmanInput ? salesmanInput.value : '';
 
-  if(todayT === 0 && todayPrice === 0){
-    alert('کم از کم ایک آئٹم میں کوئی مقدار درج کریں۔');
+  const jVal = (name)=>{ const el = document.querySelector(`[data-jamah="${name}"]`); return el ? (Number(el.value)||0) : 0; };
+  const jamah = {price: [jVal('price0'), jVal('price1')]};
+  const jamahTotal = jamah.price[0] + jamah.price[1];
+
+  if(todayT === 0 && todayPrice === 0 && jamahTotal === 0){
+    alert('کم از کم ایک آئٹم میں کوئی مقدار درج کریں، یا Jamah میں کوئی رقم لکھیں۔');
     return;
   }
   // پہلی انٹری میں "سابقہ" خود لکھی گئی ہو تو وہیں سے پڑھیں، ورنہ ہمیشہ کی
@@ -4383,8 +4392,6 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
   const today = {t: todayT, price: todayPrice};
   const total = {t: sabka.t + today.t, price: sabka.price + today.price};
 
-  const jVal = (name)=>{ const el = document.querySelector(`[data-jamah="${name}"]`); return el ? (Number(el.value)||0) : 0; };
-  const jamah = {price: [jVal('price0'), jVal('price1')]};
   const bqaya = {price: total.price - (jamah.price[0]+jamah.price[1])};
 
   const btn = document.getElementById('kataSaveEntryBtn');
