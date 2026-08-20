@@ -3848,6 +3848,13 @@ function kataRenderDetail(name){
   const container = document.getElementById('kataDetailContainer');
   if(!container) return;
 
+  // ہر بار کھاتہ کھلنے/دوبارہ بننے پر ریٹ لسٹ B سے تازہ ترین Items/Weight/
+  // Rate کھینچ لیتے ہیں — پہلے یہ صرف اسی وقت تازہ ہوتا تھا جب تبدیلی کے
+  // وقت کھاتہ پہلے سے کھلا ہو؛ اگر تبدیلی ریٹ لسٹ ٹیب پر کی گئی ہو اور
+  // کھاتہ بعد میں کھولا جائے تو یہ یقینی بناتا ہے کہ پرانا نام/وزن کبھی
+  // نظر نہ آئے۔
+  if(typeof syncKataItemsFromRateList === 'function') syncKataItemsFromRateList();
+
   const lastEntry = kataOpenEntries.length ? kataOpenEntries[kataOpenEntries.length-1] : null;
   const prevTotal = lastEntry ? lastEntry.total : (kataOpenCarryForward || {t:0, price:0, profit:0, td:0});
   const prevSaleMahana = lastEntry ? lastEntry.saleMahana : null;
