@@ -3490,6 +3490,10 @@ function syncKataItemsFromRateList(){
     KATA_ITEMS.forEach(item=>{
       const rateCell = document.querySelector(`[data-kata-rate="${item.key}"]`);
       if(rateCell) rateCell.value = item.rate;
+      const nameInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="name"]`);
+      if(nameInput) nameInput.value = item.name;
+      const weightInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="weight"]`);
+      if(weightInput) weightInput.value = item.weight;
       const tInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`);
       const totalRateCell = document.querySelector(`[data-kata-totalrate="${item.key}"]`);
       if(totalRateCell) totalRateCell.textContent = item.rate * (Number((tInput && tInput.value)||0) || 0);
@@ -4123,8 +4127,8 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
     const nameColor = 'color:red;';
     rows += `<tr>
       <td data-color-key="${item.key}-idx">${idx+1}</td>
-      <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(item.name)}"></td>
-      <td data-color-key="${item.key}-weight"><input type="text" class="cell-input" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${kataEscape(item.weight)}"></td>
+      <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(item.name)}" disabled></td>
+      <td data-color-key="${item.key}-weight"><input type="text" class="cell-input" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${kataEscape(item.weight)}" disabled></td>
       <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="t" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
       <td data-color-key="${item.key}-rate"><input type="text" class="cell-input" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${item.rate}" disabled></td>
       <td data-color-key="${item.key}-totalrate" data-kata-totalrate="${item.key}">0</td>
@@ -4137,6 +4141,8 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
     ? `<tr><td style="text-align:right;padding-right:6px;">Sabka</td><td><input type="number" inputmode="numeric" class="cell-input" data-kata-sabka="price" style="border:1px solid var(--line);" value="${prevTotal.price}"><input type="hidden" data-kata-sabka="t" value="${prevTotal.t}"></td></tr>`
     : `<tr><td style="text-align:right;padding-right:6px;">Sabka</td><td>${prevTotal.price}</td></tr>`;
   const nameLabel = kataInstance === 'agency' ? 'Agency کا نام' : 'سیلزمین کا نام';
+  // یہ خانہ اب ہمیشہ اسی کھلے ہوئے کھاتے کے نام (kataOpenName) سے خودکار
+  // بھرا رہتا ہے — دستی لکھنے کی ضرورت نہیں، نہ اجازت، تالا مستقل بند۔
   return `
     <div class="card">
       <h2 style="border:none;text-align:center;">+ نئی انٹری</h2>
@@ -4145,15 +4151,14 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       </div>
       <div class="note" style="text-align:center;">
         <div style="margin-bottom:4px;">${nameLabel}</div>
-        <button type="button" class="row-lock-btn" data-kata-lockbtn="salesman"></button>
-        <input type="text" class="cell-input" data-kata-field="salesman" style="border:1px solid var(--line);text-align:center;" value="${kataEscape(prevSalesman||'')}">
+        <input type="text" class="cell-input" data-kata-field="salesman" style="border:1px solid var(--line);text-align:center;" value="${kataEscape(kataOpenName||'')}" disabled>
       </div>
       <div class="edit-table wide-table">
         <table dir="ltr">
           <thead><tr>
             <th>#</th>
-            <th><button type="button" class="row-lock-btn" data-kata-lockbtn="name"></button>Items</th>
-            <th><button type="button" class="row-lock-btn" data-kata-lockbtn="weight"></button>Weight</th>
+            <th>🔒 Items</th>
+            <th>🔒 Weight</th>
             <th><button type="button" class="row-lock-btn" data-kata-lockbtn="t"></button>T CTN</th>
             <th>Rate</th>
             <th>Total Rate</th>
@@ -4282,29 +4287,16 @@ function kataWireLiveFormulas(prevTotal){
       btn.title = locked ? 'یہ کالم ترمیم کے لیے کھولیں' : 'یہ کالم لاک کریں';
     }
   }
-  ['name','weight','t','salesman'].forEach(field=>{
+  // Items/Weight/Agency-نام اب مستقل طور پر غیر فعال ہیں (اوپر ہی
+  // disabled کے ساتھ بنے) — کوئی 🔒/🔓 بٹن موجود نہیں، اس لیے یہاں صرف
+  // "t" ہی رہ گیا جو واقعی toggle ہوتا ہے۔
+  ['t'].forEach(field=>{
     applyKataColLock(field);
     const btn = document.querySelector(`[data-kata-lockbtn="${field}"]`);
     if(btn) btn.addEventListener('click', ()=>{
       kataColLocked[field] = !kataColLocked[field];
       applyKataColLock(field);
     });
-    // حوالہ جاتی خانے (نام/وزن) جو ڈیفالٹ میں لاک ہوتے ہیں — انہیں کھول کر
-    // ترمیم کرنے کے بعد خانے سے باہر جاتے ہی (blur) خودکار دوبارہ لاک ہو
-    // جاتے ہیں، الگ سے بند کرنے کی ضرورت نہیں۔ روزانہ کی معمول کی انٹری
-    // کے خانے (t, salesman) اس میں شامل نہیں — وہ ہمیشہ کی طرح دستی طریقے
-    // سے ہی لاک/ان لاک ہوتے ہیں۔ "Rate" اب اس فہرست میں بالکل شامل نہیں —
-    // یہ ہمیشہ ریٹ لسٹ B سے خودکار آتا ہے، کبھی دستی تبدیل نہیں ہو سکتا۔
-    if(['name','weight'].includes(field)){
-      document.querySelectorAll(`[data-kata-field="${field}"]`).forEach(input=>{
-        input.addEventListener('change', ()=>{
-          if(!input.disabled && kataColLocked[field] === false){
-            kataColLocked[field] = true;
-            applyKataColLock(field);
-          }
-        });
-      });
-    }
   });
 
   // ---------- UNDO (↩ / Ctrl+Z) ----------
