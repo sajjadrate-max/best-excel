@@ -26,8 +26,17 @@
   const originalWarn = console.warn.bind(console);
   const originalError = console.error.bind(console);
   function isFirebaseNoise(args){
-    const text = args.map(a => (typeof a === 'string' ? a : '')).join(' ');
-    return text.indexOf('@firebase') !== -1 || text.indexOf('firestore') !== -1 || text.indexOf('Firestore') !== -1;
+    for(const a of args){
+      let text = '';
+      if(typeof a === 'string') text = a;
+      else if(a && typeof a === 'object') text = (a.message || '') + ' ' + (a.code || '');
+      if(text.indexOf('@firebase') !== -1 || text.indexOf('firestore') !== -1 || text.indexOf('Firestore') !== -1) return true;
+      // آف لائن ہونے کی صورت میں "client is offline"/"unavailable" پیغامات —
+      // یہ بھی نیٹ ورک کے عارضی مسئلے کا نوٹس ہیں (ڈیٹا پہلے ہی localStorage
+      // میں محفوظ ہو چکا ہوتا ہے)، اس لیے یہ بھی چھپا دیے گئے ہیں۔
+      if(text.indexOf('offline') !== -1 || text.indexOf('unavailable') !== -1) return true;
+    }
+    return false;
   }
   console.warn = function(...args){
     if(isFirebaseNoise(args)) return;
@@ -97,6 +106,8 @@ window.loadAuthSDKs = async function(){
     --brand-blue:#1B3E73;
     --brand-blue-deep:#122647;
     --brand-red:#D42430;
+    --num-stroke: 1px; /* نمبروں کی موٹائی — 🖊 بٹن سے صارف خود کنٹرول کرتا ہے */
+    --row-line-height: 1; /* قطاروں کی اونچائی/قربت — 📏 بٹن سے صارف خود کنٹرول کرتا ہے */
   }
   *{box-sizing:border-box;}
   body{
@@ -400,8 +411,26 @@ window.loadAuthSDKs = async function(){
   }
   .sheet-title{
     font-weight:900 !important;
-    letter-spacing:.02em;
-    font-size:20px !important;
+    letter-spacing:.03em;
+    font-size:26px !important;
+  }
+  .master-all-lock-btn{
+    font-size:14px !important;
+    vertical-align:middle;
+    margin:0 6px 0 0 !important;
+    padding:3px 7px !important;
+    border-radius:4px !important;
+  }
+  .row-delete-btn{
+    font-size:9px;
+    line-height:1;
+    padding:1px 3px;
+    margin:0 2px 0 0;
+    border:none;
+    border-radius:2px;
+    background:rgba(212,36,48,.15);
+    cursor:pointer;
+    vertical-align:middle;
   }
   .edit-table.wide-table .row-lock-btn{
     font-size:3px;
@@ -512,27 +541,28 @@ window.loadAuthSDKs = async function(){
     -webkit-overflow-scrolling:touch;
   }
   .edit-table.wide-table table{
-    table-layout:auto;
-    width:auto;
-    min-width:100%;
+    table-layout:fixed; /* پہلے auto/width:auto تھا (سائیڈ سکرول کرنا پڑتا تھا) — اب fixed+100% چوڑائی سے پوری ٹیبل موبائل سکرین میں فٹ ہو جاتی ہے، سکرول کی ضرورت نہیں رہتی */
+    width:100%;
     border-spacing:0;
   }
   .edit-table.wide-table th,
   .edit-table.wide-table td{
-    min-width:17px;
-  }
-  .edit-table.wide-table td.name-cell{
-    min-width:36px;
+    white-space:normal; /* nowrap کی جگہ — تنگ کالم میں لمبا لفظ/نمبر اوپر نیچے لپٹ (wrap) جائے، سائیڈ میں نہ نکلے */
+    word-break:break-word;
+    overflow-wrap:break-word;
   }
   .edit-table.wide-table th{
     padding:0px 0px;
     font-size:4.6px;
-    line-height:1;
+    line-height:var(--row-line-height);
   }
   .edit-table.wide-table .cell-input,
   .edit-table.wide-table .cell-val{
     font-size:5.2px;
     padding:0px 0px;
+    width:100% !important; /* خانے کا اپنا خودکار (مواد کے مطابق) چوڑائی سیٹ کرنے والا سکرپٹ بھی اب اسی fixed کالم کے اندر ہی رہے، باہر نہ نکلے */
+    max-width:100% !important;
+    white-space:normal;
   }
   .edit-table.wide-table td.name-cell .cell-input,
   .edit-table.wide-table td.name-cell .cell-val{
@@ -545,16 +575,18 @@ window.loadAuthSDKs = async function(){
     font-size:6px;
   }
   .edit-table table{
-    table-layout:auto;
-    width:auto;
-    min-width:100%;
+    table-layout:fixed; /* پہلے auto/width:auto تھا — سائیڈ سکرول کرنا پڑتا تھا۔ اب fixed+100% سے ریٹ لسٹ (A/B/C/Salesman/دکاندار) اور کھاتہ رجسٹر بھی موبائل سکرین میں پوری فٹ ہو جاتی ہیں */
+    width:100%;
     border-collapse:separate;
     border-spacing:0;
   }
   .edit-table th,
   .edit-table td{
-    white-space:nowrap;
+    white-space:normal; /* nowrap کی جگہ — تنگ کالم میں لمبا لفظ لپٹ (wrap) جائے، باہر نہ نکلے */
+    word-break:break-word;
+    overflow-wrap:break-word;
     width:auto;
+    line-height:var(--row-line-height);
   }
   .edit-table col.col-name{width:auto;}
   .edit-table col.col-num{width:auto;}
@@ -572,18 +604,21 @@ window.loadAuthSDKs = async function(){
     background:rgba(234,226,207,.3);
   }
   .edit-table th{
-    padding:0px 2px;
-    font-size:5.5px;
+    padding:0px 1px;
+    font-size:4.8px;
     overflow:visible;
     text-overflow:clip;
-    white-space:nowrap;
-    line-height:1;
+    white-space:normal;
+    word-break:break-word;
+    line-height:var(--row-line-height);
     color:#fff;
   }
   .edit-table .cell-input{
-    width:100%;
-    max-width:100%;
+    width:100% !important; /* خانے کا اپنا خودکار (مواد کے مطابق) چوڑائی سیٹ کرنے والا سکرپٹ بھی اب فکسڈ کالم کے اندر ہی رہے، باہر نہ نکلے */
+    max-width:100% !important;
     border:1px solid transparent;
+    -webkit-appearance:none;
+    appearance:none; /* موبائل براؤزر کبھی کبھار خانے کے نیچے اپنا مقامی باریک بارڈر خود دکھا دیتے ہیں چاہے border-color شفاف ہو — اس سے قطاریں غیر ضروری الگ الگ نظر آتی تھیں، اب مکمل ہٹا دیا */
     background:transparent;
     font-family:"Courier Prime",monospace;
     font-variant-numeric:tabular-nums;
@@ -594,10 +629,10 @@ window.loadAuthSDKs = async function(){
     border-radius:1px;
     color:#000;
     font-weight:900;
-    -webkit-text-stroke:.6px currentColor; /* font-weight:900 CSS کی سب سے موٹی حد ہے — اس سے مزید موٹا دکھانے کے لیے حروف کے گرد یہ اضافی خط (stroke) بڑھا دیا ہے */
+    -webkit-text-stroke:var(--num-stroke) currentColor; /* font-weight:900 CSS کی سب سے موٹی حد ہے — اس سے مزید موٹا دکھانے کے لیے حروف کے گرد یہ اضافی خط (stroke) بڑھا دیا ہے۔ سائٹ بھر میں 🖊 بٹن سے قابلِ کنٹرول */
     outline:none;
     box-sizing:border-box;
-    line-height:1.2; /* غیر فعال (disabled) اور فعال خانوں کی اونچائی ہمیشہ بالکل ایک جیسی رکھنے کے لیے — ورنہ بعض براؤزر disabled input کو تھوڑا مختلف اونچائی دیتے ہیں، جس سے قطار میں خانے تھوڑا اوپر نیچے نظر آتے تھے۔ */
+    line-height:var(--row-line-height); /* قطاروں کی قربت — 📏 بٹن سے قابلِ کنٹرول */
     vertical-align:middle;
   }
   .edit-table .cell-input:disabled{
@@ -621,8 +656,8 @@ window.loadAuthSDKs = async function(){
   }
   .edit-table .cell-input:disabled{
     opacity:1;
-    border-color:var(--maroon-deep) !important;
-    background:rgba(21,67,96,.08);
+    border-color:transparent !important;
+    background:transparent;
     color:#000;
     -webkit-text-fill-color:#000;
   }
@@ -669,8 +704,6 @@ window.loadAuthSDKs = async function(){
     font-size:7.5px;
     color:#000;
     -webkit-text-stroke:.25px currentColor;
-    white-space:nowrap;
-    min-width:16ch;
   }
   .edit-table .cell-val{
     display:block;
@@ -682,8 +715,9 @@ window.loadAuthSDKs = async function(){
     text-align:center;
     padding:0px 0px;
     color:#000;
-    font-weight:700;
-    -webkit-text-stroke:.3px currentColor;
+    font-weight:900;
+    line-height:var(--row-line-height);
+    -webkit-text-stroke:var(--num-stroke) currentColor;
   }
   .edit-table td.name-cell .cell-val{
     font-family:"Noto Naskh Arabic",serif;
@@ -691,7 +725,6 @@ window.loadAuthSDKs = async function(){
     font-size:7.5px;
     color:#000;
     -webkit-text-stroke:.25px currentColor;
-    white-space:nowrap;
   }
 
   tr.hot td{background:#F1E3C6;}
@@ -1066,6 +1099,26 @@ function siteTextPrompt(label, callback){
       <button type="button" id="sizeAdjustCloseBtn" style="flex:1;padding:6px;font-size:12px;border:none;border-radius:4px;background:#5e3a8c;color:#fff;">بند کریں</button>
     </div>
   </div>
+  <div class="scroll-fab" id="boldAdjustFab" title="پوری ویب سائٹ کے نمبر موٹے/پتلے کریں" style="bottom:270px;background:#8c3a3a;">🖊</div>
+  <div id="boldAdjustBox" class="hidden" style="position:fixed;left:16px;bottom:320px;z-index:60;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 3px 12px rgba(0,0,0,.25);padding:14px 16px;min-width:230px;text-align:center;">
+    <div style="font-size:12px;margin-bottom:8px;">پوری ویب سائٹ کے تمام نمبر — موٹے پتلے کریں</div>
+    <input type="range" id="boldAdjustSlider" min="0" max="2" step="0.1" value="1" style="width:100%;">
+    <div id="boldAdjustPercent" style="font-size:16px;font-weight:700;color:#8c3a3a;margin-top:4px;">درمیانہ</div>
+    <div style="display:flex;gap:6px;margin-top:8px;">
+      <button type="button" id="boldAdjustResetBtn" style="flex:1;padding:6px;font-size:12px;border:1px solid var(--line);border-radius:4px;background:#f4efe2;">اصل موٹائی</button>
+      <button type="button" id="boldAdjustCloseBtn" style="flex:1;padding:6px;font-size:12px;border:none;border-radius:4px;background:#8c3a3a;color:#fff;">بند کریں</button>
+    </div>
+  </div>
+  <div class="scroll-fab" id="rowHeightAdjustFab" title="قطاروں کی اونچائی/قربت کم زیادہ کریں" style="bottom:370px;background:#2e6b5e;">📏</div>
+  <div id="rowHeightAdjustBox" class="hidden" style="position:fixed;left:16px;bottom:420px;z-index:60;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 3px 12px rgba(0,0,0,.25);padding:14px 16px;min-width:230px;text-align:center;">
+    <div style="font-size:12px;margin-bottom:8px;">پوری ویب سائٹ کی قطاریں — قریب/دور کریں (لائن-ہائیٹ)</div>
+    <input type="range" id="rowHeightAdjustSlider" min="0.6" max="1.6" step="0.05" value="1" style="width:100%;">
+    <div id="rowHeightAdjustPercent" style="font-size:16px;font-weight:700;color:#2e6b5e;margin-top:4px;">100%</div>
+    <div style="display:flex;gap:6px;margin-top:8px;">
+      <button type="button" id="rowHeightAdjustResetBtn" style="flex:1;padding:6px;font-size:12px;border:1px solid var(--line);border-radius:4px;background:#f4efe2;">اصل حالت</button>
+      <button type="button" id="rowHeightAdjustCloseBtn" style="flex:1;padding:6px;font-size:12px;border:none;border-radius:4px;background:#2e6b5e;color:#fff;">بند کریں</button>
+    </div>
+  </div>
 
   <!-- ===================== FORMULATION ===================== -->
   <section id="formulation">
@@ -1163,6 +1216,21 @@ const tiers = [
 let masterColLocked = { name:true, tpcs:true, ctn:true, mrp:true, company:true }; // List A: per-column locks
 let tierAgencyLocked = { agencyB:true, agencyC:true, salman:true }; // B/C/سیلزمین کے Agency خانے — بالکل List A جیسا 🔒/🔓 (دستی طریقے سے، auto-relock نہیں)
 
+// List A کے 5 الگ الگ کالم تالوں (items/weight/Pcs/price/Agency) کو اب ایک
+// ہی مشترکہ تالے سے کنٹرول کیا جاتا ہے — یہ تالا "Best" کے ساتھ ٹائٹل
+// قطار کے بائیں کونے میں دکھایا جاتا ہے۔ سب پانچ ہمیشہ ایک ساتھ کھلتے/بند
+// ہوتے ہیں، اس لیے صرف پہلا (name) دیکھ کر مجموعی حالت طے کر لیتے ہیں —
+// اگر پرانا محفوظ شدہ ڈیٹا کہیں ملا جلا (mixed) ہو تب بھی "سب لاک ہیں؟"
+// کی جانچ سے درست حالت مل جاتی ہے۔
+function isMasterAllLocked(){
+  return masterColLocked.name && masterColLocked.tpcs && masterColLocked.ctn && masterColLocked.mrp && masterColLocked.company;
+}
+function toggleMasterAllLock(){
+  const newState = !isMasterAllLocked();
+  masterColLocked.name = masterColLocked.tpcs = masterColLocked.ctn = masterColLocked.mrp = masterColLocked.company = newState;
+  buildAllTierTables();
+}
+
 // کھاتہ (ledger) — transcribed from the handwritten account book page (#186).
 // Columns: ملتان ریٹ | تفصیل | موجودہ ریٹ | ٹوٹل وزن | ٹوٹل ریٹ
 const ledgerRows = [
@@ -1192,7 +1260,7 @@ const SITE_DATA_KEY = 'bestExcelSiteData';
 
 function buildSiteDataSnapshot(){
   return {
-    packs: packs.map(p=>({tpcs:p.tpcs, ctn:p.ctn, mrp:p.mrp, company:p.company, name:p.name, agencyB:p.agencyB, agencyBManual:p.agencyBManual, agencyC:p.agencyC, agencyCManual:p.agencyCManual, salman:p.salman, salmanManual:p.salmanManual})),
+    packs: packs.map(p=>({key:p.key, tpcs:p.tpcs, ctn:p.ctn, mrp:p.mrp, company:p.company, name:p.name, agencyB:p.agencyB, agencyBManual:p.agencyBManual, agencyC:p.agencyC, agencyCManual:p.agencyCManual, salman:p.salman, salmanManual:p.salmanManual, diffB:p.diffB, diffC:p.diffC, diffSalman:p.diffSalman, diffDukandar:p.diffDukandar})),
     packagingRows: packagingRows.map(r=>({name:r.name, weight:r.weight, shopperWeight:r.shopperWeight})),
     costRows: costRows.map(r=>({name:r.name, rate:r.rate, remainingSurf:r.remainingSurf, perPieceRate:r.perPieceRate, companyProfit:r.companyProfit, bijli:r.bijli, tax:r.tax, ctnRate:r.ctnRate, shopperAmt:r.shopperAmt})),
     ledgerRows: ledgerRows.map(r=>({dateNo:r.dateNo, detail:r.detail, page:r.page, naam:r.naam})),
@@ -1203,7 +1271,22 @@ function buildSiteDataSnapshot(){
 
 function applySiteDataSnapshot(saved){
   if(!saved) return;
-  if(Array.isArray(saved.packs)) saved.packs.forEach((row,i)=>{ if(packs[i]) Object.assign(packs[i], row); });
+  if(Array.isArray(saved.packs)){
+    // پہلے صرف موجودہ INDEX پر Object.assign ہوتا تھا — جو نئے شامل کیے
+    // گئے یا حذف کیے گئے پراڈکٹس کو نظرانداز کر دیتا (Excel جیسی رو کی
+    // شمولیت/حذف مستقل محفوظ رہنے کے لیے یہ ضروری تھا)۔ اب پوری array
+    // محفوظ شدہ ڈیٹا کے مطابق دوبارہ بنتی ہے، key سے موجودہ object کو
+    // پہچان کر (تاکہ اسی object کا حوالہ رکھنے والا باقی کوڈ متاثر نہ ہو)۔
+    const byKey = {};
+    packs.forEach(p=>{ byKey[p.key] = p; });
+    packs.length = 0;
+    saved.packs.forEach(row=>{
+      const existing = row.key && byKey[row.key];
+      const p = existing || {diffB:0, diffC:0, diffSalman:0, diffDukandar:0, agencyBManual:false, agencyCManual:false, salmanManual:false};
+      Object.assign(p, row);
+      packs.push(p);
+    });
+  }
   if(Array.isArray(saved.packagingRows)) saved.packagingRows.forEach((row,i)=>{ if(packagingRows[i]) Object.assign(packagingRows[i], row); });
   if(Array.isArray(saved.costRows)) saved.costRows.forEach((row,i)=>{ if(costRows[i]) Object.assign(costRows[i], row); });
   if(Array.isArray(saved.ledgerRows)) saved.ledgerRows.forEach((row,i)=>{ if(ledgerRows[i]) Object.assign(ledgerRows[i], row); });
@@ -1406,7 +1489,7 @@ function buildAllTierTables(){
     const shareBtn = document.createElement('button');
     shareBtn.type = 'button';
     shareBtn.className = 'share-btn';
-    shareBtn.textContent = '📤 تصویر شیئر/ڈاؤن لوڈ کریں';
+    shareBtn.textContent = '📤 پرنٹ کریں';
     shareBtn.addEventListener('click', ()=> shareCardAsImage(tier, shareBtn));
     card.appendChild(shareBtn);
 
@@ -1431,37 +1514,38 @@ function buildAllTierTables(){
 
     const thead = document.createElement('thead');
     const titleRow = document.createElement('tr');
-    titleRow.innerHTML = `<th colspan="${tier.slug === 'dukandar' ? 4 : 6}" class="sheet-title" dir="ltr"><span class="brand-badge"><span class="b-best">Best</span> <span class="b-excel">Excel</span></span> <span class="brand-red">washing powder</span></th>`;
+    titleRow.innerHTML = `<th colspan="${tier.slug === 'dukandar' ? 4 : 6}" class="sheet-title" dir="ltr"><span class="brand-badge"><span class="b-best">Best</span> <span class="b-excel">Excel</span></span></th>`;
     thead.appendChild(titleRow);
+
+    if(tier.master){
+      // List A کے تمام کالم تالوں کو کنٹرول کرنے والا ایک مشترکہ تالا —
+      // ٹائٹل قطار کے بائیں کونے میں، "Best" کے ساتھ ہی۔
+      const titleTh = titleRow.firstElementChild;
+      const masterAllLockBtn = document.createElement('button');
+      masterAllLockBtn.type = 'button';
+      masterAllLockBtn.className = 'row-lock-btn master-all-lock-btn ' + (isMasterAllLocked() ? 'is-locked' : 'is-unlocked');
+      masterAllLockBtn.textContent = isMasterAllLocked() ? '🔒' : '🔓';
+      masterAllLockBtn.title = isMasterAllLocked() ? 'تمام کالم ترمیم کے لیے کھولیں' : 'تمام کالم لاک کریں';
+      masterAllLockBtn.addEventListener('click', ()=> toggleMasterAllLock());
+      titleTh.insertBefore(masterAllLockBtn, titleTh.firstChild);
+    }
 
     const headRow = document.createElement('tr');
     if(tier.master){
-      // List A: same per-column lock pattern as the packaging/cost and ledger tables.
-      function makeMasterHeaderCell(label, field){
+      // List A: اب فرداً فرداً کالم کا تالا نہیں — سب اوپر والے ایک
+      // مشترکہ تالے سے کنٹرول ہوتے ہیں، اس لیے ہیڈر خانے صرف لیبل دکھاتے ہیں۔
+      function makeMasterHeaderCell(label){
         const th = document.createElement('th');
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'row-lock-btn ' + (masterColLocked[field] ? 'is-locked' : 'is-unlocked');
-        btn.textContent = masterColLocked[field] ? '🔒' : '🔓';
-        btn.title = masterColLocked[field] ? 'یہ کالم ترمیم کے لیے کھولیں' : 'یہ کالم لاک کریں';
-        btn.addEventListener('click', ()=>{
-          masterColLocked[field] = !masterColLocked[field];
-          buildAllTierTables();
-        });
-        th.appendChild(btn);
-        th.appendChild(document.createTextNode(label));
+        th.textContent = label;
         return th;
       }
-      // All 5 columns now use the same toggleable 🔒/🔓 lock pattern —
-      // Products Name / CTN Pcs / Agency were previously PERMANENTLY closed
-      // (no unlock button at all); user asked to restore full per-column
-      // editability for List A, so they now behave exactly like Weight
-      // gram / Price CTN always did.
-      headRow.appendChild(makeMasterHeaderCell('Products Name','name'));
-      headRow.appendChild(makeMasterHeaderCell('Weight gram','tpcs'));
-      headRow.appendChild(makeMasterHeaderCell('CTN Pcs','ctn'));
-      headRow.appendChild(makeMasterHeaderCell('Price CTN','mrp'));
-      headRow.appendChild(makeMasterHeaderCell('Agency','company'));
+      // اب سب ایک مشترکہ 🔒/🔓 تالے سے کنٹرول ہوتے ہیں (اوپر "Best" کے
+      // ساتھ) — پہلے ہر کالم کا اپنا الگ تالا تھا۔
+      headRow.appendChild(makeMasterHeaderCell('items'));
+      headRow.appendChild(makeMasterHeaderCell('weight'));
+      headRow.appendChild(makeMasterHeaderCell('Pcs'));
+      headRow.appendChild(makeMasterHeaderCell('price'));
+      headRow.appendChild(makeMasterHeaderCell('Agency'));
       // Profit ہمیشہ خودکار حساب سے بنتا ہے (Price CTN منفی Agency) —
       // اس کالم پر لاک کی ضرورت نہیں، کچھ براہِ راست لکھا ہی نہیں جاتا۔
       const profitTh = document.createElement('th');
@@ -1471,17 +1555,17 @@ function buildAllTierTables(){
     } else {
       if(tier.slug === 'dukandar'){
         headRow.innerHTML = `
-          <th>Products Name</th>
-          <th>Weight gram</th>
-          <th>CTN Pcs</th>
-          <th class="corner-tri">Price CTN</th>
+          <th>items</th>
+          <th>weight</th>
+          <th>Pcs</th>
+          <th class="corner-tri">price</th>
         `;
       } else {
         headRow.innerHTML = `
-          <th>Products Name</th>
-          <th>Weight gram</th>
-          <th>CTN Pcs</th>
-          <th>Price CTN</th>
+          <th>items</th>
+          <th>weight</th>
+          <th>Pcs</th>
+          <th>price</th>
           <th class="corner-tri">Profit</th>
         `;
         // Agency کالم — بالکل List A جیسا اپنا الگ 🔒/🔓 تالا (دستی طریقے
@@ -1512,9 +1596,23 @@ function buildAllTierTables(){
     const note = document.createElement('div');
     note.className = 'note';
     note.textContent = tier.master
-      ? 'یہ لسٹ اصل ذریعہ ہے — یہاں جو بھی تبدیلی کریں گے وہ باقی تمام لسٹوں میں انہی مقررہ فرق کے ساتھ خودکار لاگو ہو جائے گی۔ ہر کالم کا اپنا الگ 🔒 تالا ہے۔'
+      ? 'یہ لسٹ اصل ذریعہ ہے — یہاں جو بھی تبدیلی کریں گے وہ باقی تمام لسٹوں میں انہی مقررہ فرق کے ساتھ خودکار لاگو ہو جائے گی۔ تمام کالم اوپر "Best" کے ساتھ موجود ایک ہی مشترکہ 🔒 تالے سے کنٹرول ہوتے ہیں۔'
       : 'یہ لسٹ "کمپنی ریٹ لسٹ A" سے خودکار بنتی ہے — براہِ راست تبدیل نہیں ہو سکتی۔';
     card.appendChild(note);
+
+    if(tier.master){
+      // Excel کی طرح خود نیا پراڈکٹ (قطار) شامل کرنے کا اختیار — صرف
+      // List A پر، چونکہ باقی سب لسٹیں اسی سے خودکار بنتی ہیں۔ لاک کھلا
+      // ہونے پر ہر قطار کے items خانے میں 🗑 سے وہی پراڈکٹ حذف بھی ہو
+      // سکتا ہے۔
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'share-btn';
+      addBtn.style.marginTop = '8px';
+      addBtn.textContent = '+ نیا پراڈکٹ شامل کریں';
+      addBtn.addEventListener('click', ()=> addNewProduct());
+      card.appendChild(addBtn);
+    }
 
     tierListsContainer.appendChild(card);
 
@@ -1544,15 +1642,48 @@ function makeManualAgencyCell(p, tier){
     p[tier.key] = Math.round((parseFloat(input.value) || 0) * 100) / 100;
     p[manualKey] = true;
     const row = td.parentElement;
-    const profitCell = row && row.querySelector('[data-profit-cell] input');
+    const profitCell = row && row.querySelector('[data-profit-cell] .cell-val');
     if(profitCell){
       const mrpNum = Number(p.mrp) || 0;
-      profitCell.value = Math.round((mrpNum - p[tier.key]) * 100) / 100;
+      profitCell.textContent = Math.round((mrpNum - p[tier.key]) * 100) / 100;
     }
     if(typeof scheduleSiteDataSave === 'function') scheduleSiteDataSave();
   });
   td.appendChild(input);
   return td;
+}
+
+// ---------- Excel کی طرح خود نیا پراڈکٹ شامل/حذف کرنا (2026-08-20، صارف
+// کی درخواست) ----------
+// نیا پراڈکٹ صرف "کمپنی ریٹ لسٹ A" (packs) میں شامل ہوتا ہے — باقی سب
+// لسٹیں (B/C/Salesman/دکاندار) اسی سے خودکار بن جاتی ہیں (diffB=0 وغیرہ
+// سے شروع، یعنی ابتدا میں سب Agency ریٹ کمپنی ریٹ جتنے ہی ہوں گے — بعد
+// میں چاہیں تو ان کالمز کا اپنا لاک کھول کر دستی تبدیل کر سکتے ہیں، بالکل
+// پرانے پراڈکٹس کی طرح)۔ نوٹ: کھاتہ (Salesman/ربنواز) اور سرف کا ماہانہ
+// حساب کی اپنی الگ، مقررہ آئٹم فہرستیں ہیں (KATA_ITEMS/SALE_MAHANA_ITEMS)
+// جو خودکار نیا پراڈکٹ شامل نہیں کرتیں — وہاں شامل کرنے کے لیے الگ سے
+// بتائیں۔
+function addNewProduct(){
+  const key = 'custom_' + Date.now();
+  packs.push({
+    key, name:'نیا پراڈکٹ', tpcs:'', ctn:'', mrp:'', company:'',
+    agencyB:'', agencyC:'', salman:'', dukandar:'',
+    diffB:0, diffC:0, diffSalman:0, diffDukandar:0,
+    agencyBManual:false, agencyCManual:false, salmanManual:false,
+  });
+  buildAllTierTables();
+  if(typeof buildCombinedTable === 'function') buildCombinedTable();
+  if(typeof scheduleSiteDataSave === 'function') scheduleSiteDataSave();
+}
+function deleteProduct(key){
+  const p = packs.find(x=>x.key === key);
+  if(!p) return;
+  if(!confirm(`کیا آپ واقعی "${p.name || '(بلا نام)'}" کو پوری ریٹ لسٹ سے حذف کرنا چاہتے ہیں؟ یہ واپس نہیں ہو سکتا۔`)) return;
+  const idx = packs.indexOf(p);
+  if(idx !== -1) packs.splice(idx, 1);
+  buildAllTierTables();
+  if(typeof buildCombinedTable === 'function') buildCombinedTable();
+  if(typeof scheduleSiteDataSave === 'function') scheduleSiteDataSave();
 }
 
 function fillTierTableBody(tbody, tier){
@@ -1565,7 +1696,18 @@ function fillTierTableBody(tbody, tier){
       // All 5 columns now read their own toggle state from
       // masterColLocked — Products Name/CTN Pcs/Agency are no longer
       // hardcoded read-only.
-      tr.appendChild(makeCell(p, 'name', true, !masterColLocked.name, 'name-cell'));
+      const nameTd = makeCell(p, 'name', true, !masterColLocked.name, 'name-cell');
+      if(!masterColLocked.name){
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'row-delete-btn';
+        delBtn.title = 'یہ پراڈکٹ حذف کریں';
+        delBtn.textContent = '🗑';
+        delBtn.style.marginLeft = '2px';
+        delBtn.addEventListener('click', (e)=>{ e.stopPropagation(); deleteProduct(p.key); });
+        nameTd.appendChild(delBtn);
+      }
+      tr.appendChild(nameTd);
       tr.appendChild(makeCell(p, 'tpcs', true, !masterColLocked.tpcs)); // text — keeps "20.000"-style weights exact, never silently reformatted by a number input
       tr.appendChild(makeCell(p, 'ctn', false, !masterColLocked.ctn));
       tr.appendChild(makeCell(p, 'mrp', false, !masterColLocked.mrp));
@@ -1590,17 +1732,22 @@ function fillTierTableBody(tbody, tier){
     // Profit — ہر کارڈ کے اپنے آخری دو خانوں (Price CTN منفی Agency) کا
     // فرق، ہمیشہ خودکار حساب سے، کبھی براہِ راست نہیں لکھا جاتا۔ دکاندار
     // کارڈ پر یہ کالم نہیں دکھایا جاتا (وہاں Agency کالم بھی نہیں ہے)۔
+    // نوٹ: پہلے یہ ایک disabled <input> تھا — html2canvas (شیئر/پرنٹ کی
+    // تصویر بنانے والا) disabled input کی قدر (value) صحیح طور پر نہیں
+    // کھینچتا تھا، اسی لیے پرنٹ شدہ PDF میں Profit کالم بالکل خالی نظر آ
+    // رہا تھا حالانکہ ویب سائٹ پر نمبر موجود تھے۔ باقی سب لاک شدہ خانوں کی
+    // طرح اب یہ بھی ایک عام <span class="cell-val"> ہے — نہ صرف صفحے پر
+    // بلکل ویسا ہی نظر آتا ہے، بلکہ پرنٹ میں بھی اب درست نظر آئے گا۔
     if(tier.slug !== 'dukandar'){
       const profitTd = document.createElement('td');
+      profitTd.className = 'edit-cell';
       profitTd.dataset.profitCell = '1';
-      const profitInput = document.createElement('input');
-      profitInput.type = 'text';
-      profitInput.className = 'cell-input'; // Agency کے خانوں جتنا ہی سائز اور قطار میں بالکل ایک ہی جگہ (اوپر/نیچے) رہے — پہلے پلین متن ہونے کی وجہ سے یہ خانہ باقی خانوں سے اوپر نیچے ہو کر نظر آتا تھا
-      profitInput.disabled = true;
+      const profitSpan = document.createElement('span');
+      profitSpan.className = 'cell-val';
       const mrpNum = Number(p.mrp) || 0;
       const agencyNum = Number(p[tier.key]) || 0;
-      profitInput.value = Math.round((mrpNum - agencyNum) * 100) / 100;
-      profitTd.appendChild(profitInput);
+      profitSpan.textContent = Math.round((mrpNum - agencyNum) * 100) / 100;
+      profitTd.appendChild(profitSpan);
       tr.appendChild(profitTd);
     }
 
@@ -1705,20 +1852,16 @@ async function renderTierCanvas(btn){
   // والا حصہ ہی کھینچتا تھا، پورا نہیں — اسی لیے کچھ کالم کٹے ہوئے آتے
   // تھے۔ کھینچنے سے پہلے مکمل چوڑا (بغیر سکرول) کر دیتے ہیں، بعد میں
   // واپس پہلے جیسا۔
-  const prevOverflow = el.style.overflowX, prevWidth = el.style.width;
-  el.style.overflowX = 'visible';
-  el.style.width = 'max-content';
-
-  try{
-    return await html2canvas(el, {
-      scale: 3,                 // high-res export
-      backgroundColor: '#F4EFE2', // matches the card's cream background
-      useCORS: true,
-    });
-  } finally {
-    el.style.overflowX = prevOverflow;
-    el.style.width = prevWidth;
-  }
+  // پہلے یہاں ٹیبل کو مکمل چوڑا (max-content) کر کے کھینچا جاتا تھا کیونکہ
+  // ٹیبل موبائل پر سائیڈ سکرول کرنی پڑتی تھی اور html2canvas صرف نظر آنے
+  // والا حصہ کھینچتا تھا۔ اب ٹیبل fixed layout کی وجہ سے پہلے ہی مکمل
+  // اسکرین میں فٹ ہے (کوئی سکرول نہیں) — اسی موجودہ حالت میں کھینچنا اب
+  // زیادہ درست ہے، ورنہ پرنٹ ویب سائٹ سے مختلف (زیادہ چوڑا) نظر آتا۔
+  return await html2canvas(el, {
+    scale: 3,                 // high-res export
+    backgroundColor: '#F4EFE2', // matches the card's cream background
+    useCORS: true,
+  });
 }
 
 
@@ -1859,7 +2002,7 @@ function buildCombinedTable(){
 
   const thead = document.createElement('thead');
   const titleRow = document.createElement('tr');
-  titleRow.innerHTML = '<th colspan="16" class="sheet-title" dir="ltr"><span class="brand-badge"><span class="b-best">Best</span> <span class="b-excel">Excel</span></span> <span class="brand-red">washing powder</span></th>';
+  titleRow.innerHTML = '<th colspan="16" class="sheet-title" dir="ltr"><span class="brand-badge"><span class="b-best">Best</span> <span class="b-excel">Excel</span></span></th>';
   thead.appendChild(titleRow);
 
   // Builds one <th> — for a locked/unlockable column it includes a small
@@ -1886,7 +2029,7 @@ function buildCombinedTable(){
 
   const headRow = document.createElement('tr');
   [
-    ['Products Name','name'], ['Weight gram','weight'], ['فی گرام ƒ',null],
+    ['items','name'], ['weight','weight'], ['فی گرام ƒ',null],
     ['ٹوٹل شاپر کے ساتھ وزن ƒ',null], ['ٹوٹل شاپر وزن ƒ',null], ['فی شاپر وزن','shopperWeight'],
     ['سرف فی کلو ریٹ','rate'], ['بقایا رقم کا سرف','remainingSurf'], ['سرف پیس تعداد','perPieceRate'],
     ['کمپنی ریٹ','totalRemaining'], ['ٹوٹل خرچ ƒ',null], ['کمپنی منافع','companyProfit'], ['بجلی','bijli'],
@@ -3705,7 +3848,7 @@ function kataRenderDetail(name){
 
   kataOpenEntries.forEach((entry, i)=>{
     const isLast = i === kataOpenEntries.length - 1;
-    html += kataRenderEntryCard(entry, isLast && !kataOpenClosed);
+    html += kataRenderEntryCard(entry, isLast && !kataOpenClosed, i);
   });
 
   if(kataOpenClosed){
@@ -3731,7 +3874,43 @@ function kataRenderDetail(name){
   container.querySelectorAll('.kata-print-entry-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> kataPrintEntry(btn));
   });
+  container.querySelectorAll('[data-kata-entry-jamah]').forEach(input=>{
+    input.addEventListener('input', ()=> kataOnEntryJamahInput(input, container));
+  });
 }
+
+// پرانی (پہلے سے محفوظ) انٹریوں کے Jamah خانوں میں تبدیلی — صرف اسی
+// انٹری کا Bqaya از خود دوبارہ حساب ہوتا ہے (Sabka ہمیشہ Total سے چلتا
+// ہے، Jamah سے نہیں، اس لیے یہ کبھی بھی بعد کی انٹریوں کو متاثر نہیں
+// کرتا)، پھر مقامی/کلاؤڈ دونوں جگہ محفوظ ہو جاتا ہے۔
+let kataEntryJamahSaveTimer = null;
+function kataOnEntryJamahInput(input, container){
+  const [idxStr, whichStr] = input.dataset.kataEntryJamah.split(':');
+  const idx = Number(idxStr), which = Number(whichStr);
+  const entry = kataOpenEntries[idx];
+  if(!entry) return;
+  entry.jamah = entry.jamah || {price:[0,0]};
+  entry.jamah.price[which] = Number(input.value) || 0;
+  const totPrice = (entry.total && entry.total.price) || 0;
+  entry.bqaya = {price: totPrice - ((entry.jamah.price[0]||0) + (entry.jamah.price[1]||0))};
+  const bqayaEl = container.querySelector(`[data-kata-entry-bqaya="${idx}"]`);
+  if(bqayaEl) bqayaEl.textContent = entry.bqaya.price;
+  clearTimeout(kataEntryJamahSaveTimer);
+  kataEntryJamahSaveTimer = setTimeout(()=> kataSaveEditedEntry(idx), 500);
+}
+function kataSaveEditedEntry(idx){
+  const entry = kataOpenEntries[idx];
+  if(!entry) return;
+  if(kataLocalMode){
+    kataLocalSaveEntries(kataOpenId, kataOpenEntries);
+  } else if(entry.id){
+    kataCol().doc(kataOpenId).collection('entries').doc(entry.id).update({
+      jamah: entry.jamah,
+      bqaya: entry.bqaya,
+    }).catch(err=> console.warn('kata entry jamah save failed', err));
+  }
+}
+
 
 // Captures just the tapped entry's own card as one PDF page and hands it to
 // the same native-share pipeline the ریٹ لسٹ share button already uses —
@@ -3750,18 +3929,11 @@ async function kataPrintEntry(btn){
   const actions = card.querySelector('.kata-entry-actions');
   const prevDisplay = actions ? actions.style.display : '';
   if(actions) actions.style.display = 'none'; // don't capture the print/delete buttons themselves
-  // موبائل پر چوڑی ٹیبل کو دیکھنے کے لیے سائیڈ میں سکرول کرنا پڑتا ہے
-  // (.edit-table کا overflow-x:auto) — html2canvas صرف اسی وقت نظر آنے
-  // والا حصہ ہی کھینچتا ہے، پوری چوڑائی نہیں — اسی لیے پرنٹ میں کچھ کالم
-  // (جیسے #/Items) کٹے ہوئے آ رہے تھے۔ کھینچنے سے پہلے چند لمحوں کے لیے
-  // ٹیبل کو مکمل چوڑا (بغیر سکرول کے) کر دیتے ہیں، تصویر بننے کے بعد واپس
-  // پہلے جیسا کر دیتے ہیں — صفحے پر نظر نہیں آتا، صرف پرنٹ کے وقت۔
-  const cardOverflow = card.style.overflow, cardWidth = card.style.width;
-  card.style.overflow = 'visible';
-  card.style.width = 'max-content';
-  const editTables = card.querySelectorAll('.edit-table');
-  const prevTableStyles = Array.from(editTables).map(et=>({el: et, overflowX: et.style.overflowX, width: et.style.width}));
-  editTables.forEach(et=>{ et.style.overflowX = 'visible'; et.style.width = 'max-content'; });
+  // پہلے یہاں ٹیبل کو مکمل چوڑا (max-content) کر کے کھینچا جاتا تھا کیونکہ
+  // موبائل پر چوڑی ٹیبل دیکھنے کے لیے سائیڈ سکرول کرنی پڑتی تھی اور
+  // html2canvas صرف نظر آنے والا حصہ کھینچتا تھا۔ اب ٹیبل fixed layout کی
+  // وجہ سے پہلے ہی مکمل اسکرین میں فٹ ہے (کوئی سکرول نہیں) — اسی موجودہ
+  // حالت میں کھینچنا اب زیادہ درست ہے، ورنہ پرنٹ ویب سائٹ سے مختلف نظر آتا۔
   try{
     try{ await document.fonts.ready; } catch(e){ /* proceed anyway */ }
     if(typeof window.measureAndSizeInput === 'function'){
@@ -3784,9 +3956,6 @@ async function kataPrintEntry(btn){
     alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
     console.warn(err);
   } finally {
-    card.style.overflow = cardOverflow;
-    card.style.width = cardWidth;
-    prevTableStyles.forEach(({el, overflowX, width})=>{ el.style.overflowX = overflowX; el.style.width = width; });
     if(actions) actions.style.display = prevDisplay;
     btn.textContent = originalLabel; btn.disabled = false;
   }
@@ -3854,7 +4023,7 @@ function kataColorStyleFor(cellColors, key){
   return (cellColors && cellColors[key]) ? `background-color:${cellColors[key]};` : '';
 }
 
-function kataRenderEntryCard(entry, isLast){
+function kataRenderEntryCard(entry, isLast, idx){
   let rows = '';
   let sumT = 0;
   const cc = entry.cellColors || {};
@@ -3900,7 +4069,7 @@ function kataRenderEntryCard(entry, isLast){
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
         </div>
       </div>
-      ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya)}
+      ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya, idx)}
       <div class="kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
         <button type="button" class="kata-print-entry-btn" style="padding:5px 14px;font-size:12px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 پرنٹ</button>
       </div>
@@ -3912,9 +4081,21 @@ function kataRenderEntryCard(entry, isLast){
 // value columns (T, Price, T.Prift), but Jamah/Jamah/Bqaya rows only apply
 // to the two money columns (Price, T.Prift) — T (piece count) has no
 // payment tracking, matching the photo where that column is blank there.
-function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya){
+// entryIdx: passed only for already-SAVED entry cards (kataRenderEntryCard)
+// so Jamah stays editable there too — user asked to be able to correct the
+// Jamah/deposit amount on a past entry, not just while it's brand new.
+// Editing a past entry's Jamah only affects its own Bqaya (never other
+// entries' Sabka, which always carries from Total, not Jamah), so it's
+// always safe to edit, even on a closed کھاتہ.
+function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx){
   jamah = jamah || {price:[0,0]};
   bqaya = bqaya || {price:0};
+  const jamahRow = (i)=> entryIdx != null
+    ? `<tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamah.price[i]||0}"></td></tr>`
+    : `<tr><td style="text-align:right;padding-right:6px;">Jamah</td><td>${jamah.price[i]||0}</td></tr>`;
+  const bqayaCell = entryIdx != null
+    ? `<td data-kata-entry-bqaya="${entryIdx}">${bqaya.price}</td>`
+    : `<td>${bqaya.price}</td>`;
   return `
       <div class="edit-table" style="margin-top:8px;">
         <table dir="ltr">
@@ -3923,9 +4104,9 @@ function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya){
             <tr><td style="text-align:right;padding-right:6px;">Sabka</td><td>${sabka.price}</td></tr>
             <tr><td style="text-align:right;padding-right:6px;">Today</td><td>${today.price}</td></tr>
             <tr><td style="text-align:right;padding-right:6px;">Total</td><td>${total.price}</td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td>${jamah.price[0]||0}</td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td>${jamah.price[1]||0}</td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Bqaya</td><td>${bqaya.price}</td></tr>
+            ${jamahRow(0)}
+            ${jamahRow(1)}
+            <tr><td style="text-align:right;padding-right:6px;">Bqaya</td>${bqayaCell}</tr>
           </tbody>
         </table>
       </div>`;
@@ -4393,6 +4574,105 @@ document.getElementById('siteUndoFab').addEventListener('click', ()=>{
 })();
 </script>
 <script>
+// ---------- سائٹ کے تمام نمبر موٹے/پتلے کرنے کا کنٹرول (🖊) ----------
+// --num-stroke نامی ایک عالمی CSS متغیر ہر نمبر والے خانے (.cell-input,
+// .cell-val — یعنی ریٹ لسٹ، Best Excel official، کھاتہ، سرف کا ماہانہ
+// حساب، ہر جگہ) پر لاگو ہوتا ہے۔ یہ سلائیڈر اسی متغیر کی قدر بدلتا ہے —
+// 0 بالکل پتلا، 1 معمول کی موٹائی (پہلے سے طے شدہ)، 2 سب سے زیادہ موٹا۔
+// انتخاب localStorage میں محفوظ رہتا ہے تاکہ اگلی بار صفحہ کھلنے پر بھی
+// وہی پسندیدہ موٹائی برقرار رہے۔
+(function(){
+  const slider = document.getElementById('boldAdjustSlider');
+  const labelEl = document.getElementById('boldAdjustPercent');
+  const fab = document.getElementById('boldAdjustFab');
+  const box = document.getElementById('boldAdjustBox');
+  const resetBtn = document.getElementById('boldAdjustResetBtn');
+  const closeBtn = document.getElementById('boldAdjustCloseBtn');
+
+  function labelFor(val){
+    const v = parseFloat(val);
+    if(v <= 0.2) return 'بہت پتلا';
+    if(v < 0.9) return 'پتلا';
+    if(v <= 1.1) return 'درمیانہ';
+    if(v < 1.7) return 'موٹا';
+    return 'بہت موٹا';
+  }
+  function applyStroke(val){
+    document.documentElement.style.setProperty('--num-stroke', val + 'px');
+    labelEl.textContent = labelFor(val);
+  }
+
+  const saved = localStorage.getItem('siteNumberBold_v1');
+  if(saved){
+    slider.value = saved;
+    applyStroke(saved);
+  } else {
+    applyStroke(slider.value);
+  }
+
+  slider.addEventListener('input', ()=>{
+    applyStroke(slider.value);
+    localStorage.setItem('siteNumberBold_v1', slider.value);
+  });
+  resetBtn.addEventListener('click', ()=>{
+    slider.value = 1;
+    applyStroke(1);
+    localStorage.removeItem('siteNumberBold_v1');
+  });
+  fab.addEventListener('click', ()=>{
+    const isHidden = box.style.display !== 'block';
+    box.style.display = isHidden ? 'block' : 'none';
+    box.classList.remove('hidden');
+  });
+  closeBtn.addEventListener('click', ()=>{ box.style.display = 'none'; });
+})();
+</script>
+<script>
+// ---------- سائٹ کی قطاریں قریب/دور کرنے کا کنٹرول (📏) ----------
+// --row-line-height نامی ایک عالمی CSS متغیر ہر خانے (.edit-table th/td،
+// .cell-input، .cell-val — یعنی ریٹ لسٹ، Best Excel official، کھاتہ، سرف
+// کا ماہانہ حساب، ہر جگہ) کی line-height پر لاگو ہوتا ہے۔ 0.6 سب سے زیادہ
+// قریب (compact)، 1 معمول (پہلے سے طے شدہ)، 1.6 سب سے کھلا۔ انتخاب
+// localStorage میں محفوظ رہتا ہے۔
+(function(){
+  const slider = document.getElementById('rowHeightAdjustSlider');
+  const labelEl = document.getElementById('rowHeightAdjustPercent');
+  const fab = document.getElementById('rowHeightAdjustFab');
+  const box = document.getElementById('rowHeightAdjustBox');
+  const resetBtn = document.getElementById('rowHeightAdjustResetBtn');
+  const closeBtn = document.getElementById('rowHeightAdjustCloseBtn');
+
+  function applyRowHeight(val){
+    document.documentElement.style.setProperty('--row-line-height', val);
+    labelEl.textContent = Math.round(parseFloat(val) * 100) + '%';
+  }
+
+  const saved = localStorage.getItem('siteRowHeight_v1');
+  if(saved){
+    slider.value = saved;
+    applyRowHeight(saved);
+  } else {
+    applyRowHeight(slider.value);
+  }
+
+  slider.addEventListener('input', ()=>{
+    applyRowHeight(slider.value);
+    localStorage.setItem('siteRowHeight_v1', slider.value);
+  });
+  resetBtn.addEventListener('click', ()=>{
+    slider.value = 1;
+    applyRowHeight(1);
+    localStorage.removeItem('siteRowHeight_v1');
+  });
+  fab.addEventListener('click', ()=>{
+    const isHidden = box.style.display !== 'block';
+    box.style.display = isHidden ? 'block' : 'none';
+    box.classList.remove('hidden');
+  });
+  closeBtn.addEventListener('click', ()=>{ box.style.display = 'none'; });
+})();
+</script>
+<script>
 // ---------- 🔽 فوری صفحہ منتقلی (اوپر بائیں، ہمیشہ نظر آنے والا) ----------
 // یہ بٹن کہیں سے بھی (چاہے صفحہ نیچے تک اسکرول ہو) موجودہ 6 صفحوں میں سے
 // کسی پر بھی سیدھا لے جاتا ہے — نیچے دی گئی فہرست میں سے کوئی نام دبانے
@@ -4760,31 +5040,6 @@ async function firebaseSyncInit(){
   await firebaseSyncPullAll();
   if(typeof window.initKataModuleLocal === 'function') window.initKataModuleLocal();
   if(typeof window.restoreSiteData === 'function') window.restoreSiteData(); // ریٹ لسٹ + Best Excel official بھی اسی طرح کلاؤڈ سے تازہ ہوں
-  // ---------- ٹوٹے ہوئے دستی Agency نمبروں کی خودکار مرمت (2026-08-16) ----------
-  // آج ایک بگ کی وجہ سے B/C/Salesman کارڈز میں کمپیوٹر پر دستی طور پر
-  // لکھے گئے ریٹ کچھ دیر کے لیے کٹی ہوئی شکل میں محفوظ ہو گئے تھے (مثلاً
-  // 2220 کی جگہ صرف 21 محفوظ ہوا)۔ چونکہ صحیح اصل نمبر اب کہیں معلوم نہیں،
-  // سب سے محفوظ حل یہی ہے کہ ان تینوں کالمز کو ان کے قابلِ بھروسہ فارمولے
-  // (کمپنی ریٹ + مقررہ فرق) پر واپس لے جایا جائے — یہی وہ نمبر تھے جو
-  // دستی تبدیلی سے پہلے ہمیشہ صحیح رہے۔ یہ مرمت صرف ایک بار چلتی ہے۔
-  if(typeof packs !== 'undefined' && Array.isArray(packs) && !localStorage.getItem('agencyManualCorruptionFixed_v1')){
-    let anyManual = false;
-    packs.forEach(p=>{
-      if(p.agencyBManual || p.agencyCManual || p.salmanManual) anyManual = true;
-      p.agencyBManual = false;
-      p.agencyCManual = false;
-      p.salmanManual = false;
-      p.agencyB = p.company + p.diffB;
-      p.agencyC = p.company + p.diffC;
-      p.salman  = p.company + p.diffSalman;
-    });
-    localStorage.setItem('agencyManualCorruptionFixed_v1', '1');
-    if(anyManual){
-      if(typeof buildAllTierTables === 'function') buildAllTierTables();
-      if(typeof syncKataItemsFromRateList === 'function') syncKataItemsFromRateList();
-      if(typeof scheduleSiteDataSave === 'function') scheduleSiteDataSave(); // یہ درست حالت اب کلاؤڈ پر بھی محفوظ ہو جائے
-    }
-  }
   if(typeof window.msReloadRatesFromStorage === 'function') window.msReloadRatesFromStorage(); // سرف کا ماہانہ حساب کے Price/Profit ریٹس بھی کلاؤڈ سے تازہ
   firebaseSyncRefreshVisibleViews();
   firebaseSyncListenLive();
