@@ -1261,6 +1261,7 @@ const SITE_DATA_KEY = 'bestExcelSiteData';
 function buildSiteDataSnapshot(){
   return {
     packs: packs.map(p=>({key:p.key, tpcs:p.tpcs, ctn:p.ctn, mrp:p.mrp, company:p.company, name:p.name, agencyB:p.agencyB, agencyBManual:p.agencyBManual, agencyC:p.agencyC, agencyCManual:p.agencyCManual, salman:p.salman, salmanManual:p.salmanManual, diffB:p.diffB, diffC:p.diffC, diffSalman:p.diffSalman, diffDukandar:p.diffDukandar})),
+    kataItemsManual: KATA_ITEMS.filter(item=>item.nameManual || item.weightManual).map(item=>({key:item.key, name:item.name, nameManual:item.nameManual, weight:item.weight, weightManual:item.weightManual})),
     packagingRows: packagingRows.map(r=>({name:r.name, weight:r.weight, shopperWeight:r.shopperWeight})),
     costRows: costRows.map(r=>({name:r.name, rate:r.rate, remainingSurf:r.remainingSurf, perPieceRate:r.perPieceRate, companyProfit:r.companyProfit, bijli:r.bijli, tax:r.tax, ctnRate:r.ctnRate, shopperAmt:r.shopperAmt})),
     ledgerRows: ledgerRows.map(r=>({dateNo:r.dateNo, detail:r.detail, page:r.page, naam:r.naam})),
@@ -1287,6 +1288,19 @@ function applySiteDataSnapshot(saved){
       packs.push(p);
     });
   }
+  // کھاتہ کے Items/Weight میں اگر صارف نے خود کوئی نام/وزن لکھا ہو تو وہ
+  // یہاں بحال ہوتا ہے — اسی لیے آگے چل کر syncKataItemsFromRateList اسے
+  // دوبارہ ریٹ لسٹ B سے نہیں بدلتا (nameManual/weightManual کی جانچ سے)۔
+  try{
+    if(Array.isArray(saved.kataItemsManual) && typeof KATA_ITEMS !== 'undefined'){
+      saved.kataItemsManual.forEach(row=>{
+        const item = KATA_ITEMS.find(x=>x.key === row.key);
+        if(!item) return;
+        if(row.nameManual){ item.name = row.name; item.nameManual = true; }
+        if(row.weightManual){ item.weight = row.weight; item.weightManual = true; }
+      });
+    }
+  } catch(e){ /* KATA_ITEMS not defined yet this early in page load — a later restoreSiteData() call (after full load) will pick this up */ }
   if(Array.isArray(saved.packagingRows)) saved.packagingRows.forEach((row,i)=>{ if(packagingRows[i]) Object.assign(packagingRows[i], row); });
   if(Array.isArray(saved.costRows)) saved.costRows.forEach((row,i)=>{ if(costRows[i]) Object.assign(costRows[i], row); });
   if(Array.isArray(saved.ledgerRows)) saved.ledgerRows.forEach((row,i)=>{ if(ledgerRows[i]) Object.assign(ledgerRows[i], row); });
@@ -2370,6 +2384,12 @@ function buildLedgerTable(){
 }
 buildLedgerTable();
 restoreSiteData(); // same-device reload — cloud-pulled data (other devices) restored again once Firestore connects, see firebaseSyncInit
+// حفاظتی اضافی چیک — اگر کسی وجہ سے ڈیٹا لوڈ ہونے میں تھوڑی دیر لگے
+// (سست انٹرنیٹ وغیرہ) تو یہ یقینی بناتا ہے کہ چند سیکنڈ بعد کھاتہ ایک بار
+// پھر ریٹ لسٹ B سے تازہ ہو جائے، چاہے اس وقت کھاتہ کھلا ہو یا نہ ہو۔
+setTimeout(function(){
+  if(typeof syncKataItemsFromRateList === 'function') syncKataItemsFromRateList();
+}, 1500);
 
 // ---------- MONTHLY SURF کھاتہ (books + stacking dated entries, same
 // pattern as سیلزمین کھاتے: Sabka/Today/Total carry-forward, undo-free
@@ -3438,14 +3458,14 @@ function showAuthLoadError(){
 // REFERENCE values printed on the page (same for every entry); t/price/
 // tPrift/tD are typed fresh on every entry.
 const KATA_ITEMS = [
-  {key:"rs10",   name:"Best Excel RS.10",   weight:"26g",   rate:2100, prift:250, d:40},
-  {key:"rs50",   name:"Best Excel Rs.50",   weight:"155g",  rate:1840, prift:260, d:40},
-  {key:"rs100",  name:"Best Excel Rs.100",  weight:"316g",  rate:1840, prift:260, d:40},
-  {key:"rs150",  name:"Best Excel RS.150",  weight:"475g",  rate:2580, prift:520, d:60},
-  {key:"rs400",  name:"Best Excel RS.400",  weight:"1000g", rate:3710, prift:540, d:60},
-  {key:"rs1000", name:"Best Excel RS.1000", weight:"3340g", rate:3050, prift:500, d:60},
-  {key:"special",name:"Best Excel Special", weight:"20kg",  rate:5560, prift:640, d:60},
-  {key:"sada",   name:"Best Excel sada",    weight:"20kg",  rate:3490, prift:510, d:0},
+  {key:"rs10",   name:"Best Excel RS.10",   weight:"26g",   rate:2100, prift:250, d:40, nameManual:false, weightManual:false},
+  {key:"rs50",   name:"Best Excel Rs.50",   weight:"155g",  rate:1840, prift:260, d:40, nameManual:false, weightManual:false},
+  {key:"rs100",  name:"Best Excel Rs.100",  weight:"316g",  rate:1840, prift:260, d:40, nameManual:false, weightManual:false},
+  {key:"rs150",  name:"Best Excel RS.150",  weight:"475g",  rate:2580, prift:520, d:60, nameManual:false, weightManual:false},
+  {key:"rs400",  name:"Best Excel RS.400",  weight:"1000g", rate:3710, prift:540, d:60, nameManual:false, weightManual:false},
+  {key:"rs1000", name:"Best Excel RS.1000", weight:"3340g", rate:3050, prift:500, d:60, nameManual:false, weightManual:false},
+  {key:"special",name:"Best Excel Special", weight:"20kg",  rate:5560, prift:640, d:60, nameManual:false, weightManual:false},
+  {key:"sada",   name:"Best Excel sada",    weight:"20kg",  rate:3490, prift:510, d:0,  nameManual:false, weightManual:false},
   {key:"znet1",  name:"Z Net Bill",  weight:"",      rate:0,    prift:0,   d:0},
   {key:"znet2",  name:"Z Net Bill",  weight:"",      rate:0,    prift:0,   d:0},
 ];
@@ -3470,8 +3490,8 @@ function syncKataItemsFromRateList(){
     if(!p) return;
     const agencyB = Number(p.agencyB) || 0;
     const mrp = Number(p.mrp) || 0;
-    item.name = p.name || item.name;
-    item.weight = p.tpcs || item.weight;
+    item.name = item.nameManual ? item.name : (p.name || item.name);
+    item.weight = item.weightManual ? item.weight : (p.tpcs || item.weight);
     item.rate = agencyB; // Price — ریٹ لسٹ B کارڈ کا ایجنسی ریٹ
     // Profit — اب بالکل ریٹ لسٹ B کارڈ کے اپنے "Profit" کالم جتنا ہی
     // (Price CTN منفی Agency)، پہلے کی "B منفی Company" فارمولے کی بجائے
@@ -3531,7 +3551,7 @@ let kataLocalMode = false;  // true when login is off — uses localStorage on t
 let kataOpenCarryForward = null; // set from the opened book's .carryForward when it has no entries yet (after an automatic monthly rollover)
 let kataOpenClosed = false; // true once this book has been auto-closed by a monthly rollover — view only, no new entries
 let kataInstance = 'salesman'; // which named ledger section is active — 'salesman' is the original/default (unprefixed storage keys, for backward compatibility with existing data), any other value (e.g. 'ribnawaz') gets its own separate namespace
-let kataColLocked = {name:true, weight:true, t:false, rate:true, prift:true, d:true, salesman:false}; // lock buttons for the new-entry table's columns, like ریٹ لسٹ — reference fields (name/weight/rate/prift/d) default locked to guard against accidental edits, T and salesman default open
+let kataColLocked = {name:true, weight:true, t:false, rate:true, prift:true, d:true, salesman:false}; // lock buttons for the new-entry table's columns, like ریٹ لسٹ — Items/Weight share one combined lock (default locked, reference data). T CTN is typed fresh every single day, so it stays permanently open/editable — never included in the lock.
 let kataUndoStack = []; // {input, oldValue} — one entry per finished edit (on blur/change), so Undo reverts a whole edit at once, not per-keystroke
 let kataUndoRestoring = false; // guards against the programmatic restore itself being tracked as a new undo-able change
 
@@ -4130,14 +4150,22 @@ function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx){
 
 function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirstEntry){
   let rows = '';
+  // یہاں براہِ راست ریٹ لسٹ (packs) سے پڑھتے ہیں — KATA_ITEMS پر انحصار
+  // نہیں کرتے، تاکہ کسی بھی وقتی ترتیب (sync کب چلا) کے مسئلے سے قطع نظر
+  // ہمیشہ اسی لمحے کی تازہ ترین B لسٹ ہی نظر آئے۔
   KATA_ITEMS.forEach((item, idx)=>{
+    const rlKey = KATA_TO_RATELIST_KEY[item.key];
+    const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
+    const liveName = item.nameManual ? item.name : (p ? (p.name || item.name) : item.name);
+    const liveWeight = item.weightManual ? item.weight : (p ? (p.tpcs || item.weight) : item.weight);
+    const liveRate = p ? (Number(p.agencyB) || 0) : item.rate;
     const nameColor = 'color:red;';
     rows += `<tr>
       <td data-color-key="${item.key}-idx">${idx+1}</td>
-      <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(item.name)}" disabled></td>
-      <td data-color-key="${item.key}-weight"><input type="text" class="cell-input" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${kataEscape(item.weight)}" disabled></td>
+      <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(liveName)}"></td>
+      <td data-color-key="${item.key}-weight"><input type="text" class="cell-input" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${kataEscape(liveWeight)}"></td>
       <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="t" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
-      <td data-color-key="${item.key}-rate"><input type="text" class="cell-input" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${item.rate}" disabled></td>
+      <td data-color-key="${item.key}-rate"><input type="text" class="cell-input" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${liveRate}" disabled></td>
       <td data-color-key="${item.key}-totalrate" data-kata-totalrate="${item.key}">0</td>
     </tr>`;
   });
@@ -4147,7 +4175,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
   const sabkaRow = isFirstEntry
     ? `<tr><td style="text-align:right;padding-right:6px;">Sabka</td><td><input type="number" inputmode="numeric" class="cell-input" data-kata-sabka="price" style="border:1px solid var(--line);" value="${prevTotal.price}"><input type="hidden" data-kata-sabka="t" value="${prevTotal.t}"></td></tr>`
     : `<tr><td style="text-align:right;padding-right:6px;">Sabka</td><td>${prevTotal.price}</td></tr>`;
-  const nameLabel = kataInstance === 'agency' ? 'Agency کا نام' : 'سیلزمین کا نام';
+  const nameLabel = kataInstance === 'agency' ? 'Agency name' : 'Salesman name';
   // یہ خانہ اب ہمیشہ اسی کھلے ہوئے کھاتے کے نام (kataOpenName) سے خودکار
   // بھرا رہتا ہے — دستی لکھنے کی ضرورت نہیں، نہ اجازت، تالا مستقل بند۔
   return `
@@ -4159,14 +4187,15 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <div class="note" style="text-align:center;">
         <div style="margin-bottom:4px;">${nameLabel}</div>
         <input type="text" class="cell-input" data-kata-field="salesman" style="border:1px solid var(--line);text-align:center;" value="${kataEscape(kataOpenName||'')}" disabled>
+        <div style="font-weight:900;font-size:16px;color:#1B5FD9;margin-top:6px;">Best Excel Washing powder</div>
       </div>
       <div class="edit-table wide-table">
         <table dir="ltr">
           <thead><tr>
-            <th>#</th>
-            <th>🔒 Items</th>
-            <th>🔒 Weight</th>
-            <th><button type="button" class="row-lock-btn" data-kata-lockbtn="t"></button>T CTN</th>
+            <th><button type="button" class="row-lock-btn" data-kata-lockbtn="all3"></button>#</th>
+            <th>Items</th>
+            <th>Weight</th>
+            <th>T CTN</th>
             <th>Rate</th>
             <th>Total Rate</th>
           </tr></thead>
@@ -4287,23 +4316,48 @@ function kataWireLiveFormulas(prevTotal){
     document.querySelectorAll(`[data-kata-field="${field}"]`).forEach(input=>{
       input.disabled = locked;
     });
-    const btn = document.querySelector(`[data-kata-lockbtn="${field}"]`);
+  }
+  // Items/Weight — دونوں اب ایک ہی مشترکہ تالے سے کنٹرول ہوتے ہیں، "#" کے
+  // ساتھ اوپر بائیں جانب۔ خودکار ریٹ لسٹ B سے آنا جاری رہے گا، مگر ضرورت
+  // ہو تو دونوں ایک ساتھ کھول کر دستی بھی لکھ سکیں۔ T CTN ہر روز نئے سرے
+  // سے لکھا جاتا ہے، اس لیے وہ ہمیشہ کھلا رہتا ہے، اس تالے میں شامل نہیں۔
+  function applyKataAll3Lock(){
+    ['name','weight'].forEach(applyKataColLock);
+    const btn = document.querySelector('[data-kata-lockbtn="all3"]');
+    const locked = kataColLocked.name;
     if(btn){
       btn.className = 'row-lock-btn ' + (locked ? 'is-locked' : 'is-unlocked');
       btn.textContent = locked ? '🔒' : '🔓';
-      btn.title = locked ? 'یہ کالم ترمیم کے لیے کھولیں' : 'یہ کالم لاک کریں';
+      btn.title = locked ? 'Items/Weight ترمیم کے لیے کھولیں' : 'Items/Weight لاک کریں';
     }
   }
-  // Items/Weight/Agency-نام اب مستقل طور پر غیر فعال ہیں (اوپر ہی
-  // disabled کے ساتھ بنے) — کوئی 🔒/🔓 بٹن موجود نہیں، اس لیے یہاں صرف
-  // "t" ہی رہ گیا جو واقعی toggle ہوتا ہے۔
-  ['t'].forEach(field=>{
-    applyKataColLock(field);
-    const btn = document.querySelector(`[data-kata-lockbtn="${field}"]`);
-    if(btn) btn.addEventListener('click', ()=>{
-      kataColLocked[field] = !kataColLocked[field];
-      applyKataColLock(field);
-    });
+  applyKataAll3Lock();
+  const kataAll3Btn = document.querySelector('[data-kata-lockbtn="all3"]');
+  if(kataAll3Btn) kataAll3Btn.addEventListener('click', ()=>{
+    const newState = !kataColLocked.name;
+    kataColLocked.name = kataColLocked.weight = newState;
+    applyKataAll3Lock();
+  });
+  ['name','weight'].forEach(field=>{
+    document.querySelectorAll(`[data-kata-field="${field}"]`).forEach(input=>{
+      input.addEventListener('change', ()=>{
+        // یہاں جو بھی خود لکھیں وہ اب مستقل محفوظ ہو جاتا ہے — اگلی بار
+        // sync/update چلنے پر بھی یہی دستی قدر برقرار رہے گی، ریٹ لسٹ B
+        // سے دوبارہ نہیں بدلے گی، جب تک دوبارہ تالا کھول کر خود تبدیل نہ
+        // کریں۔
+        const itemKey = input.dataset.kataItem;
+        const item = KATA_ITEMS.find(x=>x.key === itemKey);
+        if(item){
+          item[field] = input.value;
+          item[field + 'Manual'] = true;
+        }
+        if(!input.disabled && kataColLocked.name === false){
+          kataColLocked.name = kataColLocked.weight = true;
+          applyKataAll3Lock();
+        }
+        if(typeof scheduleSiteDataSave === 'function') scheduleSiteDataSave();
+      });
+      });
   });
 
   // ---------- UNDO (↩ / Ctrl+Z) ----------
@@ -4354,9 +4408,14 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
   const items = {};
   let todayT = 0, todayRate = 0;
   KATA_ITEMS.forEach(item=>{
+    const rlKey = KATA_TO_RATELIST_KEY[item.key];
+    const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
+    const liveName = item.nameManual ? item.name : (p ? (p.name || item.name) : item.name);
+    const liveWeight = item.weightManual ? item.weight : (p ? (p.tpcs || item.weight) : item.weight);
+    const liveRate = p ? (Number(p.agencyB) || 0) : item.rate;
     const t = Number(document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`).value) || 0;
-    const price = item.rate * t;
-    items[item.key] = {t, price, rate: item.rate, name: item.name, weight: item.weight};
+    const price = liveRate * t;
+    items[item.key] = {t, price, rate: liveRate, name: liveName, weight: liveWeight};
     todayT += t; todayRate += price;
   });
   // اس انٹری کے فارم میں جو خانے رنگے گئے تھے (🎨 موڈ سے)، وہ رنگ اب اسی
