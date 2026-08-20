@@ -1261,7 +1261,6 @@ const SITE_DATA_KEY = 'bestExcelSiteData';
 function buildSiteDataSnapshot(){
   return {
     packs: packs.map(p=>({key:p.key, tpcs:p.tpcs, ctn:p.ctn, mrp:p.mrp, company:p.company, name:p.name, agencyB:p.agencyB, agencyBManual:p.agencyBManual, agencyC:p.agencyC, agencyCManual:p.agencyCManual, salman:p.salman, salmanManual:p.salmanManual, diffB:p.diffB, diffC:p.diffC, diffSalman:p.diffSalman, diffDukandar:p.diffDukandar})),
-    kataItemsManual: KATA_ITEMS.filter(item=>item.nameManual || item.weightManual).map(item=>({key:item.key, name:item.name, nameManual:item.nameManual, weight:item.weight, weightManual:item.weightManual})),
     packagingRows: packagingRows.map(r=>({name:r.name, weight:r.weight, shopperWeight:r.shopperWeight})),
     costRows: costRows.map(r=>({name:r.name, rate:r.rate, remainingSurf:r.remainingSurf, perPieceRate:r.perPieceRate, companyProfit:r.companyProfit, bijli:r.bijli, tax:r.tax, ctnRate:r.ctnRate, shopperAmt:r.shopperAmt})),
     ledgerRows: ledgerRows.map(r=>({dateNo:r.dateNo, detail:r.detail, page:r.page, naam:r.naam})),
@@ -1288,19 +1287,6 @@ function applySiteDataSnapshot(saved){
       packs.push(p);
     });
   }
-  // کھاتہ کے Items/Weight میں اگر صارف نے خود کوئی نام/وزن لکھا ہو تو وہ
-  // یہاں بحال ہوتا ہے — اسی لیے آگے چل کر syncKataItemsFromRateList اسے
-  // دوبارہ ریٹ لسٹ B سے نہیں بدلتا (nameManual/weightManual کی جانچ سے)۔
-  try{
-    if(Array.isArray(saved.kataItemsManual) && typeof KATA_ITEMS !== 'undefined'){
-      saved.kataItemsManual.forEach(row=>{
-        const item = KATA_ITEMS.find(x=>x.key === row.key);
-        if(!item) return;
-        if(row.nameManual){ item.name = row.name; item.nameManual = true; }
-        if(row.weightManual){ item.weight = row.weight; item.weightManual = true; }
-      });
-    }
-  } catch(e){ /* KATA_ITEMS not defined yet this early in page load — a later restoreSiteData() call (after full load) will pick this up */ }
   if(Array.isArray(saved.packagingRows)) saved.packagingRows.forEach((row,i)=>{ if(packagingRows[i]) Object.assign(packagingRows[i], row); });
   if(Array.isArray(saved.costRows)) saved.costRows.forEach((row,i)=>{ if(costRows[i]) Object.assign(costRows[i], row); });
   if(Array.isArray(saved.ledgerRows)) saved.ledgerRows.forEach((row,i)=>{ if(ledgerRows[i]) Object.assign(ledgerRows[i], row); });
@@ -3458,14 +3444,14 @@ function showAuthLoadError(){
 // REFERENCE values printed on the page (same for every entry); t/price/
 // tPrift/tD are typed fresh on every entry.
 const KATA_ITEMS = [
-  {key:"rs10",   name:"Best Excel RS.10",   weight:"26g",   rate:2100, prift:250, d:40, nameManual:false, weightManual:false},
-  {key:"rs50",   name:"Best Excel Rs.50",   weight:"155g",  rate:1840, prift:260, d:40, nameManual:false, weightManual:false},
-  {key:"rs100",  name:"Best Excel Rs.100",  weight:"316g",  rate:1840, prift:260, d:40, nameManual:false, weightManual:false},
-  {key:"rs150",  name:"Best Excel RS.150",  weight:"475g",  rate:2580, prift:520, d:60, nameManual:false, weightManual:false},
-  {key:"rs400",  name:"Best Excel RS.400",  weight:"1000g", rate:3710, prift:540, d:60, nameManual:false, weightManual:false},
-  {key:"rs1000", name:"Best Excel RS.1000", weight:"3340g", rate:3050, prift:500, d:60, nameManual:false, weightManual:false},
-  {key:"special",name:"Best Excel Special", weight:"20kg",  rate:5560, prift:640, d:60, nameManual:false, weightManual:false},
-  {key:"sada",   name:"Best Excel sada",    weight:"20kg",  rate:3490, prift:510, d:0,  nameManual:false, weightManual:false},
+  {key:"rs10",   name:"Best Excel RS.10",   weight:"26g",   rate:2100, prift:250, d:40},
+  {key:"rs50",   name:"Best Excel Rs.50",   weight:"155g",  rate:1840, prift:260, d:40},
+  {key:"rs100",  name:"Best Excel Rs.100",  weight:"316g",  rate:1840, prift:260, d:40},
+  {key:"rs150",  name:"Best Excel RS.150",  weight:"475g",  rate:2580, prift:520, d:60},
+  {key:"rs400",  name:"Best Excel RS.400",  weight:"1000g", rate:3710, prift:540, d:60},
+  {key:"rs1000", name:"Best Excel RS.1000", weight:"3340g", rate:3050, prift:500, d:60},
+  {key:"special",name:"Best Excel Special", weight:"20kg",  rate:5560, prift:640, d:60},
+  {key:"sada",   name:"Best Excel sada",    weight:"20kg",  rate:3490, prift:510, d:0},
   {key:"znet1",  name:"Z Net Bill",  weight:"",      rate:0,    prift:0,   d:0},
   {key:"znet2",  name:"Z Net Bill",  weight:"",      rate:0,    prift:0,   d:0},
 ];
@@ -3490,8 +3476,8 @@ function syncKataItemsFromRateList(){
     if(!p) return;
     const agencyB = Number(p.agencyB) || 0;
     const mrp = Number(p.mrp) || 0;
-    item.name = item.nameManual ? item.name : (p.name || item.name);
-    item.weight = item.weightManual ? item.weight : (p.tpcs || item.weight);
+    item.name = p.name || item.name;
+    item.weight = p.tpcs || item.weight;
     item.rate = agencyB; // Price — ریٹ لسٹ B کارڈ کا ایجنسی ریٹ
     // Profit — اب بالکل ریٹ لسٹ B کارڈ کے اپنے "Profit" کالم جتنا ہی
     // (Price CTN منفی Agency)، پہلے کی "B منفی Company" فارمولے کی بجائے
@@ -4156,8 +4142,8 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
   KATA_ITEMS.forEach((item, idx)=>{
     const rlKey = KATA_TO_RATELIST_KEY[item.key];
     const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
-    const liveName = item.nameManual ? item.name : (p ? (p.name || item.name) : item.name);
-    const liveWeight = item.weightManual ? item.weight : (p ? (p.tpcs || item.weight) : item.weight);
+    const liveName = p ? (p.name || item.name) : item.name;
+    const liveWeight = p ? (p.tpcs || item.weight) : item.weight;
     const liveRate = p ? (Number(p.agencyB) || 0) : item.rate;
     const nameColor = 'color:red;';
     rows += `<tr>
@@ -4341,23 +4327,16 @@ function kataWireLiveFormulas(prevTotal){
   ['name','weight'].forEach(field=>{
     document.querySelectorAll(`[data-kata-field="${field}"]`).forEach(input=>{
       input.addEventListener('change', ()=>{
-        // یہاں جو بھی خود لکھیں وہ اب مستقل محفوظ ہو جاتا ہے — اگلی بار
-        // sync/update چلنے پر بھی یہی دستی قدر برقرار رہے گی، ریٹ لسٹ B
-        // سے دوبارہ نہیں بدلے گی، جب تک دوبارہ تالا کھول کر خود تبدیل نہ
-        // کریں۔
-        const itemKey = input.dataset.kataItem;
-        const item = KATA_ITEMS.find(x=>x.key === itemKey);
-        if(item){
-          item[field] = input.value;
-          item[field + 'Manual'] = true;
-        }
+        // یہاں تالا کھول کر عارضی طور پر کچھ بھی لکھا جا سکتا ہے، مگر
+        // خانہ خود بخود مسلسل ریٹ لسٹ B سے تازہ ہوتا رہتا ہے — اگلی بار
+        // sync/update چلنے پر یہ دوبارہ B کی موجودہ قدر دکھائے گا۔
         if(!input.disabled && kataColLocked.name === false){
           kataColLocked.name = kataColLocked.weight = true;
           applyKataAll3Lock();
         }
         if(typeof scheduleSiteDataSave === 'function') scheduleSiteDataSave();
       });
-      });
+    });
   });
 
   // ---------- UNDO (↩ / Ctrl+Z) ----------
@@ -4410,8 +4389,8 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
   KATA_ITEMS.forEach(item=>{
     const rlKey = KATA_TO_RATELIST_KEY[item.key];
     const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
-    const liveName = item.nameManual ? item.name : (p ? (p.name || item.name) : item.name);
-    const liveWeight = item.weightManual ? item.weight : (p ? (p.tpcs || item.weight) : item.weight);
+    const liveName = p ? (p.name || item.name) : item.name;
+    const liveWeight = p ? (p.tpcs || item.weight) : item.weight;
     const liveRate = p ? (Number(p.agencyB) || 0) : item.rate;
     const t = Number(document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`).value) || 0;
     const price = liveRate * t;
