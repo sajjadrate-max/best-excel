@@ -3537,6 +3537,9 @@ let kataLocalMode = false;  // true when login is off — uses localStorage on t
 let kataOpenCarryForward = null; // set from the opened book's .carryForward when it has no entries yet (after an automatic monthly rollover)
 let kataOpenClosed = false; // true once this book has been auto-closed by a monthly rollover — view only, no new entries
 let kataInstance = 'salesman'; // which named ledger section is active — 'salesman' is the original/default (unprefixed storage keys, for backward compatibility with existing data), any other value (e.g. 'ribnawaz') gets its own separate namespace
+// Discount خانے صرف سیلزمین کھاتے میں دکھائے جاتے ہیں — ربنواز اور Agency
+// کھاتوں میں بالکل نہیں (2026-08-21، صریح صارف کی ہدایت پر)۔
+function kataShowDiscount(){ return kataInstance === 'salesman'; }
 let kataColLocked = {name:true, weight:true, t:false, rate:true, prift:true, d:true, salesman:false}; // lock buttons for the new-entry table's columns, like ریٹ لسٹ — Items/Weight share one combined lock (default locked, reference data). T CTN is typed fresh every single day, so it stays permanently open/editable — never included in the lock.
 let kataUndoStack = []; // {input, oldValue} — one entry per finished edit (on blur/change), so Undo reverts a whole edit at once, not per-keystroke
 let kataUndoRestoring = false; // guards against the programmatic restore itself being tracked as a new undo-able change
@@ -3799,6 +3802,9 @@ function kataShowList(){
   document.getElementById('kataDetailView').style.display = 'none';
   if(kataEntriesUnsub){ kataEntriesUnsub(); kataEntriesUnsub = null; }
   kataOpenId = null;
+  // کھاتہ چھوڑ کر فہرست پر واپس جاتے وقت تالا خودکار دوبارہ لگ جاتا ہے —
+  // چاہے ابھی کھلا ہوا ہو، اگلی بار یہی کھاتہ کھولنے پر بند ملے گا۔
+  kataColLocked.name = kataColLocked.weight = true;
 }
 
 async function kataCreateNew(){
@@ -4046,6 +4052,7 @@ function kataColorStyleFor(cellColors, key){
 }
 
 function kataRenderEntryCard(entry, isLast, idx){
+  const showDiscount = kataShowDiscount();
   let rows = '';
   let sumT = 0;
   const cc = entry.cellColors || {};
@@ -4060,13 +4067,16 @@ function kataRenderEntryCard(entry, isLast, idx){
     const name = (v.name!=null && v.name!=='') ? v.name : item.name;
     const weight = (v.weight!=null) ? v.weight : item.weight;
     const nameColor = 'color:red;';
+    const discountCells = showDiscount ? `
+      <td style="${kataColorStyleFor(cc, item.key+'-discount')}">${v.discount||0}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-discounttotal')}">${v.discountTotal||0}</td>` : '';
     rows += `<tr>
       <td style="${kataColorStyleFor(cc, item.key+'-idx')}">${idx+1}</td>
       <td style="text-align:left;padding-left:6px;${nameColor}${kataColorStyleFor(cc, item.key+'-name')}">${kataEscape(name)}</td>
       <td style="${kataColorStyleFor(cc, item.key+'-weight')}">${kataEscape(weight)}</td>
       <td style="${kataColorStyleFor(cc, item.key+'-t')}">${v.t}</td>
       <td style="${kataColorStyleFor(cc, item.key+'-rate')}">${rate}</td>
-      <td style="${kataColorStyleFor(cc, item.key+'-totalrate')}">${v.price}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-totalrate')}">${v.price}</td>${discountCells}
     </tr>`;
   });
   const entryDomId = `kataEntry_${entry.id || Math.random().toString(36).slice(2)}`;
@@ -4077,7 +4087,7 @@ function kataRenderEntryCard(entry, isLast, idx){
       ${entry.salesman ? `<div class="note" style="text-align:center;">سیلزمین: ${kataEscape(entry.salesman)}</div>` : ''}
       <div class="edit-table wide-table">
         <table dir="ltr">
-          <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>T CTN</th><th>Rate</th><th>Total Rate</th></tr></thead>
+          <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>T CTN</th><th>Rate</th><th>Total Rate</th>${showDiscount ? '<th>Discount</th><th>D.Total</th>' : ''}</tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -4112,23 +4122,24 @@ function kataRenderEntryCard(entry, isLast, idx){
 function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx){
   jamah = jamah || {price:[0,0]};
   bqaya = bqaya || {price:0};
+  const showDiscount = kataShowDiscount();
   const jamahRow = (i)=> entryIdx != null
-    ? `<tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamah.price[i]||0}"></td></tr>`
-    : `<tr><td style="text-align:right;padding-right:6px;">Jamah</td><td>${jamah.price[i]||0}</td></tr>`;
+    ? `<tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamah.price[i]||0}"></td>${showDiscount ? '<td></td>' : ''}</tr>`
+    : `<tr><td style="text-align:right;padding-right:6px;">Jamah</td><td>${jamah.price[i]||0}</td>${showDiscount ? '<td></td>' : ''}</tr>`;
   const bqayaCell = entryIdx != null
     ? `<td data-kata-entry-bqaya="${entryIdx}">${bqaya.price}</td>`
     : `<td>${bqaya.price}</td>`;
   return `
       <div class="edit-table" style="margin-top:8px;">
         <table dir="ltr">
-          <thead><tr><th></th><th>Price</th></tr></thead>
+          <thead><tr><th></th><th>Price</th>${showDiscount ? '<th>Discount</th>' : ''}</tr></thead>
           <tbody>
-            <tr><td style="text-align:right;padding-right:6px;">Sabka</td><td>${sabka.price}</td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Today</td><td>${today.price}</td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Total</td><td>${total.price}</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Sabka</td><td>${sabka.price}</td>${showDiscount ? `<td>${sabka.discount||0}</td>` : ''}</tr>
+            <tr><td style="text-align:right;padding-right:6px;">Today</td><td>${today.price}</td>${showDiscount ? `<td>${today.discount||0}</td>` : ''}</tr>
+            <tr><td style="text-align:right;padding-right:6px;">Total</td><td>${total.price}</td>${showDiscount ? `<td>${total.discount||0}</td>` : ''}</tr>
             ${jamahRow(0)}
             ${jamahRow(1)}
-            <tr><td style="text-align:right;padding-right:6px;">Bqaya</td>${bqayaCell}</tr>
+            <tr><td style="text-align:right;padding-right:6px;">Bqaya</td>${bqayaCell}${showDiscount ? '<td></td>' : ''}</tr>
           </tbody>
         </table>
       </div>`;
@@ -4139,6 +4150,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
   // یہاں براہِ راست ریٹ لسٹ (packs) سے پڑھتے ہیں — KATA_ITEMS پر انحصار
   // نہیں کرتے، تاکہ کسی بھی وقتی ترتیب (sync کب چلا) کے مسئلے سے قطع نظر
   // ہمیشہ اسی لمحے کی تازہ ترین B لسٹ ہی نظر آئے۔
+  const showDiscount = kataShowDiscount();
   KATA_ITEMS.forEach((item, idx)=>{
     const rlKey = KATA_TO_RATELIST_KEY[item.key];
     const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
@@ -4146,21 +4158,24 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
     const liveWeight = p ? (p.tpcs || item.weight) : item.weight;
     const liveRate = p ? (Number(p.agencyB) || 0) : item.rate;
     const nameColor = 'color:red;';
+    const discountCells = showDiscount ? `
+      <td data-color-key="${item.key}-discount"><input type="text" inputmode="decimal" class="cell-input" data-kata-field="discount" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
+      <td data-color-key="${item.key}-discounttotal" data-kata-discounttotal="${item.key}">0</td>` : '';
     rows += `<tr>
       <td data-color-key="${item.key}-idx">${idx+1}</td>
       <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(liveName)}"></td>
       <td data-color-key="${item.key}-weight"><input type="text" class="cell-input" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${kataEscape(liveWeight)}"></td>
       <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="t" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
       <td data-color-key="${item.key}-rate"><input type="text" class="cell-input" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${liveRate}" disabled></td>
-      <td data-color-key="${item.key}-totalrate" data-kata-totalrate="${item.key}">0</td>
+      <td data-color-key="${item.key}-totalrate" data-kata-totalrate="${item.key}">0</td>${discountCells}
     </tr>`;
   });
   // پہلی انٹری (اس کھاتے میں ابھی تک کوئی ریکارڈ نہیں) میں "سابقہ" کی قطار
   // خود لکھی جا سکتی ہے (شروعاتی بیلنس کے طور پر) — اس کے بعد ہمیشہ کی
   // طرح خودکار پچھلی انٹری سے چلی آتی ہے، دستی تبدیلی کی ضرورت نہیں رہتی۔
   const sabkaRow = isFirstEntry
-    ? `<tr><td style="text-align:right;padding-right:6px;">Sabka</td><td><input type="number" inputmode="numeric" class="cell-input" data-kata-sabka="price" style="border:1px solid var(--line);" value="${prevTotal.price}"><input type="hidden" data-kata-sabka="t" value="${prevTotal.t}"></td></tr>`
-    : `<tr><td style="text-align:right;padding-right:6px;">Sabka</td><td>${prevTotal.price}</td></tr>`;
+    ? `<tr><td style="text-align:right;padding-right:6px;">Sabka</td><td><input type="number" inputmode="numeric" class="cell-input" data-kata-sabka="price" style="border:1px solid var(--line);" value="${prevTotal.price}"><input type="hidden" data-kata-sabka="t" value="${prevTotal.t}"></td>${showDiscount ? `<td><input type="number" inputmode="numeric" class="cell-input" data-kata-sabka="discount" style="border:1px solid var(--line);" value="${prevTotal.discount||0}"></td>` : ''}</tr>`
+    : `<tr><td style="text-align:right;padding-right:6px;">Sabka</td><td>${prevTotal.price}</td>${showDiscount ? `<td>${prevTotal.discount||0}</td>` : ''}</tr>`;
   const nameLabel = kataInstance === 'agency' ? 'Agency name' : 'Salesman name';
   // یہ خانہ اب ہمیشہ اسی کھلے ہوئے کھاتے کے نام (kataOpenName) سے خودکار
   // بھرا رہتا ہے — دستی لکھنے کی ضرورت نہیں، نہ اجازت، تالا مستقل بند۔
@@ -4183,7 +4198,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
             <th>Weight</th>
             <th>T CTN</th>
             <th>Rate</th>
-            <th>Total Rate</th>
+            <th>Total Rate</th>${showDiscount ? '<th>Discount</th><th>D.Total</th>' : ''}
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -4200,14 +4215,14 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       </div>
       <div class="edit-table" style="margin-top:8px;">
         <table dir="ltr">
-          <thead><tr><th></th><th>Price</th></tr></thead>
+          <thead><tr><th></th><th>Price</th>${showDiscount ? '<th>Discount</th>' : ''}</tr></thead>
           <tbody>
             ${sabkaRow}
-            <tr><td style="text-align:right;padding-right:6px;">Today</td><td data-kata-today-price>0</td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Total</td><td data-kata-tot-price>${prevTotal.price}</td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price0" style="border:1px solid var(--line);" value="0"></td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price1" style="border:1px solid var(--line);" value="0"></td></tr>
-            <tr><td style="text-align:right;padding-right:6px;">Bqaya</td><td data-kata-bqaya-price>${prevTotal.price}</td></tr>
+            <tr><td style="text-align:right;padding-right:6px;">Today</td><td data-kata-today-price>0</td>${showDiscount ? '<td data-kata-today-discount>0</td>' : ''}</tr>
+            <tr><td style="text-align:right;padding-right:6px;">Total</td><td data-kata-tot-price>${prevTotal.price}</td>${showDiscount ? `<td data-kata-tot-discount>${prevTotal.discount||0}</td>` : ''}</tr>
+            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price0" style="border:1px solid var(--line);" value="0"></td>${showDiscount ? '<td></td>' : ''}</tr>
+            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price1" style="border:1px solid var(--line);" value="0"></td>${showDiscount ? '<td></td>' : ''}</tr>
+            <tr><td style="text-align:right;padding-right:6px;">Bqaya</td><td data-kata-bqaya-price>${prevTotal.price}</td>${showDiscount ? '<td></td>' : ''}</tr>
           </tbody>
         </table>
       </div>
@@ -4238,13 +4253,19 @@ function kataWireLiveFormulas(prevTotal){
     input.addEventListener('input', ()=> kataAutoSizeInput(input));
   });
 
+  const showDiscount = kataShowDiscount();
   function recomputeTotalsBlock(){
-    let todayT = 0, todayRate = 0;
+    let todayT = 0, todayRate = 0, todayDiscount = 0;
     KATA_ITEMS.forEach(item=>{
       const tI = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`);
       const t = Number((tI && tI.value) || 0) || 0;
       todayT += t;
       todayRate += item.rate * t;
+      if(showDiscount){
+        const dI = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="discount"]`);
+        const d = Number((dI && dI.value) || 0) || 0;
+        todayDiscount += d * t;
+      }
     });
     const sumTEl = document.querySelector('[data-kata-sum-t]');
     if(sumTEl) sumTEl.textContent = todayT;
@@ -4257,6 +4278,7 @@ function kataWireLiveFormulas(prevTotal){
     const sabkaBase = sabkaTI ? {
       t: Number(sabkaTI.value) || 0,
       price: Number((document.querySelector('[data-kata-sabka="price"]')||{}).value) || 0,
+      discount: Number((document.querySelector('[data-kata-sabka="discount"]')||{}).value) || 0,
     } : prevTotal;
     const totT = sabkaBase.t + todayT, totPrice = sabkaBase.price + todayPrice;
     const set = (sel, val)=>{ const el = document.querySelector(sel); if(el) el.textContent = val; };
@@ -4264,6 +4286,11 @@ function kataWireLiveFormulas(prevTotal){
     set('[data-kata-today-price]', todayPrice);
     set('[data-kata-tot-t]', totT);
     set('[data-kata-tot-price]', totPrice);
+    if(showDiscount){
+      const totDiscount = (sabkaBase.discount||0) + todayDiscount;
+      set('[data-kata-today-discount]', todayDiscount);
+      set('[data-kata-tot-discount]', totDiscount);
+    }
     const j = (sel)=>{ const el = document.querySelector(sel); return el ? (Number(el.value)||0) : 0; };
     const jamahPrice = j('[data-jamah="price0"]') + j('[data-jamah="price1"]');
     set('[data-kata-bqaya-price]', totPrice - jamahPrice);
@@ -4277,17 +4304,24 @@ function kataWireLiveFormulas(prevTotal){
     const tInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`);
     const nameInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="name"]`);
     const weightInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="weight"]`);
+    const discountInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="discount"]`);
     const totalRateCell = document.querySelector(`[data-kata-totalrate="${item.key}"]`);
+    const discountTotalCell = document.querySelector(`[data-kata-discounttotal="${item.key}"]`);
 
     const getT = ()=> Number((tInput && tInput.value)||0)||0;
     const refreshRow = ()=>{
       if(totalRateCell) totalRateCell.textContent = item.rate * getT();
+      if(discountTotalCell){
+        const d = Number((discountInput && discountInput.value)||0)||0;
+        discountTotalCell.textContent = d * getT();
+      }
       recomputeTotalsBlock();
     };
 
     if(nameInput) nameInput.addEventListener('input', ()=>{ item.name = nameInput.value; });
     if(weightInput) weightInput.addEventListener('input', ()=>{ item.weight = weightInput.value; });
     if(tInput) tInput.addEventListener('input', refreshRow);
+    if(discountInput) discountInput.addEventListener('input', refreshRow);
   });
   document.querySelectorAll('[data-jamah]').forEach(input=>{
     input.addEventListener('input', recomputeTotalsBlock);
@@ -4327,13 +4361,9 @@ function kataWireLiveFormulas(prevTotal){
   ['name','weight'].forEach(field=>{
     document.querySelectorAll(`[data-kata-field="${field}"]`).forEach(input=>{
       input.addEventListener('change', ()=>{
-        // یہاں تالا کھول کر عارضی طور پر کچھ بھی لکھا جا سکتا ہے، مگر
-        // خانہ خود بخود مسلسل ریٹ لسٹ B سے تازہ ہوتا رہتا ہے — اگلی بار
-        // sync/update چلنے پر یہ دوبارہ B کی موجودہ قدر دکھائے گا۔
-        if(!input.disabled && kataColLocked.name === false){
-          kataColLocked.name = kataColLocked.weight = true;
-          applyKataAll3Lock();
-        }
+        // یہاں تالا کھول کر جتنی چاہیں تبدیلیاں کی جا سکتی ہیں — تالا خود
+        // بخود صرف اس وقت دوبارہ لگتا ہے جب صارف اس کھاتے سے واپس فہرست
+        // میں چلا جائے (دیکھیں kataShowList)، ہر انفرادی تبدیلی پر نہیں۔
         if(typeof scheduleSiteDataSave === 'function') scheduleSiteDataSave();
       });
     });
@@ -4384,8 +4414,9 @@ function kataWireLiveFormulas(prevTotal){
 }
 
 async function kataSaveEntry(prevTotal, prevSaleMahana){
+  const showDiscount = kataShowDiscount();
   const items = {};
-  let todayT = 0, todayRate = 0;
+  let todayT = 0, todayRate = 0, todayDiscount = 0;
   KATA_ITEMS.forEach(item=>{
     const rlKey = KATA_TO_RATELIST_KEY[item.key];
     const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
@@ -4395,6 +4426,14 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
     const t = Number(document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`).value) || 0;
     const price = liveRate * t;
     items[item.key] = {t, price, rate: liveRate, name: liveName, weight: liveWeight};
+    if(showDiscount){
+      const dInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="discount"]`);
+      const discount = Number((dInput && dInput.value) || 0) || 0;
+      const discountTotal = discount * t;
+      items[item.key].discount = discount;
+      items[item.key].discountTotal = discountTotal;
+      todayDiscount += discountTotal;
+    }
     todayT += t; todayRate += price;
   });
   // اس انٹری کے فارم میں جو خانے رنگے گئے تھے (🎨 موڈ سے)، وہ رنگ اب اسی
@@ -4424,10 +4463,15 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
     ? {
         t: Number(sabkaTInput.value) || 0,
         price: Number((document.querySelector('[data-kata-sabka="price"]')||{}).value) || 0,
+        discount: Number((document.querySelector('[data-kata-sabka="discount"]')||{}).value) || 0,
       }
-    : {t: prevTotal.t||0, price: prevTotal.price||0};
+    : {t: prevTotal.t||0, price: prevTotal.price||0, discount: prevTotal.discount||0};
   const today = {t: todayT, price: todayPrice};
   const total = {t: sabka.t + today.t, price: sabka.price + today.price};
+  if(showDiscount){
+    today.discount = todayDiscount;
+    total.discount = (sabka.discount||0) + todayDiscount;
+  }
 
   const bqaya = {price: total.price - (jamah.price[0]+jamah.price[1])};
 
@@ -5010,24 +5054,51 @@ function firebaseSyncListenLive(){
   if(window._kataListenUnsub){ try{ window._kataListenUnsub(); }catch(e){} }
   window._kataListenUnsub = window.db.collection('localSync').onSnapshot(snap=>{
     let changedAny = false;
-    let siteDataChanged = false;
+    let siteDataCloudJson = null; // SITE_DATA_KEY کی خام (raw) کلاؤڈ ویلیو — merge کے لیے چاہیے
     snap.docChanges().forEach(change=>{
       if(change.type === 'removed') return; // manual deletes only ever come from OUR OWN app code (see کھاتہ/ms delete buttons) — a remote doc disappearing here is never treated as "clear this device's copy", so nothing is ever wiped just because a listener fired
       const data = change.doc.data();
       if(data && typeof data.value === 'string'){
-        localStorage.setItem(change.doc.id, data.value);
+        if(change.doc.id === SITE_DATA_KEY){
+          siteDataCloudJson = data.value; // ابھی localStorage میں نہیں لکھتے — نیچے merge کے بعد لکھیں گے
+        } else {
+          localStorage.setItem(change.doc.id, data.value);
+        }
         changedAny = true;
-        if(change.doc.id === SITE_DATA_KEY) siteDataChanged = true;
       }
     });
     if(changedAny) firebaseSyncRefreshVisibleViews();
-    // ریٹ لسٹ/Best Excel official صرف اسی وقت خودکار تازہ ہوں جب صارف اس
-    // وقت وہاں کچھ ٹائپ نہیں کر رہا — ورنہ ٹائپنگ کے دوران ڈیٹا اچانک بدل
-    // جانے کا خطرہ ہے۔
-    if(siteDataChanged && typeof window.restoreSiteData === 'function'){
+    // ریٹ لسٹ/Best Excel official: پہلے یہاں براہِ راست restoreSiteData()
+    // کلاؤڈ کی خام قدر سے پوری packs array overwrite کر دیتا تھا — کوئی
+    // merge نہیں، baseline کا کوئی خیال نہیں۔ اسی وجہ سے ابھی ابھی دستی
+    // طور پر بدلا گیا Agency ریٹ (یا کوئی بھی خانہ) کبھی کبھار اس اپڈیٹ کی
+    // وجہ سے واپس پرانی قدر پر ری سیٹ ہو جاتا تھا (اپنی ہی save کی echo، یا
+    // بیچ میں کسی اور فیلڈ کی تبدیلی سے) — چاہے وہ خانہ اس وقت فوکس میں نہ
+    // ہو۔ اب saveSiteDataNow() جیسا ہی 3-way baseline-merge یہاں بھی
+    // استعمال ہوتا ہے، تاکہ صرف واقعی نہ بدلے ہوئے خانے ہی کلاؤڈ کی نئی
+    // قدر لیں — جو خانہ اسی ڈیوائس پر ابھی حال ہی میں بدلا (چاہے اس کا اپنا
+    // save ابھی cloud تک نہ پہنچا ہو) وہ ہمیشہ محفوظ رہتا ہے۔
+    if(siteDataCloudJson && typeof applySiteDataSnapshot === 'function'){
       const active = document.activeElement;
       const typingHere = active && active.closest && active.closest('#tierListsContainer, #combinedTableContainer, #ledgerContainer');
-      if(!typingHere) window.restoreSiteData();
+      if(!typingHere){
+        try{
+          const cloudSnapshot = JSON.parse(siteDataCloudJson);
+          const localSnapshot = buildSiteDataSnapshot();
+          const merged = siteDataBaseline ? mergeByBaseline(localSnapshot, cloudSnapshot, siteDataBaseline) : cloudSnapshot;
+          applySiteDataSnapshot(merged);
+          siteDataBaseline = JSON.parse(JSON.stringify(merged));
+          const mergedJson = JSON.stringify(merged);
+          localStorage.setItem(SITE_DATA_KEY, mergedJson);
+        } catch(err){
+          console.warn('site data live-merge failed, storing raw cloud value', err);
+          localStorage.setItem(SITE_DATA_KEY, siteDataCloudJson);
+        }
+      }
+      // اگر صارف اسی وقت وہاں ٹائپ کر رہا ہے تو localStorage بھی جان بوجھ
+      // کر نہیں چھیڑتے — جیسے ہی وہ رکے گا، اس کا اپنا scheduleSiteDataSave
+      // اپنی ہی تازہ ترین قدر (اور تازہ باسلائن سے صحیح merge) کے ساتھ
+      // خودکار محفوظ کر دے گا۔
     }
   }, err=>{
     // کبھی کبھار (خاص طور پر کمپیوٹر پر لمبے عرصے تک کھلا ٹیب) یہ realtime
