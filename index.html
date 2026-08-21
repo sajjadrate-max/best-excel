@@ -568,6 +568,25 @@ window.loadAuthSDKs = async function(){
   .edit-table.wide-table td.name-cell .cell-val{
     font-size:4.8px;
   }
+  /* #, Items, Weight — صارف کی درخواست پر (2026-08-21) اب باقی خانوں کی
+     طرح مصنوعی طور پر چھوٹے نہیں — بالکل نیچے "Sabka" والے سادہ خانوں
+     جتنے (کوئی font-size override نہیں، صرف براؤزر کا اپنا عام سائز)۔
+     text-size-adjust:100% اس لیے تاکہ موبائل کا خودکار فونٹ بڑھانے والا
+     فیچر اسے مزید نہ بدلے — ہمیشہ بالکل ایک جیسا نظر آئے۔ */
+  .edit-table.wide-table .kata-normal-size,
+  .edit-table.wide-table .cell-input.kata-normal-size{
+    font-size:9px !important;
+    text-size-adjust:100%;
+    -webkit-text-size-adjust:100%;
+  }
+  /* Items/Weight — # سے الگ کلاس، تاکہ آزادانہ مزید چھوٹا کیا جا سکے
+     (2026-08-21، صارف کی مزید کمی کی درخواست پر # سے علیحدہ کیا) */
+  .edit-table.wide-table .kata-smaller-size,
+  .edit-table.wide-table .cell-input.kata-smaller-size{
+    font-size:7px !important;
+    text-size-adjust:100%;
+    -webkit-text-size-adjust:100%;
+  }
   .edit-table.wide-table td.edit-cell{
     padding:0px;
   }
@@ -3456,28 +3475,33 @@ function showAuthLoadError(){
 // REFERENCE values printed on the page (same for every entry); t/price/
 // tPrift/tD are typed fresh on every entry.
 const KATA_ITEMS = [
-  {key:"rs10",   name:"Best Excel RS.10",   weight:"26g",   rate:2100, prift:250, d:40},
-  {key:"rs50",   name:"Best Excel Rs.50",   weight:"155g",  rate:1840, prift:260, d:40},
-  {key:"rs100",  name:"Best Excel Rs.100",  weight:"316g",  rate:1840, prift:260, d:40},
-  {key:"rs150",  name:"Best Excel RS.150",  weight:"475g",  rate:2580, prift:520, d:60},
-  {key:"rs400",  name:"Best Excel RS.400",  weight:"1000g", rate:3710, prift:540, d:60},
-  {key:"rs1000", name:"Best Excel RS.1000", weight:"3340g", rate:3050, prift:500, d:60},
-  {key:"special",name:"Best Excel Special", weight:"20kg",  rate:5560, prift:640, d:60},
-  {key:"sada",   name:"Best Excel sada",    weight:"20kg",  rate:3490, prift:510, d:0},
-  {key:"znet1",  name:"Z Net Bill",  weight:"",      rate:0,    prift:0,   d:0},
-  {key:"znet2",  name:"Z Net Bill",  weight:"",      rate:0,    prift:0,   d:0},
+  {key:"rs10",   name:"RS.10",   weight:"26g",   rate:2100, prift:250, d:40, nameManual:true},
+  {key:"rs50",   name:"RS.50",   weight:"155g",  rate:1840, prift:260, d:40, nameManual:true},
+  {key:"rs100",  name:"RS.100",  weight:"316g",  rate:1840, prift:260, d:40, nameManual:true},
+  {key:"rs150",  name:"RS.150",  weight:"475g",  rate:2580, prift:520, d:60, nameManual:true},
+  {key:"rs400",  name:"RS.400",  weight:"1000g", rate:3710, prift:540, d:60, nameManual:true},
+  {key:"rs1000", name:"RS.1000", weight:"3340g", rate:3050, prift:500, d:60, nameManual:true},
+  {key:"special",name:"Khula Special", weight:"20kg",  rate:5560, prift:640, d:60, nameManual:true},
+  {key:"sada",   name:"Khula sada",    weight:"20kg",  rate:3490, prift:510, d:0, nameManual:true},
+  {key:"znet1",  name:"Z Net Bill",  weight:"",      rate:0,    prift:0,   d:0, nameManual:true},
+  {key:"znet2",  name:"Z Net Bill",  weight:"",      rate:0,    prift:0,   d:0, nameManual:true},
 ];
 
-// ---------- کھاتہ کے Items/Weight/Profit/Price اب ریٹ لسٹ کے کارڈ "B" سے
+// ---------- کھاتہ کے Weight/Profit/Price اب بھی ریٹ لسٹ کے کارڈ "B" سے
 // خودکار (2026-08-16، صارف کی درخواست) ----------
-// اوپر لکھی گئی قدریں صرف ابتدائی/فال بیک ہیں — پیج لوڈ ہوتے ہی اور جب
-// بھی ریٹ لسٹ کی "کمپنی ریٹ لسٹ A" میں کوئی تبدیلی ہو (جس سے B خودکار
-// اپڈیٹ ہوتا ہے)، یہ فنکشن KATA_ITEMS کے یہی object اندر سے اپڈیٹ کر دیتا
-// ہے — چونکہ یہ وہی object ہیں (نئے نہیں بنائے جاتے)، باقی پورا کھاتہ
-// ماڈیول (رینڈر/حساب) خودکار نئی قدریں استعمال کرتا ہے، کہیں اور کچھ
-// بدلنے کی ضرورت نہیں۔ صرف Z Net Bill کی دو قطاریں اس میں شامل نہیں
+// Items (نام) 2026-08-21 سے ریٹ لسٹ سے خودکار نہیں رہا — صارف نے مخصوص
+// مختصر نام (RS.10, RS.50... Khula Special, Khula sada) مقرر کیے اور
+// درخواست کی کہ آگے بھی آزادانہ تبدیل کیے جا سکیں، ریٹ لسٹ کے نام سے کبھی
+// دوبارہ خودکار اوور رائٹ نہ ہوں — اسی لیے ہر آئٹم پر ہمیشہ `nameManual:
+// true` رہتا ہے (نیچے syncKataItemsFromRateList اسی وجہ سے item.name کبھی
+// نہیں چھیڑتا)۔ اوپر لکھی گئی قدریں صرف ابتدائی/فال بیک ہیں — پیج لوڈ ہوتے
+// ہی اور جب بھی ریٹ لسٹ کی "کمپنی ریٹ لسٹ A" میں کوئی تبدیلی ہو (جس سے B
+// خودکار اپڈیٹ ہوتا ہے)، یہ فنکشن KATA_ITEMS کے یہی object اندر سے اپڈیٹ
+// کر دیتا ہے — چونکہ یہ وہی object ہیں (نئے نہیں بنائے جاتے)، باقی پورا
+// کھاتہ ماڈیول (رینڈر/حساب) خودکار نئی قدریں استعمال کرتا ہے، کہیں اور
+// کچھ بدلنے کی ضرورت نہیں۔ صرف Z Net Bill کی دو قطاریں اس میں شامل نہیں
 // (ریٹ لسٹ میں ان کا کوئی متبادل پراڈکٹ نہیں)، اور "d" (فرق) کالم بھی
-// چھیڑا نہیں گیا — صرف name/weight/rate/prift۔
+// چھیڑا نہیں گیا — صرف weight/rate/prift۔
 const KATA_TO_RATELIST_KEY = {rs10:'rs10', rs50:'rs50', rs100:'rs100', rs150:'rs150', rs400:'rs400', rs1000:'rs1000', special:'kabotar', sada:'sada'};
 function syncKataItemsFromRateList(){
   if(typeof packs === 'undefined' || !Array.isArray(packs)) return;
@@ -3488,7 +3512,7 @@ function syncKataItemsFromRateList(){
     if(!p) return;
     const agencyB = Number(p.agencyB) || 0;
     const mrp = Number(p.mrp) || 0;
-    item.name = p.name;
+    // نام (Items) 2026-08-21 سے خودکار نہیں — ہمیشہ nameManual، دیکھیں اوپر KATA_ITEMS کا نوٹ
     // Weight — پہلے یہاں "p.tpcs || item.weight" تھا (Rate کی طرح
     // unconditional نہیں) — اگر کبھی p.tpcs عارضی طور پر خالی ہوتا (مثلاً
     // ڈیٹا لوڈ کے دوران) تو پرانی/ابتدائی قدر ہمیشہ کے لیے پھنس جاتی، بعد
@@ -4133,7 +4157,7 @@ function kataRenderEntryCard(entry, isLast, idx){
     const priftTotal = (v.priftTotal!=null) ? v.priftTotal : Math.round(prift * (Number(v.t)||0) * 100) / 100;
     const name = (v.name!=null && v.name!=='') ? v.name : item.name;
     const weight = (v.weight!=null) ? v.weight : item.weight;
-    const nameColor = 'color:red;';
+    const nameColor = 'color:#1a1a1a;'; // Sabka/عام متن جیسا سیاہ — 2026-08-21 سے پہلے سرخ تھا
     const discountCells = showDiscount ? `
       <td style="${kataColorStyleFor(cc, item.key+'-discount')}"><span class="cell-val">${v.discount||0}</span></td>
       <td style="${kataColorStyleFor(cc, item.key+'-discounttotal')}"><span class="cell-val">${v.discountTotal||0}</span></td>` : '';
@@ -4157,6 +4181,9 @@ function kataRenderEntryCard(entry, isLast, idx){
       <div style="text-align:center;font-weight:900;font-size:16px;color:#1B5FD9;margin-bottom:6px;">Best Excel Washing powder</div>
       <div class="edit-table wide-table">
         <table dir="ltr">
+          <colgroup>${showDiscount
+            ? '<col style="width:5%"><col style="width:18%"><col style="width:9%"><col style="width:9%"><col style="width:10%"><col style="width:11%"><col style="width:9%"><col style="width:11%"><col style="width:9%"><col style="width:9%">'
+            : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
           <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>T CTN</th><th>Rate</th><th>Total Rate</th><th>Profit</th><th>T.Profit</th>${showDiscount ? '<th>Discount</th><th>D.Total</th>' : ''}</tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -4232,10 +4259,10 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
   KATA_ITEMS.forEach((item, idx)=>{
     const rlKey = KATA_TO_RATELIST_KEY[item.key];
     const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
-    const liveName = p ? p.name : item.name;
+    const liveName = item.name;
     const liveWeight = p ? p.tpcs : item.weight;
     const liveRate = p ? (Number(p.agencyB) || 0) : item.rate;
-    const nameColor = 'color:red;';
+    const nameColor = 'color:#1a1a1a;'; // Sabka/عام متن جیسا سیاہ — 2026-08-21 سے پہلے سرخ تھا
     // Z Net Bill کی دونوں قطاریں کسی ریٹ لسٹ پراڈکٹ سے منسلک نہیں — پوری
     // طرح دستی انٹری کے لیے ہیں، اس لیے ان کا Rate اور Profit بھی (باقی
     // آئٹمز کے برعکس، جہاں یہ خودکار/مقررہ ہیں) براہِ راست ٹائپ کیے جا
@@ -4245,9 +4272,9 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <td data-color-key="${item.key}-discount"><input type="text" inputmode="decimal" class="cell-input" data-kata-field="discount" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
       <td data-color-key="${item.key}-discounttotal"><span class="cell-val" data-kata-discounttotal="${item.key}">0</span></td>` : '';
     rows += `<tr>
-      <td data-color-key="${item.key}-idx">${idx+1}</td>
-      <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(liveName)}"></td>
-      <td data-color-key="${item.key}-weight"><input type="text" class="cell-input" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${kataEscape(liveWeight)}"></td>
+      <td data-color-key="${item.key}-idx" class="kata-normal-size">${idx+1}</td>
+      <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input kata-smaller-size" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(liveName)}"></td>
+      <td data-color-key="${item.key}-weight"><input type="text" class="cell-input kata-smaller-size" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${kataEscape(liveWeight)}"></td>
       <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="t" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
       <td data-color-key="${item.key}-rate"><input type="text" inputmode="decimal" class="cell-input" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${liveRate}" ${isZNet ? '' : 'disabled'}></td>
       <td data-color-key="${item.key}-totalrate"><span class="cell-val" data-kata-totalrate="${item.key}">0</span></td>
@@ -4277,6 +4304,9 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       </div>
       <div class="edit-table wide-table">
         <table dir="ltr">
+          <colgroup>${showDiscount
+            ? '<col style="width:5%"><col style="width:18%"><col style="width:9%"><col style="width:9%"><col style="width:10%"><col style="width:11%"><col style="width:9%"><col style="width:11%"><col style="width:9%"><col style="width:9%">'
+            : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
           <thead><tr>
             <th><button type="button" class="row-lock-btn" data-kata-lockbtn="all3"></button>#</th>
             <th>Items</th>
@@ -4419,7 +4449,7 @@ function kataWireLiveFormulas(prevTotal){
       recomputeTotalsBlock();
     };
 
-    if(nameInput) nameInput.addEventListener('input', ()=>{ item.name = nameInput.value; });
+    if(nameInput) nameInput.addEventListener('input', ()=>{ item.name = nameInput.value; item.nameManual = true; });
     if(weightInput) weightInput.addEventListener('input', ()=>{ item.weight = weightInput.value; });
     if(tInput) tInput.addEventListener('input', refreshRow);
     if(discountInput) discountInput.addEventListener('input', refreshRow);
@@ -4539,7 +4569,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
   KATA_ITEMS.forEach(item=>{
     const rlKey = KATA_TO_RATELIST_KEY[item.key];
     const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
-    const liveName = p ? p.name : item.name;
+    const liveName = item.name;
     const liveWeight = p ? p.tpcs : item.weight;
     const liveRate = p ? (Number(p.agencyB) || 0) : item.rate;
     const t = Number(document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`).value) || 0;
