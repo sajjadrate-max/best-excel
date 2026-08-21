@@ -4154,6 +4154,7 @@ function kataRenderEntryCard(entry, isLast, idx){
       ${isLast ? kataDotsMenuHtml([{cls:'kata-delete-entry-btn', label:'🗑 حذف کریں'}]) : ''}
       <div class="note" style="text-align:center;font-weight:700;">${kataFormatWhen(entry.createdAt)}</div>
       ${entry.salesman ? `<div class="note" style="text-align:center;">سیلزمین: ${kataEscape(entry.salesman)}</div>` : ''}
+      <div style="text-align:center;font-weight:900;font-size:16px;color:#1B5FD9;margin-bottom:6px;">Best Excel Washing powder</div>
       <div class="edit-table wide-table">
         <table dir="ltr">
           <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>T CTN</th><th>Rate</th><th>Total Rate</th><th>Profit</th><th>T.Profit</th>${showDiscount ? '<th>Discount</th><th>D.Total</th>' : ''}</tr></thead>
