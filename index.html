@@ -3488,7 +3488,7 @@ function syncKataItemsFromRateList(){
     if(!p) return;
     const agencyB = Number(p.agencyB) || 0;
     const mrp = Number(p.mrp) || 0;
-    item.name = p.name || item.name;
+    item.name = p.name;
     // Weight — پہلے یہاں "p.tpcs || item.weight" تھا (Rate کی طرح
     // unconditional نہیں) — اگر کبھی p.tpcs عارضی طور پر خالی ہوتا (مثلاً
     // ڈیٹا لوڈ کے دوران) تو پرانی/ابتدائی قدر ہمیشہ کے لیے پھنس جاتی، بعد
@@ -3927,6 +3927,9 @@ function kataRenderDetail(name){
   container.querySelectorAll('[data-kata-entry-jamah]').forEach(input=>{
     input.addEventListener('input', ()=> kataOnEntryJamahInput(input, container));
   });
+  container.querySelectorAll('[data-kata-entry-jamah-profit]').forEach(input=>{
+    input.addEventListener('input', ()=> kataOnEntryJamahProfitInput(input, container));
+  });
   container.querySelectorAll('[data-kata-entry-jamah-discount]').forEach(input=>{
     input.addEventListener('input', ()=> kataOnEntryJamahDiscountInput(input, container));
   });
@@ -3945,7 +3948,8 @@ function kataOnEntryJamahInput(input, container){
   entry.jamah = entry.jamah || {price:[0,0]};
   entry.jamah.price[which] = Number(input.value) || 0;
   const totPrice = (entry.total && entry.total.price) || 0;
-  entry.bqaya = {price: totPrice - ((entry.jamah.price[0]||0) + (entry.jamah.price[1]||0))};
+  entry.bqaya = entry.bqaya || {};
+  entry.bqaya.price = totPrice - ((entry.jamah.price[0]||0) + (entry.jamah.price[1]||0));
   const bqayaEl = container.querySelector(`[data-kata-entry-bqaya="${idx}"]`);
   if(bqayaEl) bqayaEl.textContent = entry.bqaya.price;
   clearTimeout(kataEntryJamahSaveTimer);
@@ -3963,6 +3967,23 @@ function kataSaveEditedEntry(idx){
     }).catch(err=> console.warn('kata entry jamah save failed', err));
   }
 }
+// اسی طرح Profit والا Jamah بھی — بالکل Price والے Bqaya جیسا۔
+function kataOnEntryJamahProfitInput(input, container){
+  const [idxStr, whichStr] = input.dataset.kataEntryJamahProfit.split(':');
+  const idx = Number(idxStr), which = Number(whichStr);
+  const entry = kataOpenEntries[idx];
+  if(!entry) return;
+  entry.jamah = entry.jamah || {price:[0,0]};
+  entry.jamah.profit = entry.jamah.profit || [0,0];
+  entry.jamah.profit[which] = Number(input.value) || 0;
+  const totProfit = (entry.total && entry.total.profit) || 0;
+  entry.bqaya = entry.bqaya || {};
+  entry.bqaya.profit = totProfit - ((entry.jamah.profit[0]||0) + (entry.jamah.profit[1]||0));
+  const bqayaEl = container.querySelector(`[data-kata-entry-bqaya-profit="${idx}"]`);
+  if(bqayaEl) bqayaEl.textContent = entry.bqaya.profit;
+  clearTimeout(kataEntryJamahSaveTimer);
+  kataEntryJamahSaveTimer = setTimeout(()=> kataSaveEditedEntry(idx), 500);
+}
 // اسی طرح Discount والا Jamah بھی — صرف اسی وقت جب یہ کھاتہ Discount دکھاتا
 // ہو (سیلزمین/ربنواز)۔ Bqaya Discount اسی انٹری کے Total Discount میں سے
 // Jamah Discount منہا کر کے نکلتا ہے — بالکل Price والے Bqaya جیسا۔
@@ -3975,7 +3996,7 @@ function kataOnEntryJamahDiscountInput(input, container){
   entry.jamah.discount = entry.jamah.discount || [0,0];
   entry.jamah.discount[which] = Number(input.value) || 0;
   const totDiscount = (entry.total && entry.total.discount) || 0;
-  entry.bqaya = entry.bqaya || {price:0};
+  entry.bqaya = entry.bqaya || {};
   entry.bqaya.discount = totDiscount - ((entry.jamah.discount[0]||0) + (entry.jamah.discount[1]||0));
   const bqayaEl = container.querySelector(`[data-kata-entry-bqaya-discount="${idx}"]`);
   if(bqayaEl) bqayaEl.textContent = entry.bqaya.discount;
@@ -4172,12 +4193,16 @@ function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx){
   bqaya = bqaya || {price:0};
   const showDiscount = kataShowDiscount();
   const jamahDiscount = jamah.discount || [0,0];
+  const jamahProfit = jamah.profit || [0,0];
   const jamahRow = (i)=> entryIdx != null
-    ? `<tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamah.price[i]||0}"></td><td></td>${showDiscount ? `<td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah-discount="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamahDiscount[i]||0}"></td>` : ''}</tr>`
-    : `<tr><td style="text-align:right;padding-right:6px;">Jamah</td><td>${jamah.price[i]||0}</td><td></td>${showDiscount ? `<td>${jamahDiscount[i]||0}</td>` : ''}</tr>`;
+    ? `<tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamah.price[i]||0}"></td><td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah-profit="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamahProfit[i]||0}"></td>${showDiscount ? `<td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah-discount="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamahDiscount[i]||0}"></td>` : ''}</tr>`
+    : `<tr><td style="text-align:right;padding-right:6px;">Jamah</td><td>${jamah.price[i]||0}</td><td>${jamahProfit[i]||0}</td>${showDiscount ? `<td>${jamahDiscount[i]||0}</td>` : ''}</tr>`;
   const bqayaCell = entryIdx != null
     ? `<td data-kata-entry-bqaya="${entryIdx}">${bqaya.price}</td>`
     : `<td>${bqaya.price}</td>`;
+  const bqayaProfitCell = entryIdx != null
+    ? `<td data-kata-entry-bqaya-profit="${entryIdx}">${bqaya.profit||0}</td>`
+    : `<td>${bqaya.profit||0}</td>`;
   const bqayaDiscountCell = entryIdx != null
     ? `<td data-kata-entry-bqaya-discount="${entryIdx}">${bqaya.discount||0}</td>`
     : `<td>${bqaya.discount||0}</td>`;
@@ -4191,7 +4216,7 @@ function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx){
             <tr><td style="text-align:right;padding-right:6px;">Total</td><td>${total.price}</td><td>${total.profit||0}</td>${showDiscount ? `<td>${total.discount||0}</td>` : ''}</tr>
             ${jamahRow(0)}
             ${jamahRow(1)}
-            <tr><td style="text-align:right;padding-right:6px;">Bqaya</td>${bqayaCell}<td></td>${showDiscount ? bqayaDiscountCell : ''}</tr>
+            <tr><td style="text-align:right;padding-right:6px;">Bqaya</td>${bqayaCell}${bqayaProfitCell}${showDiscount ? bqayaDiscountCell : ''}</tr>
           </tbody>
         </table>
       </div>`;
@@ -4206,7 +4231,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
   KATA_ITEMS.forEach((item, idx)=>{
     const rlKey = KATA_TO_RATELIST_KEY[item.key];
     const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
-    const liveName = p ? (p.name || item.name) : item.name;
+    const liveName = p ? p.name : item.name;
     const liveWeight = p ? p.tpcs : item.weight;
     const liveRate = p ? (Number(p.agencyB) || 0) : item.rate;
     const nameColor = 'color:red;';
@@ -4281,9 +4306,9 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
             ${sabkaRow}
             <tr><td style="text-align:right;padding-right:6px;">Today</td><td data-kata-today-price>0</td><td data-kata-today-profit>0</td>${showDiscount ? '<td data-kata-today-discount>0</td>' : ''}</tr>
             <tr><td style="text-align:right;padding-right:6px;">Total</td><td data-kata-tot-price>${prevTotal.price}</td><td data-kata-tot-profit>${prevTotal.profit||0}</td>${showDiscount ? `<td data-kata-tot-discount>${prevTotal.discount||0}</td>` : ''}</tr>
-            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price0" style="border:1px solid var(--line);" value="0"></td><td></td>${showDiscount ? '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="discount0" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>
-            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price1" style="border:1px solid var(--line);" value="0"></td><td></td>${showDiscount ? '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="discount1" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>
-            <tr><td style="text-align:right;padding-right:6px;">Bqaya</td><td data-kata-bqaya-price>${prevTotal.price}</td><td></td>${showDiscount ? `<td data-kata-bqaya-discount>${prevTotal.discount||0}</td>` : ''}</tr>
+            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price0" style="border:1px solid var(--line);" value="0"></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="profit0" style="border:1px solid var(--line);" value="0"></td>${showDiscount ? '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="discount0" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>
+            <tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price1" style="border:1px solid var(--line);" value="0"></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="profit1" style="border:1px solid var(--line);" value="0"></td>${showDiscount ? '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="discount1" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>
+            <tr><td style="text-align:right;padding-right:6px;">Bqaya</td><td data-kata-bqaya-price>${prevTotal.price}</td><td data-kata-bqaya-profit>${prevTotal.profit||0}</td>${showDiscount ? `<td data-kata-bqaya-discount>${prevTotal.discount||0}</td>` : ''}</tr>
           </tbody>
         </table>
       </div>
@@ -4360,6 +4385,8 @@ function kataWireLiveFormulas(prevTotal){
     const j = (sel)=>{ const el = document.querySelector(sel); return el ? (Number(el.value)||0) : 0; };
     const jamahPrice = j('[data-jamah="price0"]') + j('[data-jamah="price1"]');
     set('[data-kata-bqaya-price]', totPrice - jamahPrice);
+    const jamahProfit = j('[data-jamah="profit0"]') + j('[data-jamah="profit1"]');
+    set('[data-kata-bqaya-profit]', totProfit - jamahProfit);
     if(showDiscount){
       const totDiscount = (sabkaBase.discount||0) + todayDiscount;
       const jamahDiscount = j('[data-jamah="discount0"]') + j('[data-jamah="discount1"]');
@@ -4511,7 +4538,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
   KATA_ITEMS.forEach(item=>{
     const rlKey = KATA_TO_RATELIST_KEY[item.key];
     const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
-    const liveName = p ? (p.name || item.name) : item.name;
+    const liveName = p ? p.name : item.name;
     const liveWeight = p ? p.tpcs : item.weight;
     const liveRate = p ? (Number(p.agencyB) || 0) : item.rate;
     const t = Number(document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`).value) || 0;
@@ -4542,7 +4569,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
   const salesman = salesmanInput ? salesmanInput.value : '';
 
   const jVal = (name)=>{ const el = document.querySelector(`[data-jamah="${name}"]`); return el ? (Number(el.value)||0) : 0; };
-  const jamah = {price: [jVal('price0'), jVal('price1')]};
+  const jamah = {price: [jVal('price0'), jVal('price1')], profit: [jVal('profit0'), jVal('profit1')]};
   if(showDiscount) jamah.discount = [jVal('discount0'), jVal('discount1')];
   const jamahTotal = jamah.price[0] + jamah.price[1];
 
@@ -4568,7 +4595,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
     total.discount = (sabka.discount||0) + todayDiscount;
   }
 
-  const bqaya = {price: total.price - (jamah.price[0]+jamah.price[1])};
+  const bqaya = {price: total.price - (jamah.price[0]+jamah.price[1]), profit: (total.profit||0) - (jamah.profit[0]+jamah.profit[1])};
   if(showDiscount) bqaya.discount = (total.discount||0) - (jamah.discount[0]+jamah.discount[1]);
 
   const btn = document.getElementById('kataSaveEntryBtn');
