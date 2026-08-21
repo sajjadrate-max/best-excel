@@ -3489,7 +3489,12 @@ function syncKataItemsFromRateList(){
     const agencyB = Number(p.agencyB) || 0;
     const mrp = Number(p.mrp) || 0;
     item.name = p.name || item.name;
-    item.weight = p.tpcs || item.weight;
+    // Weight — پہلے یہاں "p.tpcs || item.weight" تھا (Rate کی طرح
+    // unconditional نہیں) — اگر کبھی p.tpcs عارضی طور پر خالی ہوتا (مثلاً
+    // ڈیٹا لوڈ کے دوران) تو پرانی/ابتدائی قدر ہمیشہ کے لیے پھنس جاتی، بعد
+    // میں p.tpcs درست ہونے کے باوجود بھی۔ اب بالکل Rate جیسا ہی — ہمیشہ
+    // براہِ راست ریٹ لسٹ کی موجودہ قدر، کبھی پرانی قدر پر انحصار نہیں۔
+    item.weight = p.tpcs;
     item.rate = agencyB; // Price — ریٹ لسٹ B کارڈ کا ایجنسی ریٹ
     // Profit — اب بالکل ریٹ لسٹ B کارڈ کے اپنے "Profit" کالم جتنا ہی
     // (Price CTN منفی Agency)، پہلے کی "B منفی Company" فارمولے کی بجائے
@@ -4202,9 +4207,14 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
     const rlKey = KATA_TO_RATELIST_KEY[item.key];
     const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
     const liveName = p ? (p.name || item.name) : item.name;
-    const liveWeight = p ? (p.tpcs || item.weight) : item.weight;
+    const liveWeight = p ? p.tpcs : item.weight;
     const liveRate = p ? (Number(p.agencyB) || 0) : item.rate;
     const nameColor = 'color:red;';
+    // Z Net Bill کی دونوں قطاریں کسی ریٹ لسٹ پراڈکٹ سے منسلک نہیں — پوری
+    // طرح دستی انٹری کے لیے ہیں، اس لیے ان کا Rate اور Profit بھی (باقی
+    // آئٹمز کے برعکس، جہاں یہ خودکار/مقررہ ہیں) براہِ راست ٹائپ کیے جا
+    // سکتے ہیں۔
+    const isZNet = item.key === 'znet1' || item.key === 'znet2';
     const discountCells = showDiscount ? `
       <td data-color-key="${item.key}-discount"><input type="text" inputmode="decimal" class="cell-input" data-kata-field="discount" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
       <td data-color-key="${item.key}-discounttotal"><span class="cell-val" data-kata-discounttotal="${item.key}">0</span></td>` : '';
@@ -4213,9 +4223,9 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(liveName)}"></td>
       <td data-color-key="${item.key}-weight"><input type="text" class="cell-input" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${kataEscape(liveWeight)}"></td>
       <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="t" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
-      <td data-color-key="${item.key}-rate"><input type="text" class="cell-input" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${liveRate}" disabled></td>
+      <td data-color-key="${item.key}-rate"><input type="text" inputmode="decimal" class="cell-input" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${liveRate}" ${isZNet ? '' : 'disabled'}></td>
       <td data-color-key="${item.key}-totalrate"><span class="cell-val" data-kata-totalrate="${item.key}">0</span></td>
-      <td data-color-key="${item.key}-prift"><input type="text" class="cell-input" data-kata-prift="${item.key}" style="border:1px solid var(--line);" value="${item.prift}" disabled></td>
+      <td data-color-key="${item.key}-prift"><input type="text" inputmode="decimal" class="cell-input" data-kata-prift="${item.key}" style="border:1px solid var(--line);" value="${item.prift}" ${isZNet ? '' : 'disabled'}></td>
       <td data-color-key="${item.key}-totalprift"><span class="cell-val" data-kata-totalprift="${item.key}">0</span></td>${discountCells}
     </tr>`;
   });
@@ -4385,6 +4395,20 @@ function kataWireLiveFormulas(prevTotal){
     if(weightInput) weightInput.addEventListener('input', ()=>{ item.weight = weightInput.value; });
     if(tInput) tInput.addEventListener('input', refreshRow);
     if(discountInput) discountInput.addEventListener('input', refreshRow);
+    // Z Net Bill — Rate/Profit یہاں دستی ٹائپ کیے جا سکتے ہیں (باقی
+    // آئٹمز کے برعکس)، اس لیے ان کی تبدیلی پر بھی قطار/کل خودکار تازہ ہو۔
+    if(item.key === 'znet1' || item.key === 'znet2'){
+      const rateInput = document.querySelector(`[data-kata-rate="${item.key}"]`);
+      const priftInput = document.querySelector(`[data-kata-prift="${item.key}"]`);
+      if(rateInput) rateInput.addEventListener('input', ()=>{
+        item.rate = Math.round((parseFloat(rateInput.value) || 0) * 100) / 100;
+        refreshRow();
+      });
+      if(priftInput) priftInput.addEventListener('input', ()=>{
+        item.prift = Math.round((parseFloat(priftInput.value) || 0) * 100) / 100;
+        refreshRow();
+      });
+    }
   });
   document.querySelectorAll('[data-jamah]').forEach(input=>{
     input.addEventListener('input', recomputeTotalsBlock);
@@ -4397,6 +4421,10 @@ function kataWireLiveFormulas(prevTotal){
   function applyKataColLock(field){
     const locked = kataColLocked[field];
     document.querySelectorAll(`[data-kata-field="${field}"]`).forEach(input=>{
+      // Z Net Bill (znet1/znet2) کوئی ریٹ لسٹ آئٹم نہیں — مکمل طور پر
+      // دستی/آزاد قطاریں ہیں، اس لیے یہ عام "#" تالے سے کبھی متاثر نہیں
+      // ہوتیں، ہمیشہ کھلی رہتی ہیں۔
+      if(input.dataset.kataItem === 'znet1' || input.dataset.kataItem === 'znet2') return;
       input.disabled = locked;
     });
   }
@@ -4484,7 +4512,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana){
     const rlKey = KATA_TO_RATELIST_KEY[item.key];
     const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
     const liveName = p ? (p.name || item.name) : item.name;
-    const liveWeight = p ? (p.tpcs || item.weight) : item.weight;
+    const liveWeight = p ? p.tpcs : item.weight;
     const liveRate = p ? (Number(p.agencyB) || 0) : item.rate;
     const t = Number(document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`).value) || 0;
     const price = liveRate * t;
