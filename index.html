@@ -1632,12 +1632,24 @@ function makeManualAgencyCell(p, tier){
   const manualKey = tier.key + 'Manual';
   const td = document.createElement('td');
   td.className = 'edit-cell';
+  const locked = !!tierAgencyLocked[tier.key];
+  // لاک ہونے پر عام <span class="cell-val"> — بالکل Profit کالم جیسا فکس
+  // (اوپر Profit کا نوٹ دیکھیں): disabled <input> کی value کبھی کبھار
+  // html2canvas (پرنٹ/شیئر تصویر) میں صحیح جگہ/سیدھ میں نہیں کھینچتی تھی،
+  // جس سے نمبر اوپر نیچے/غلط جگہ نظر آتا تھا۔ صرف اسی وقت اصل <input>
+  // بنایا جاتا ہے جب کالم واقعی کھلا (قابلِ ترمیم) ہو۔
+  if(locked){
+    const span = document.createElement('span');
+    span.className = 'cell-val';
+    span.textContent = p[tier.key];
+    td.appendChild(span);
+    return td;
+  }
   const input = document.createElement('input');
   input.type = 'number';
   input.step = 'any';
   input.value = p[tier.key];
   input.className = 'cell-input';
-  input.disabled = !!tierAgencyLocked[tier.key];
   input.addEventListener('input', ()=>{
     p[tier.key] = Math.round((parseFloat(input.value) || 0) * 100) / 100;
     p[manualKey] = true;
