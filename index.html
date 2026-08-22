@@ -588,6 +588,33 @@ window.loadAuthSDKs = async function(){
     text-size-adjust:100%;
     -webkit-text-size-adjust:100%;
   }
+  /* سیلزمین کھاتہ — Rate/Total Rate/Profit/T.Profit/Discount/D.Total/Sabka
+     CTN/Total CTN کے خانے صارف کی درخواست پر پڑھنے کے قابل سائز میں
+     (2026-08-22) — نئی انٹری فارم اور محفوظ شدہ انٹریوں، دونوں جگہ ایک جیسا
+     نظر آئیں۔ صرف سیلزمین کھاتہ (kataInstance==='salesman') میں لاگو،
+     ربنواز/Agency میں پرانی 5.2px والی ترتیب ہی رہے گی۔ صارف کی مزید
+     فیڈبیک (2026-08-22): بڑے نمبر (جیسے 16560) کالم کی تنگی کی وجہ سے دو
+     لائنوں میں ٹوٹ جاتے تھے — nowrap لگایا اور کالم چوڑائی بھی بڑھائی
+     (colgroup دیکھیں)۔ سائٹ کا عالمی font-weight:900 + text-stroke بہت
+     موٹا لگ رہا تھا — یہاں مقامی طور پر ہلکا کر دیا۔ */
+  .edit-table.wide-table .kata-num-readable,
+  .edit-table.wide-table .cell-input.kata-num-readable,
+  .edit-table.wide-table .cell-val.kata-num-readable{
+    font-size:8px !important;
+    text-size-adjust:100%;
+    -webkit-text-size-adjust:100%;
+    white-space:nowrap !important;
+    font-weight:600 !important;
+    -webkit-text-stroke:0 !important;
+  }
+  /* سیلزمین کھاتہ — #/Items/Weight کے حروف بھی موٹے لگ رہے تھے (2026-08-22
+     صارف کی مزید فیڈبیک) — سائز (kata-normal-size/kata-smaller-size کی
+     9px/7px) کو نہیں چھیڑا، صرف موٹائی ہلکی کی۔ صرف سیلزمین کھاتہ میں۔ */
+  .edit-table.wide-table .kata-thin-text,
+  .edit-table.wide-table .cell-input.kata-thin-text{
+    font-weight:600 !important;
+    -webkit-text-stroke:0 !important;
+  }
   .edit-table.wide-table td.edit-cell{
     padding:0px;
   }
@@ -1099,46 +1126,15 @@ function siteTextPrompt(label, callback){
   </section>
 
   <div class="scroll-fab" id="scrollFab" title="اوپر جائیں">⬆</div>
-  <div class="scroll-fab" id="colorModeFab" title="خانوں پر رنگ لگائیں" style="bottom:70px;background:#3d3d52;padding:0;">
-    <label for="kataColorPickerInput" style="cursor:pointer;width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:17px;">🎨</label>
-  </div>
-  <input type="color" id="kataColorPickerInput" value="#fff59d" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;">
-  <div class="scroll-fab" id="manualRefreshFab" title="دوسری ڈیوائسز کا تازہ ترین ڈیٹا ابھی منگوائیں" style="bottom:120px;background:#1e5f4a;">🔄</div>
-  <div id="manualRefreshBox" class="hidden" style="position:fixed;left:16px;bottom:170px;z-index:60;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 3px 12px rgba(0,0,0,.25);padding:12px 16px;min-width:220px;text-align:center;">
+  <div class="scroll-fab" id="manualRefreshFab" title="دوسری ڈیوائسز کا تازہ ترین ڈیٹا ابھی منگوائیں" style="bottom:70px;background:#1e5f4a;">🔄</div>
+  <div id="manualRefreshBox" class="hidden" style="position:fixed;left:16px;bottom:120px;z-index:60;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 3px 12px rgba(0,0,0,.25);padding:12px 16px;min-width:220px;text-align:center;">
     <div id="manualRefreshPercent" style="font-size:22px;font-weight:700;color:#1e5f4a;">0%</div>
     <div id="manualRefreshLabel" style="font-size:12px;margin-top:4px;">اپڈیٹ ہو رہا ہے...</div>
   </div>
-  <div class="scroll-fab" id="siteUndoFab" title="پچھلی تبدیلی واپس کریں (پوری ویب سائٹ)" style="bottom:170px;background:#6b4a2e;">↩</div>
-  <div class="scroll-fab" id="sizeAdjustFab" title="سائٹ کا سائز چھوٹا/بڑا کریں" style="bottom:220px;background:#4a3a6b;">🔍</div>
-  <div id="sizeAdjustBox" class="hidden" style="position:fixed;left:16px;bottom:270px;z-index:60;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 3px 12px rgba(0,0,0,.25);padding:14px 16px;min-width:230px;text-align:center;">
-    <div style="font-size:12px;margin-bottom:8px;">سائٹ کے تمام الفاظ، نمبر اور خانے — چھوٹے بڑے کریں</div>
-    <input type="range" id="sizeAdjustSlider" min="50" max="200" step="5" value="100" style="width:100%;">
-    <div id="sizeAdjustPercent" style="font-size:16px;font-weight:700;color:#5e3a8c;margin-top:4px;">100%</div>
-    <div style="display:flex;gap:6px;margin-top:8px;">
-      <button type="button" id="sizeAdjustResetBtn" style="flex:1;padding:6px;font-size:12px;border:1px solid var(--line);border-radius:4px;background:#f4efe2;">اصل سائز</button>
-      <button type="button" id="sizeAdjustCloseBtn" style="flex:1;padding:6px;font-size:12px;border:none;border-radius:4px;background:#5e3a8c;color:#fff;">بند کریں</button>
-    </div>
-  </div>
-  <div class="scroll-fab" id="boldAdjustFab" title="پوری ویب سائٹ کے نمبر موٹے/پتلے کریں" style="bottom:270px;background:#8c3a3a;">🖊</div>
-  <div id="boldAdjustBox" class="hidden" style="position:fixed;left:16px;bottom:320px;z-index:60;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 3px 12px rgba(0,0,0,.25);padding:14px 16px;min-width:230px;text-align:center;">
-    <div style="font-size:12px;margin-bottom:8px;">پوری ویب سائٹ کے تمام نمبر — موٹے پتلے کریں</div>
-    <input type="range" id="boldAdjustSlider" min="0" max="2" step="0.1" value="1" style="width:100%;">
-    <div id="boldAdjustPercent" style="font-size:16px;font-weight:700;color:#8c3a3a;margin-top:4px;">درمیانہ</div>
-    <div style="display:flex;gap:6px;margin-top:8px;">
-      <button type="button" id="boldAdjustResetBtn" style="flex:1;padding:6px;font-size:12px;border:1px solid var(--line);border-radius:4px;background:#f4efe2;">اصل موٹائی</button>
-      <button type="button" id="boldAdjustCloseBtn" style="flex:1;padding:6px;font-size:12px;border:none;border-radius:4px;background:#8c3a3a;color:#fff;">بند کریں</button>
-    </div>
-  </div>
-  <div class="scroll-fab" id="rowHeightAdjustFab" title="قطاروں کی اونچائی/قربت کم زیادہ کریں" style="bottom:370px;background:#2e6b5e;">📏</div>
-  <div id="rowHeightAdjustBox" class="hidden" style="position:fixed;left:16px;bottom:420px;z-index:60;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 3px 12px rgba(0,0,0,.25);padding:14px 16px;min-width:230px;text-align:center;">
-    <div style="font-size:12px;margin-bottom:8px;">پوری ویب سائٹ کی قطاریں — قریب/دور کریں (لائن-ہائیٹ)</div>
-    <input type="range" id="rowHeightAdjustSlider" min="0.6" max="1.6" step="0.05" value="1" style="width:100%;">
-    <div id="rowHeightAdjustPercent" style="font-size:16px;font-weight:700;color:#2e6b5e;margin-top:4px;">100%</div>
-    <div style="display:flex;gap:6px;margin-top:8px;">
-      <button type="button" id="rowHeightAdjustResetBtn" style="flex:1;padding:6px;font-size:12px;border:1px solid var(--line);border-radius:4px;background:#f4efe2;">اصل حالت</button>
-      <button type="button" id="rowHeightAdjustCloseBtn" style="flex:1;padding:6px;font-size:12px;border:none;border-radius:4px;background:#2e6b5e;color:#fff;">بند کریں</button>
-    </div>
-  </div>
+  <div class="scroll-fab" id="siteUndoFab" title="پچھلی تبدیلی واپس کریں (پوری ویب سائٹ)" style="bottom:120px;background:#6b4a2e;">↩</div>
+  <!-- 2026-08-22: 🔍 سائز، 🖊 موٹائی، 📏 قطار کی اونچائی، اور 🎨 رنگ موڈ —
+       چاروں فلوٹنگ بٹن صارف کی درخواست پر مکمل ہٹا دیے گئے (نیچے JS بلاکس
+       بھی حذف/غیر فعال کیے گئے، متعلقہ تلاش کریں)۔ -->
 
   <!-- ===================== FORMULATION ===================== -->
   <section id="formulation">
@@ -4299,20 +4295,22 @@ function kataRenderEntryCard(entry, isLast, idx){
     const name = (v.name!=null && v.name!=='') ? v.name : item.name;
     const weight = (v.weight!=null) ? v.weight : item.weight;
     const nameColor = 'color:#1a1a1a;'; // Sabka/عام متن جیسا سیاہ — 2026-08-21 سے پہلے سرخ تھا
+    const numClass = kataInstance === 'salesman' ? ' kata-num-readable' : '';
+    const thinClass = kataInstance === 'salesman' ? ' kata-thin-text' : '';
     const discountCells = showDiscount ? `
-      <td style="${kataColorStyleFor(cc, item.key+'-discount')}"><span class="cell-val">${v.discount||0}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-discounttotal')}"><span class="cell-val">${v.discountTotal||0}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-sabkactn')}"><span class="cell-val">${v.sabkaCtn||0}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-totalctn')}"><span class="cell-val">${v.totalT||0}</span></td>` : '';
+      <td style="${kataColorStyleFor(cc, item.key+'-discount')}"><span class="cell-val${numClass}">${v.discount||0}</span></td>
+      <td style="${kataColorStyleFor(cc, item.key+'-discounttotal')}"><span class="cell-val${numClass}">${v.discountTotal||0}</span></td>
+      <td style="${kataColorStyleFor(cc, item.key+'-sabkactn')}"><span class="cell-val${numClass}">${v.sabkaCtn||0}</span></td>
+      <td style="${kataColorStyleFor(cc, item.key+'-totalctn')}"><span class="cell-val${numClass}">${v.totalT||0}</span></td>` : '';
     rows += `<tr>
-      <td style="${kataColorStyleFor(cc, item.key+'-idx')}">${idx+1}</td>
-      <td style="text-align:left;padding-left:6px;${nameColor}${kataColorStyleFor(cc, item.key+'-name')}">${kataEscape(name)}</td>
-      <td style="${kataColorStyleFor(cc, item.key+'-weight')}">${kataEscape(weight)}</td>
-      <td style="${kataColorStyleFor(cc, item.key+'-t')}"><span class="cell-val">${v.t}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-rate')}"><span class="cell-val">${rate}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-totalrate')}"><span class="cell-val">${v.price}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-prift')}"><span class="cell-val">${prift}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-totalprift')}"><span class="cell-val">${priftTotal}</span></td>${discountCells}
+      <td style="${kataColorStyleFor(cc, item.key+'-idx')}"><span class="${thinClass.trim()}">${idx+1}</span></td>
+      <td style="text-align:left;padding-left:6px;${nameColor}${kataColorStyleFor(cc, item.key+'-name')}"><span class="${thinClass.trim()}">${kataEscape(name)}</span></td>
+      <td style="${kataColorStyleFor(cc, item.key+'-weight')}"><span class="${thinClass.trim()}">${kataEscape(weight)}</span></td>
+      <td style="${kataColorStyleFor(cc, item.key+'-t')}"><span class="cell-val${numClass}">${v.t}</span></td>
+      <td style="${kataColorStyleFor(cc, item.key+'-rate')}"><span class="cell-val${numClass}">${rate}</span></td>
+      <td style="${kataColorStyleFor(cc, item.key+'-totalrate')}"><span class="cell-val${numClass}">${v.price}</span></td>
+      <td style="${kataColorStyleFor(cc, item.key+'-prift')}"><span class="cell-val${numClass}">${prift}</span></td>
+      <td style="${kataColorStyleFor(cc, item.key+'-totalprift')}"><span class="cell-val${numClass}">${priftTotal}</span></td>${discountCells}
     </tr>`;
   });
   const entryDomId = `kataEntry_${entry.id || Math.random().toString(36).slice(2)}`;
@@ -4324,7 +4322,9 @@ function kataRenderEntryCard(entry, isLast, idx){
       <div style="text-align:center;font-weight:900;font-size:16px;color:#1B5FD9;margin-bottom:6px;">Best Excel Washing powder</div>
       <div class="edit-table wide-table">
         <table dir="ltr">
-          <colgroup>${showDiscount
+          <colgroup>${kataInstance === 'salesman'
+            ? '<col style="width:3%"><col style="width:17%"><col style="width:10%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
+            : showDiscount
             ? '<col style="width:4%"><col style="width:15%"><col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:9%"><col style="width:8%"><col style="width:9%"><col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:8%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
           <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>T CTN</th><th>Rate</th><th>Total Rate</th><th>Profit</th><th>T.Profit</th>${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
@@ -4432,20 +4432,24 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
     // سکتے ہیں۔
     const isZNet = item.key === 'znet1' || item.key === 'znet2';
     const sabkaCtn = (prevItemData[item.key] && prevItemData[item.key].totalT) || 0;
+    // صارف نے واضح طور پر صرف سیلزمین کھاتہ میں نمبر والے خانے (Rate سے
+    // Total CTN تک) بڑے/پڑھنے کے قابل بنانے کو کہا — # اور Items/Weight کی
+    // موجودہ سائز (kata-normal-size/kata-smaller-size) کو نہیں چھیڑا۔
+    const numClass = kataInstance === 'salesman' ? ' kata-num-readable' : '';
     const discountCells = showDiscount ? `
-      <td data-color-key="${item.key}-discount"><input type="text" inputmode="decimal" class="cell-input" data-kata-field="discount" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
-      <td data-color-key="${item.key}-discounttotal"><span class="cell-val" data-kata-discounttotal="${item.key}">0</span></td>
-      <td data-color-key="${item.key}-sabkactn"><span class="cell-val" data-kata-sabkactn="${item.key}">${sabkaCtn}</span></td>
-      <td data-color-key="${item.key}-totalctn"><span class="cell-val" data-kata-totalctn="${item.key}">${sabkaCtn}</span></td>` : '';
+      <td data-color-key="${item.key}-discount"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-field="discount" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
+      <td data-color-key="${item.key}-discounttotal"><span class="cell-val${numClass}" data-kata-discounttotal="${item.key}">0</span></td>
+      <td data-color-key="${item.key}-sabkactn"><span class="cell-val${numClass}" data-kata-sabkactn="${item.key}">${sabkaCtn}</span></td>
+      <td data-color-key="${item.key}-totalctn"><span class="cell-val${numClass}" data-kata-totalctn="${item.key}">${sabkaCtn}</span></td>` : '';
     rows += `<tr>
-      <td data-color-key="${item.key}-idx" class="kata-normal-size">${idx+1}</td>
-      <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input kata-smaller-size" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(liveName)}"></td>
-      <td data-color-key="${item.key}-weight"><input type="text" class="cell-input kata-smaller-size" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${kataEscape(liveWeight)}"></td>
-      <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input" data-kata-field="t" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
-      <td data-color-key="${item.key}-rate"><input type="text" inputmode="decimal" class="cell-input" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${liveRate}" ${isZNet ? '' : 'disabled'}></td>
-      <td data-color-key="${item.key}-totalrate"><span class="cell-val" data-kata-totalrate="${item.key}">0</span></td>
-      <td data-color-key="${item.key}-prift"><input type="text" inputmode="decimal" class="cell-input" data-kata-prift="${item.key}" style="border:1px solid var(--line);" value="${item.prift}" ${isZNet ? '' : 'disabled'}></td>
-      <td data-color-key="${item.key}-totalprift"><span class="cell-val" data-kata-totalprift="${item.key}">0</span></td>${discountCells}
+      <td data-color-key="${item.key}-idx" class="kata-normal-size${thinClass}">${idx+1}</td>
+      <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(liveName)}"></td>
+      <td data-color-key="${item.key}-weight"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${kataEscape(liveWeight)}"></td>
+      <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input${numClass}" data-kata-field="t" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
+      <td data-color-key="${item.key}-rate"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${liveRate}" ${isZNet ? '' : 'disabled'}></td>
+      <td data-color-key="${item.key}-totalrate"><span class="cell-val${numClass}" data-kata-totalrate="${item.key}">0</span></td>
+      <td data-color-key="${item.key}-prift"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-prift="${item.key}" style="border:1px solid var(--line);" value="${item.prift}" ${isZNet ? '' : 'disabled'}></td>
+      <td data-color-key="${item.key}-totalprift"><span class="cell-val${numClass}" data-kata-totalprift="${item.key}">0</span></td>${discountCells}
     </tr>`;
   });
   // پہلی انٹری (اس کھاتے میں ابھی تک کوئی ریکارڈ نہیں) میں "سابقہ" کی قطار
@@ -4470,7 +4474,9 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       </div>
       <div class="edit-table wide-table">
         <table dir="ltr">
-          <colgroup>${showDiscount
+          <colgroup>${kataInstance === 'salesman'
+            ? '<col style="width:3%"><col style="width:17%"><col style="width:10%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
+            : showDiscount
             ? '<col style="width:4%"><col style="width:15%"><col style="width:8%"><col style="width:8%"><col style="width:9%"><col style="width:9%"><col style="width:8%"><col style="width:9%"><col style="width:8%"><col style="width:8%"><col style="width:8%"><col style="width:8%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
           <thead><tr>
@@ -4996,41 +5002,6 @@ document.getElementById('siteUndoFab').addEventListener('click', ()=>{
 // یا کلاؤڈ پر سنک نہیں ہوتا — صرف دیکھنے کے لیے ہے۔ جب پسندیدہ سائز مل
 // جائے تو وہ نمبر (%) بتا دیں، وہی سائز پھر مستقل طور پر کوڈ میں لاگو کر
 // دیا جائے گا۔
-(function(){
-  const slider = document.getElementById('sizeAdjustSlider');
-  const pctEl = document.getElementById('sizeAdjustPercent');
-  const fab = document.getElementById('sizeAdjustFab');
-  const box = document.getElementById('sizeAdjustBox');
-  const resetBtn = document.getElementById('sizeAdjustResetBtn');
-  const closeBtn = document.getElementById('sizeAdjustCloseBtn');
-
-  function applyZoom(pct){
-    document.body.style.zoom = pct + '%';
-    pctEl.textContent = pct + '%';
-  }
-
-  const savedPct = localStorage.getItem('siteZoomPreview_v1');
-  if(savedPct){
-    slider.value = savedPct;
-    applyZoom(savedPct);
-  }
-
-  slider.addEventListener('input', ()=>{
-    applyZoom(slider.value);
-    localStorage.setItem('siteZoomPreview_v1', slider.value);
-  });
-  resetBtn.addEventListener('click', ()=>{
-    slider.value = 100;
-    applyZoom(100);
-    localStorage.removeItem('siteZoomPreview_v1');
-  });
-  fab.addEventListener('click', ()=>{
-    const isHidden = box.style.display !== 'block';
-    box.style.display = isHidden ? 'block' : 'none';
-    box.classList.remove('hidden');
-  });
-  closeBtn.addEventListener('click', ()=>{ box.style.display = 'none'; });
-})();
 </script>
 <script>
 // ---------- سائٹ کے تمام نمبر موٹے/پتلے کرنے کا کنٹرول (🖊) ----------
@@ -5040,51 +5011,6 @@ document.getElementById('siteUndoFab').addEventListener('click', ()=>{
 // 0 بالکل پتلا، 1 معمول کی موٹائی (پہلے سے طے شدہ)، 2 سب سے زیادہ موٹا۔
 // انتخاب localStorage میں محفوظ رہتا ہے تاکہ اگلی بار صفحہ کھلنے پر بھی
 // وہی پسندیدہ موٹائی برقرار رہے۔
-(function(){
-  const slider = document.getElementById('boldAdjustSlider');
-  const labelEl = document.getElementById('boldAdjustPercent');
-  const fab = document.getElementById('boldAdjustFab');
-  const box = document.getElementById('boldAdjustBox');
-  const resetBtn = document.getElementById('boldAdjustResetBtn');
-  const closeBtn = document.getElementById('boldAdjustCloseBtn');
-
-  function labelFor(val){
-    const v = parseFloat(val);
-    if(v <= 0.2) return 'بہت پتلا';
-    if(v < 0.9) return 'پتلا';
-    if(v <= 1.1) return 'درمیانہ';
-    if(v < 1.7) return 'موٹا';
-    return 'بہت موٹا';
-  }
-  function applyStroke(val){
-    document.documentElement.style.setProperty('--num-stroke', val + 'px');
-    labelEl.textContent = labelFor(val);
-  }
-
-  const saved = localStorage.getItem('siteNumberBold_v1');
-  if(saved){
-    slider.value = saved;
-    applyStroke(saved);
-  } else {
-    applyStroke(slider.value);
-  }
-
-  slider.addEventListener('input', ()=>{
-    applyStroke(slider.value);
-    localStorage.setItem('siteNumberBold_v1', slider.value);
-  });
-  resetBtn.addEventListener('click', ()=>{
-    slider.value = 1;
-    applyStroke(1);
-    localStorage.removeItem('siteNumberBold_v1');
-  });
-  fab.addEventListener('click', ()=>{
-    const isHidden = box.style.display !== 'block';
-    box.style.display = isHidden ? 'block' : 'none';
-    box.classList.remove('hidden');
-  });
-  closeBtn.addEventListener('click', ()=>{ box.style.display = 'none'; });
-})();
 </script>
 <script>
 // ---------- سائٹ کی قطاریں قریب/دور کرنے کا کنٹرول (📏) ----------
@@ -5093,43 +5019,11 @@ document.getElementById('siteUndoFab').addEventListener('click', ()=>{
 // کا ماہانہ حساب، ہر جگہ) کی line-height پر لاگو ہوتا ہے۔ 0.6 سب سے زیادہ
 // قریب (compact)، 1 معمول (پہلے سے طے شدہ)، 1.6 سب سے کھلا۔ انتخاب
 // localStorage میں محفوظ رہتا ہے۔
-(function(){
-  const slider = document.getElementById('rowHeightAdjustSlider');
-  const labelEl = document.getElementById('rowHeightAdjustPercent');
-  const fab = document.getElementById('rowHeightAdjustFab');
-  const box = document.getElementById('rowHeightAdjustBox');
-  const resetBtn = document.getElementById('rowHeightAdjustResetBtn');
-  const closeBtn = document.getElementById('rowHeightAdjustCloseBtn');
-
-  function applyRowHeight(val){
-    document.documentElement.style.setProperty('--row-line-height', val);
-    labelEl.textContent = Math.round(parseFloat(val) * 100) + '%';
-  }
-
-  const saved = localStorage.getItem('siteRowHeight_v1');
-  if(saved){
-    slider.value = saved;
-    applyRowHeight(saved);
-  } else {
-    applyRowHeight(slider.value);
-  }
-
-  slider.addEventListener('input', ()=>{
-    applyRowHeight(slider.value);
-    localStorage.setItem('siteRowHeight_v1', slider.value);
-  });
-  resetBtn.addEventListener('click', ()=>{
-    slider.value = 1;
-    applyRowHeight(1);
-    localStorage.removeItem('siteRowHeight_v1');
-  });
-  fab.addEventListener('click', ()=>{
-    const isHidden = box.style.display !== 'block';
-    box.style.display = isHidden ? 'block' : 'none';
-    box.classList.remove('hidden');
-  });
-  closeBtn.addEventListener('click', ()=>{ box.style.display = 'none'; });
-})();
+// (2026-08-22: تینوں فلوٹنگ کنٹرول — 🔍 سائز، 🖊 موٹائی، 📏 قطار کی اونچائی
+// — صارف کی درخواست پر بٹن سمیت مکمل ہٹا دیے گئے۔ ہر ایک کا آخری محفوظ
+// شدہ localStorage مقدار (siteZoomPreview_v1/siteNumberBold_v1/
+// siteRowHeight_v1) اب کبھی نہیں پڑھی جاتی — CSS ویری ایبلز اپنی
+// پہلے سے طے شدہ (default) قدروں پر رہیں گے۔)
 </script>
 <script>
 // ---------- 🔽 فوری صفحہ منتقلی (اوپر بائیں، ہمیشہ نظر آنے والا) ----------
@@ -5171,45 +5065,11 @@ document.getElementById('siteUndoFab').addEventListener('click', ()=>{
 // بند ہو جائے۔ یہ صرف اسی نشست کے لیے ہے (صفحہ دوبارہ لوڈ ہونے پر رنگ ری
 // سیٹ ہو جاتے ہیں) — بالکل اسی طرح جیسے لاک کی حالتیں بھی ری لوڈ پر ری سیٹ
 // ہوتی ہیں، سائٹ کا پہلے سے طے شدہ اصول۔
+// (2026-08-22: 🎨 بٹن صارف کی درخواست پر ہٹا دیا گیا — نیا رنگ لگانا اب
+// ممکن نہیں، لیکن pehle سے محفوظ شدہ خانوں کے رنگ نیچے موجود
+// applyStoredCellColors نظام سے ویسے ہی نظر آتے رہیں گے۔)
 let kataColorModeActive = false;
 let kataColorModeValue = '#fff59d';
-const colorModeFab = document.getElementById('colorModeFab');
-const colorModeFabLabel = colorModeFab.querySelector('label');
-const kataColorPickerInput = document.getElementById('kataColorPickerInput');
-
-function kataUpdateColorFab(){
-  if(kataColorModeActive){
-    colorModeFab.style.background = kataColorModeValue;
-    colorModeFabLabel.style.color = '#000';
-    colorModeFabLabel.textContent = '✓';
-    colorModeFab.title = 'رنگ موڈ فعال — خانے پر ٹیپ کریں، بند کرنے کے لیے دوبارہ دبائیں';
-  } else {
-    colorModeFab.style.background = '#3d3d52';
-    colorModeFabLabel.style.color = '#fff';
-    colorModeFabLabel.textContent = '🎨';
-    colorModeFab.title = 'خانوں پر رنگ لگائیں';
-  }
-}
-
-// موبائل کے کچھ براؤزرز میں ایک پوشیدہ input بنا کر اس پر خودکار .click()
-// چلانا ہمیشہ کام نہیں کرتا تھا (اسی وجہ سے رنگ چننے والا باکس "نہیں کھل
-// رہا تھا") — اب ایک حقیقی <label for="..."> اسی رنگین بٹن کے اندر ہے،
-// جو اصلی input[type=color] سے جڑا ہوا ہے۔ یہ ہر براؤزر میں مستقل کام
-// کرتا ہے کیونکہ یہ خود براؤزر کا اپنا native label-click رویہ ہے، کسی
-// synthetic .click() کی ضرورت نہیں۔
-colorModeFabLabel.addEventListener('click', (e)=>{
-  if(kataColorModeActive){
-    e.preventDefault(); // پکر کھلنے کی بجائے صرف موڈ بند کریں
-    kataColorModeActive = false;
-    kataUpdateColorFab();
-  }
-  // ورنہ کچھ نہ کریں — label کا native رویہ خودکار پکر کھول دے گا
-});
-kataColorPickerInput.addEventListener('input', ()=>{
-  kataColorModeValue = kataColorPickerInput.value;
-  kataColorModeActive = true;
-  kataUpdateColorFab();
-});
 
 // ---------- ہر خانے کا رنگ مستقل محفوظ (2026-08-15، پہلا نظام کام نہیں کر
 // رہا تھا کیونکہ رنگ صرف اسی لمحے کے لیے DOM پر لگتا تھا، کہیں محفوظ نہیں
