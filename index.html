@@ -3689,6 +3689,94 @@ function kataLocalOpen(id, name){
   kataRenderDetail(name);
 }
 
+// ---------- کام کی حالت (نامحفوظ + نئی انٹری) — ایپ/ٹیب چھوڑ کر واپس آنے
+// پر بحال (2026-08-22، صارف کی درخواست) ----------
+// جب موبائل کوئی دوسرا ایپ کھولنے یا کمپیوٹر پر کوئی دوسری ونڈو دیکھنے پر
+// اس ویب سائٹ کے ٹیب کو (میموری بچانے کے لیے) پس منظر میں بند/ری لوڈ کر
+// دیتا ہے، تو صفحہ دوبارہ کھلنے پر جاوا اسکرپٹ کی حالت (کون سا کھاتہ کھلا
+// تھا، "+ نئی انٹری" میں کیا لکھا جا رہا تھا) ضائع ہو جاتی تھی — صرف
+// "محفوظ کریں" دبانے سے پہلے تک کا سب کام دوبارہ کرنا پڑتا تھا۔ اب: جب
+// بھی صفحہ پس منظر میں جائے (visibilitychange/pagehide)، اگر کوئی کھاتہ
+// کھلا ہو تو اس کی "+ نئی انٹری" فارم کی ہر خانے کی قدر localStorage میں
+// وقت کی مہر کے ساتھ محفوظ کر لی جاتی ہے۔ صفحہ دوبارہ نظر آنے پر: اگر یہ
+// محفوظ شدہ حالت 30 سیکنڈ سے کم پرانی ہے تو وہی کھاتہ خودکار دوبارہ کھول
+// کر ساری قدریں واپس بھر دی جاتی ہیں (بالکل جہاں چھوڑا تھا وہیں سے)؛ 30
+// سیکنڈ سے زیادہ پرانی ہو تو خاموشی سے حذف ہو جاتی ہے — نیا خالی کام شروع
+// ہوتا ہے (خودکار ری سیٹ)۔ یہ صرف نامحفوظ ("+ نئی انٹری") ڈیٹا پر اثر
+// انداز ہے — جو انٹری پہلے سے "محفوظ کریں" دبا کر Firestore/localStorage
+// میں محفوظ ہو چکی ہے، وہ ہمیشہ کی طرح محفوظ ہی رہتی ہے، اس کا اس فیچر سے
+// کوئی تعلق نہیں۔
+const KATA_DRAFT_KEY = 'kataDraftEntryState';
+const KATA_DRAFT_TTL_MS = 180000; // 3 منٹ (پہلے 30 سیکنڈ تھا، 2026-08-22 کو صارف کی درخواست پر بڑھایا)
+function kataDraftInputKey(input, idx){
+  if(input.id) return 'id:'+input.id;
+  if(input.dataset.kataItem && input.dataset.kataField) return 'item:'+input.dataset.kataItem+':'+input.dataset.kataField;
+  if(input.dataset.kataRate) return 'rate:'+input.dataset.kataRate;
+  if(input.dataset.kataPrift) return 'prift:'+input.dataset.kataPrift;
+  if(input.dataset.kataSabka) return 'sabka:'+input.dataset.kataSabka;
+  if(input.dataset.jamah) return 'jamah:'+input.dataset.jamah;
+  return 'idx:'+idx; // آخری حل — پوزیشن کی بنیاد پر
+}
+function kataSaveDraftIfOpen(){
+  try{
+    const card = document.getElementById('kataNewEntryCard');
+    if(!kataOpenId || !card){
+      localStorage.removeItem(KATA_DRAFT_KEY);
+      return;
+    }
+    const values = {};
+    card.querySelectorAll('input').forEach((input, idx)=>{
+      values[kataDraftInputKey(input, idx)] = input.value;
+    });
+    localStorage.setItem(KATA_DRAFT_KEY, JSON.stringify({
+      kataOpenId, kataOpenName, kataInstance, ts: Date.now(), values,
+    }));
+  } catch(e){ /* localStorage ناکام ہو تو خاموشی سے نظرانداز — یہ فیچر ضروری نہیں، صرف سہولت ہے */ }
+}
+function kataTryRestoreDraft(){
+  try{
+    // اگر صفحہ اصل میں ری لوڈ نہیں ہوا (زیادہ تر معاملات میں موبائل/کمپیوٹر
+    // پس منظر میں ٹیب زندہ رکھتے ہیں) تو کھاتہ اور فارم پہلے ہی جوں کے توں
+    // موجود ہیں — کچھ بحال کرنے کی ضرورت نہیں، دوبارہ کھولنے سے صرف غیر
+    // ضروری ری فریش/جھٹکا لگے گا۔
+    if(kataOpenId && document.getElementById('kataNewEntryCard')) return;
+    const raw = localStorage.getItem(KATA_DRAFT_KEY);
+    if(!raw) return;
+    const draft = JSON.parse(raw);
+    if(!draft || !draft.ts || (Date.now() - draft.ts) > KATA_DRAFT_TTL_MS){
+      localStorage.removeItem(KATA_DRAFT_KEY);
+      return;
+    }
+    if(!draft.kataOpenId || draft.kataInstance !== kataInstance) return; // دوسرے کھاتہ ٹیب (سیلزمین/ربنواز/Agency) کا ڈرافٹ یہاں لاگو نہیں
+    if(kataLocalMode) kataLocalOpen(draft.kataOpenId, draft.kataOpenName);
+    else if(typeof kataOpen === 'function') kataOpen(draft.kataOpenId, draft.kataOpenName);
+    const tryFill = (attemptsLeft)=>{
+      const card = document.getElementById('kataNewEntryCard');
+      if(!card){
+        if(attemptsLeft > 0) return setTimeout(()=> tryFill(attemptsLeft-1), 200);
+        return;
+      }
+      card.querySelectorAll('input').forEach((input, idx)=>{
+        const key = kataDraftInputKey(input, idx);
+        if(Object.prototype.hasOwnProperty.call(draft.values, key)){
+          input.value = draft.values[key];
+          input.dispatchEvent(new Event('input', {bubbles:true}));
+        }
+      });
+      localStorage.removeItem(KATA_DRAFT_KEY);
+    };
+    tryFill(20); // ~4 سیکنڈ تک انتظار — Firestore سے کھاتہ کھلنے میں وقت لگ سکتا ہے
+  } catch(e){ /* نظرانداز */ }
+}
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'hidden') kataSaveDraftIfOpen();
+  else if(document.visibilityState === 'visible') kataTryRestoreDraft();
+});
+window.addEventListener('pagehide', kataSaveDraftIfOpen);
+// صفحہ پہلی بار لوڈ ہونے پر بھی چیک کریں — اگر موبائل نے میموری بچانے کے
+// لیے پورا ٹیب ہی نئے سرے سے لوڈ کر دیا ہو (نہ صرف چھپایا ہو) تو یہیں سے بحال ہوگا
+kataTryRestoreDraft();
+
 window.initKataModuleLocal = function(){
   kataLocalMode = true;
   const newBtn = document.getElementById('newKataBtn');
@@ -4292,7 +4380,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
   // یہ خانہ اب ہمیشہ اسی کھلے ہوئے کھاتے کے نام (kataOpenName) سے خودکار
   // بھرا رہتا ہے — دستی لکھنے کی ضرورت نہیں، نہ اجازت، تالا مستقل بند۔
   return `
-    <div class="card">
+    <div class="card" id="kataNewEntryCard">
       <h2 style="border:none;text-align:center;">+ نئی انٹری</h2>
       <div style="text-align:center;margin-bottom:8px;">
         <button type="button" class="share-btn" id="kataUndoBtn" style="width:auto;padding:4px 16px;font-size:13px;">↩ پچھلی تبدیلی واپس کریں</button>
