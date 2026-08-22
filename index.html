@@ -4436,6 +4436,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
     // Total CTN تک) بڑے/پڑھنے کے قابل بنانے کو کہا — # اور Items/Weight کی
     // موجودہ سائز (kata-normal-size/kata-smaller-size) کو نہیں چھیڑا۔
     const numClass = kataInstance === 'salesman' ? ' kata-num-readable' : '';
+    const thinClass = kataInstance === 'salesman' ? ' kata-thin-text' : '';
     const discountCells = showDiscount ? `
       <td data-color-key="${item.key}-discount"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-field="discount" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
       <td data-color-key="${item.key}-discounttotal"><span class="cell-val${numClass}" data-kata-discounttotal="${item.key}">0</span></td>
