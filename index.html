@@ -4042,10 +4042,15 @@ function kataRenderDetail(name){
   // پر) — ہر نئی انٹری پر خودکار 0 پر ری سیٹ ہونے کی بجائے پچھلی انٹری میں
   // اسی آئٹم پر جو Discount لکھا گیا تھا، وہی نئی انٹری میں پہلے سے بھرا
   // آئے گا — جب تک صارف خود تبدیل نہ کرے۔
+  // Weight بھی اب "چپکنے والا" ہے (2026-08-23، صارف کی درخواست پر) — پہلے
+  // ہر نئی انٹری میں ریٹ لسٹ کی موجودہ قدر پر ری سیٹ ہو جاتا تھا، چاہے
+  // صارف نے پچھلی انٹری میں خود کوئی مختلف Weight ٹائپ کیا ہو۔ اب پچھلی
+  // انٹری میں جو Weight لکھا گیا تھا، وہی نئی انٹری میں پہلے سے بھرا آئے
+  // گا — جب تک صارف خود تبدیل نہ کرے۔
   const prevItemData = {};
   KATA_ITEMS.forEach(item=>{
     const v = lastEntry && lastEntry.items && lastEntry.items[item.key];
-    prevItemData[item.key] = {totalT: (v && v.totalT) || 0, discount: (v && v.discount) || 0};
+    prevItemData[item.key] = {totalT: (v && v.totalT) || 0, discount: (v && v.discount) || 0, weight: (v && v.weight != null) ? v.weight : null};
   });
 
   let html = `<div class="card" style="text-align:center;">${kataDotsMenuHtml([{cls:'kata-book-delete-btn', label:'🗑 یہ کھاتہ حذف کریں'}])}<h2 style="border:none;margin:0;">${kataEscape(name)}${kataOpenClosed ? ' 🔒' : ''}</h2></div>`;
@@ -4478,7 +4483,10 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
     const rlKey = KATA_TO_RATELIST_KEY[item.key];
     const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
     const liveName = item.name;
-    const liveWeight = p ? p.tpcs : item.weight;
+    // Weight اب "چپکنے والا" ہے — پچھلی انٹری میں صارف نے جو Weight لکھا
+    // تھا وہ ریٹ لسٹ کی موجودہ قدر پر ترجیح رکھتا ہے (2026-08-23)۔
+    const stickyWeight = prevItemData[item.key] && prevItemData[item.key].weight;
+    const liveWeight = (stickyWeight != null) ? stickyWeight : (p ? p.tpcs : item.weight);
     const liveRate = p ? (Number(p.agencyB) || 0) : item.rate;
     const nameColor = 'color:#1a1a1a;'; // Sabka/عام متن جیسا سیاہ — 2026-08-21 سے پہلے سرخ تھا
     // Z Net Bill کی دونوں قطاریں کسی ریٹ لسٹ پراڈکٹ سے منسلک نہیں — پوری
@@ -4860,7 +4868,11 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
     const rlKey = KATA_TO_RATELIST_KEY[item.key];
     const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
     const liveName = item.name;
-    const liveWeight = p ? p.tpcs : item.weight;
+    // فارم میں جو Weight اصل میں لکھا ہوا نظر آ رہا ہے وہی محفوظ ہو — پہلے
+    // یہ دوبارہ سے ریٹ لسٹ/item.weight سے حساب لگاتا تھا جو (in-memory
+    // mutation ضائع ہونے کی صورت میں) غلط ہو سکتا تھا (2026-08-23)۔
+    const weightInputEl = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="weight"]`);
+    const liveWeight = weightInputEl ? weightInputEl.value : (p ? p.tpcs : item.weight);
     const liveRate = p ? (Number(p.agencyB) || 0) : item.rate;
     const t = Number(document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`).value) || 0;
     const price = liveRate * t;
