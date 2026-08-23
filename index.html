@@ -3629,7 +3629,10 @@ function kataCheckMonthRolloverLocal(){
     if(bookMonth !== curMonth){
       b.closed = true;
       changed = true;
-      const finalTotal = lastEntry ? lastEntry.total : (b.carryForward || {t:0, price:0, profit:0, td:0});
+      // نئے مہینے کا آغازی بیلنس بھی Bqaya (Jamah/ادائیگی منہا کرنے کے
+      // بعد کی اصل باقی رقم) سے ہونا چاہیے، Total سے نہیں — اوپر والے اسی
+      // مسئلے کی طرح (2026-08-23)۔
+      const finalTotal = lastEntry ? (lastEntry.bqaya || lastEntry.total) : (b.carryForward || {t:0, price:0, profit:0, td:0});
       newBooks.push({
         id: 'k' + Date.now() + Math.random().toString(36).slice(2,7),
         name: (b.name || 'کھاتہ') + ' - ' + curMonth,
@@ -3855,7 +3858,8 @@ async function kataCheckMonthRolloverFirestore(){
       if(bookMonth !== curMonth){
         changed = true;
         batch.update(docSnap.ref, {closed: true});
-        const finalTotal = lastData ? lastData.total : (data.carryForward || {t:0, price:0, profit:0, td:0});
+        // نئے مہینے کا آغازی بیلنس بھی Bqaya سے، Total سے نہیں (2026-08-23)۔
+        const finalTotal = lastData ? (lastData.bqaya || lastData.total) : (data.carryForward || {t:0, price:0, profit:0, td:0});
         const newRef = kataCol().doc();
         batch.set(newRef, {
           name: (data.name || 'کھاتہ') + ' - ' + curMonth,
@@ -4021,7 +4025,12 @@ function kataRenderDetail(name){
   if(typeof syncKataItemsFromRateList === 'function') syncKataItemsFromRateList();
 
   const lastEntry = kataOpenEntries.length ? kataOpenEntries[kataOpenEntries.length-1] : null;
-  const prevTotal = lastEntry ? lastEntry.total : (kataOpenCarryForward || {t:0, price:0, profit:0, td:0});
+  // اگلی انٹری کا "Sabka" ہمیشہ پچھلی انٹری کے "Bqaya" (Total منفی Jamah —
+  // یعنی جو رقم واقعی ابھی تک باقی/واجب الادا ہے) سے چلنا چاہیے، نہ کہ
+  // "Total" سے (جو Jamah/ادائیگی کو نظرانداز کر دیتا تھا) — اسی وجہ سے
+  // نئی انٹری کا Sabka، پچھلی انٹری کے Bqaya سے مختلف/زیادہ نظر آ رہا تھا
+  // (2026-08-23 صارف کی نشاندہی پر ٹھیک کیا گیا)۔
+  const prevTotal = lastEntry ? (lastEntry.bqaya || lastEntry.total) : (kataOpenCarryForward || {t:0, price:0, profit:0, td:0});
   const prevSaleMahana = lastEntry ? lastEntry.saleMahana : null;
   const prevSalesman = lastEntry ? (lastEntry.salesman || '') : '';
   // ہر آئٹم کا اپنا Sabka CTN/Total CTN (سیلزمین/ربنواز only، Discount کالم
