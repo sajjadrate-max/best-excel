@@ -4349,7 +4349,7 @@ function kataRenderEntryCard(entry, isLast, idx){
       <td style="${kataColorStyleFor(cc, item.key+'-prift')}"><span class="cell-val${numClass}">${prift}</span></td>
       <td style="${kataColorStyleFor(cc, item.key+'-totalprift')}"><span class="cell-val${numClass}">${priftTotal}</span></td>`;
     rows += `<tr>
-      <td style="${kataColorStyleFor(cc, item.key+'-idx')}"><span class="${thinClass.trim()}">${idx+1}</span></td>
+      <td style="${kataColorStyleFor(cc, item.key+'-idx')}"><span class="${thinClass.trim()}">${(v.idx != null && v.idx !== '') ? kataEscape(v.idx) : (idx+1)}</span></td>
       <td style="text-align:left;padding-left:6px;${nameColor}${kataColorStyleFor(cc, item.key+'-name')}"><span class="${thinClass.trim()}">${kataEscape(name)}</span></td>
       <td style="${kataColorStyleFor(cc, item.key+'-weight')}"><span class="${thinClass.trim()}">${kataEscape(weight)}</span></td>
       <td style="${kataColorStyleFor(cc, item.key+'-t')}"><span class="cell-val${numClass}">${v.t}</span></td>
@@ -4483,21 +4483,27 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
     const rlKey = KATA_TO_RATELIST_KEY[item.key];
     const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
     const liveName = item.name;
-    // Weight اب "چپکنے والا" ہے — پچھلی انٹری میں صارف نے جو Weight لکھا
-    // تھا وہ ریٹ لسٹ کی موجودہ قدر پر ترجیح رکھتا ہے (2026-08-23)۔
-    const stickyWeight = prevItemData[item.key] && prevItemData[item.key].weight;
-    const liveWeight = (stickyWeight != null) ? stickyWeight : (p ? p.tpcs : item.weight);
-    const liveRate = p ? (Number(p.agencyB) || 0) : item.rate;
-    const nameColor = 'color:#1a1a1a;'; // Sabka/عام متن جیسا سیاہ — 2026-08-21 سے پہلے سرخ تھا
     // Z Net Bill کی دونوں قطاریں کسی ریٹ لسٹ پراڈکٹ سے منسلک نہیں — پوری
     // طرح دستی انٹری کے لیے ہیں، اس لیے ان کا Rate اور Profit بھی (باقی
     // آئٹمز کے برعکس، جہاں یہ خودکار/مقررہ ہیں) براہِ راست ٹائپ کیے جا
-    // سکتے ہیں۔
+    // سکتے ہیں۔ اسی لیے Z Net Bill کے تمام خانے (Weight/Rate/Profit/
+    // Discount) کبھی "چپکنے والے" نہیں ہوتے — ہر نئی انٹری میں ہمیشہ 0 سے
+    // شروع ہوتے ہیں، کسی پچھلی انٹری سے کچھ نہیں لاتے (2026-08-23 صارف کی
+    // درخواست پر)۔
     const isZNet = item.key === 'znet1' || item.key === 'znet2';
-    const sabkaCtn = (prevItemData[item.key] && prevItemData[item.key].totalT) || 0;
+    // Weight اب "چپکنے والا" ہے — پچھلی انٹری میں صارف نے جو Weight لکھا
+    // تھا وہ ریٹ لسٹ کی موجودہ قدر پر ترجیح رکھتا ہے (2026-08-23)۔ Z Net
+    // Bill کے لیے یہ سرے سے لاگو نہیں (ہمیشہ خالی)۔
+    const stickyWeight = prevItemData[item.key] && prevItemData[item.key].weight;
+    const liveWeight = isZNet ? '' : ((stickyWeight != null) ? stickyWeight : (p ? p.tpcs : item.weight));
+    const liveRate = isZNet ? 0 : (p ? (Number(p.agencyB) || 0) : item.rate);
+    const liveProfitDefault = isZNet ? 0 : item.prift;
+    const nameColor = 'color:#1a1a1a;'; // Sabka/عام متن جیسا سیاہ — 2026-08-21 سے پہلے سرخ تھا
+    const sabkaCtn = isZNet ? 0 : ((prevItemData[item.key] && prevItemData[item.key].totalT) || 0);
     // Discount اب "چپکنے والا" ہے — پچھلی انٹری میں اسی آئٹم پر جو لکھا گیا
-    // تھا وہی یہاں پہلے سے بھرا آئے گا (2026-08-22)۔
-    const stickyDiscount = (prevItemData[item.key] && prevItemData[item.key].discount) || 0;
+    // تھا وہی یہاں پہلے سے بھرا آئے گا (2026-08-22)۔ Z Net Bill کے لیے
+    // ہمیشہ 0۔
+    const stickyDiscount = isZNet ? 0 : ((prevItemData[item.key] && prevItemData[item.key].discount) || 0);
     // صارف نے واضح طور پر صرف سیلزمین کھاتہ میں نمبر والے خانے (Rate سے
     // Total CTN تک) بڑے/پڑھنے کے قابل بنانے کو کہا — # اور Items/Weight کی
     // موجودہ سائز (kata-normal-size/kata-smaller-size) کو نہیں چھیڑا۔
@@ -4509,13 +4515,17 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <td data-color-key="${item.key}-sabkactn"><span class="cell-val${numClass}" data-kata-sabkactn="${item.key}">${sabkaCtn}</span></td>
       <td data-color-key="${item.key}-totalctn"><span class="cell-val${numClass}" data-kata-totalctn="${item.key}">${sabkaCtn}</span></td>` : '';
     const priftCells = agencySimple ? '' : `
-      <td data-color-key="${item.key}-prift"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-prift="${item.key}" style="border:1px solid var(--line);" value="${item.prift}" ${isZNet ? '' : 'disabled'}></td>
+      <td data-color-key="${item.key}-prift"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-prift="${item.key}" style="border:1px solid var(--line);" value="${liveProfitDefault}" ${isZNet ? '' : 'disabled'}></td>
       <td data-color-key="${item.key}-totalprift"><span class="cell-val${numClass}" data-kata-totalprift="${item.key}">0</span></td>`;
     rows += `<tr>
-      <td data-color-key="${item.key}-idx" class="kata-normal-size${thinClass}">${idx+1}</td>
+      <td data-color-key="${item.key}-idx" class="kata-normal-size${thinClass}" style="${kataInstance === 'salesman' ? 'padding:2px;' : ''}">${
+        kataInstance === 'salesman'
+          ? `<input type="text" inputmode="numeric" class="cell-input kata-normal-size${thinClass}" data-kata-field="idx" data-kata-item="${item.key}" style="border:1px solid var(--line);width:100%;box-sizing:border-box;margin-bottom:2px;padding:0;" value="${idx+1}"><input type="color" data-kata-idxcolor="${item.key}" title="اس نمبر کا رنگ" style="width:100%;height:8px;padding:0;border:1px solid var(--line);border-radius:2px;cursor:pointer;">`
+          : (idx+1)
+      }</td>
       <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(liveName)}"></td>
       <td data-color-key="${item.key}-weight"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${kataEscape(liveWeight)}"></td>
-      <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input${numClass}" data-kata-field="t" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="0"></td>
+      <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input${numClass}" data-kata-field="t" data-kata-item="${item.key}" data-kata-tctn-order="${idx}" style="border:1px solid var(--line);" value="0"></td>
       <td data-color-key="${item.key}-rate"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${liveRate}" ${isZNet ? '' : 'disabled'}></td>
       <td data-color-key="${item.key}-totalrate"><span class="cell-val${numClass}" data-kata-totalrate="${item.key}">0</span></td>${priftCells}${discountCells}
     </tr>`;
@@ -4732,7 +4742,8 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
     const totalPriftCell = document.querySelector(`[data-kata-totalprift="${item.key}"]`);
     const discountTotalCell = document.querySelector(`[data-kata-discounttotal="${item.key}"]`);
     const totalCtnCell = document.querySelector(`[data-kata-totalctn="${item.key}"]`);
-    const sabkaCtnForItem = (prevItemData[item.key] && prevItemData[item.key].totalT) || 0;
+    const isZNetItem = item.key === 'znet1' || item.key === 'znet2';
+    const sabkaCtnForItem = isZNetItem ? 0 : ((prevItemData[item.key] && prevItemData[item.key].totalT) || 0);
 
     const getT = ()=> Number((tInput && tInput.value)||0)||0;
     const refreshRow = ()=>{
@@ -4742,12 +4753,24 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
         const d = Number((discountInput && discountInput.value)||0)||0;
         discountTotalCell.textContent = d * getT();
       }
-      if(totalCtnCell) totalCtnCell.textContent = sabkaCtnForItem + getT();
+      if(totalCtnCell) totalCtnCell.textContent = isZNetItem ? 0 : (sabkaCtnForItem + getT());
       recomputeTotalsBlock();
     };
 
     if(nameInput) nameInput.addEventListener('input', ()=>{ item.name = nameInput.value; item.nameManual = true; });
     if(weightInput) weightInput.addEventListener('input', ()=>{ item.weight = weightInput.value; });
+    // سیلزمین کھاتہ — # کالم اب قابلِ تبدیل ہے اور اس پر رنگ بھی لگایا جا
+    // سکتا ہے (2026-08-23 صارف کی درخواست پر)۔ رنگ اسی موجودہ نظام
+    // (data-color-key + cellColors) سے محفوظ ہوتا ہے جو باقی رنگے گئے
+    // خانوں کے لیے پہلے سے موجود ہے — انٹری محفوظ کرتے وقت خودکار اٹھا
+    // لیا جاتا ہے۔
+    if(kataInstance === 'salesman'){
+      const idxColorInput = document.querySelector(`[data-kata-idxcolor="${item.key}"]`);
+      if(idxColorInput) idxColorInput.addEventListener('input', ()=>{
+        const td = idxColorInput.closest('[data-color-key]');
+        if(td) td.style.backgroundColor = idxColorInput.value;
+      });
+    }
     if(tInput) tInput.addEventListener('input', refreshRow);
     if(discountInput) discountInput.addEventListener('input', refreshRow);
     // Z Net Bill — Rate/Profit یہاں دستی ٹائپ کیے جا سکتے ہیں (باقی
@@ -4867,17 +4890,26 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
   KATA_ITEMS.forEach(item=>{
     const rlKey = KATA_TO_RATELIST_KEY[item.key];
     const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
+    const isZNet = item.key === 'znet1' || item.key === 'znet2';
     const liveName = item.name;
     // فارم میں جو Weight اصل میں لکھا ہوا نظر آ رہا ہے وہی محفوظ ہو — پہلے
     // یہ دوبارہ سے ریٹ لسٹ/item.weight سے حساب لگاتا تھا جو (in-memory
     // mutation ضائع ہونے کی صورت میں) غلط ہو سکتا تھا (2026-08-23)۔
     const weightInputEl = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="weight"]`);
     const liveWeight = weightInputEl ? weightInputEl.value : (p ? p.tpcs : item.weight);
-    const liveRate = p ? (Number(p.agencyB) || 0) : item.rate;
+    // سیلزمین کھاتہ — # کالم کی قدر (اگر صارف نے تبدیل کی ہو) بھی محفوظ
+    // ہوتی ہے تاکہ محفوظ شدہ انٹری میں بھی وہی نظر آئے (2026-08-23)۔
+    const idxInputEl = kataInstance === 'salesman' ? document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="idx"]`) : null;
+    const liveIdx = idxInputEl ? idxInputEl.value : null;
+    const rateInputEl = document.querySelector(`[data-kata-rate="${item.key}"]`);
+    const liveRate = isZNet ? (Number((rateInputEl && rateInputEl.value) || 0) || 0) : (p ? (Number(p.agencyB) || 0) : item.rate);
     const t = Number(document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`).value) || 0;
     const price = liveRate * t;
-    const priftTotal = item.prift * t;
-    items[item.key] = {t, price, rate: liveRate, name: liveName, weight: liveWeight, prift: item.prift, priftTotal};
+    const priftInputEl = document.querySelector(`[data-kata-prift="${item.key}"]`);
+    const livePrift = isZNet ? (Number((priftInputEl && priftInputEl.value) || 0) || 0) : item.prift;
+    const priftTotal = livePrift * t;
+    items[item.key] = {t, price, rate: liveRate, name: liveName, weight: liveWeight, prift: livePrift, priftTotal};
+    if(liveIdx != null) items[item.key].idx = liveIdx;
     todayProfit += priftTotal;
     if(showDiscount){
       const dInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="discount"]`);
@@ -4887,14 +4919,21 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
       items[item.key].discountTotal = discountTotal;
       todayDiscount += discountTotal;
       // ہر آئٹم کا اپنا جمع Sabka CTN/Total CTN — اگلی انٹری اسی totalT کو
-      // اپنا Sabka CTN بنائے گی (ms کے prevItemData والے انداز جیسے)۔
-      const sabkaCtn = (prevItemData[item.key] && prevItemData[item.key].totalT) || 0;
-      items[item.key].sabkaCtn = sabkaCtn;
-      items[item.key].totalT = sabkaCtn + t;
+      // اپنا Sabka CTN بنائے گی (ms کے prevItemData والے انداز جیسے)۔ Z Net
+      // Bill اس شمار میں کبھی شامل نہیں ہوتا (2026-08-23 صارف کی درخواست
+      // پر) — ہمیشہ 0/0 رہے گا۔
+      if(!isZNet){
+        const sabkaCtn = (prevItemData[item.key] && prevItemData[item.key].totalT) || 0;
+        items[item.key].sabkaCtn = sabkaCtn;
+        items[item.key].totalT = sabkaCtn + t;
+      } else {
+        items[item.key].sabkaCtn = 0;
+        items[item.key].totalT = 0;
+      }
     }
     // Z Net Bill کی تعداد CTN کے مجموعے میں شامل نہیں ہوتی (دیکھیں
     // recomputeTotalsBlock کا نوٹ) — باقی سب (Total Rate/Profit/Discount) پر اثر رہتا ہے۔
-    if(item.key !== 'znet1' && item.key !== 'znet2') todayT += t;
+    if(!isZNet) todayT += t;
     todayRate += price;
   });
   // اس انٹری کے فارم میں جو خانے رنگے گئے تھے (🎨 موڈ سے)، وہ رنگ اب اسی
