@@ -4196,6 +4196,7 @@ async function kataPrintEntry(btn){
   const actions = card.querySelector('.kata-entry-actions');
   const prevDisplay = actions ? actions.style.display : '';
   if(actions) actions.style.display = 'none'; // don't capture the print/delete buttons themselves
+  let inputSwaps = [];
   // پہلے یہاں ٹیبل کو مکمل چوڑا (max-content) کر کے کھینچا جاتا تھا کیونکہ
   // موبائل پر چوڑی ٹیبل دیکھنے کے لیے سائیڈ سکرول کرنی پڑتی تھی اور
   // html2canvas صرف نظر آنے والا حصہ کھینچتا تھا۔ اب ٹیبل fixed layout کی
@@ -4206,14 +4207,26 @@ async function kataPrintEntry(btn){
     if(typeof window.measureAndSizeInput === 'function'){
       card.querySelectorAll('.cell-input').forEach(window.measureAndSizeInput);
     }
-    // html2canvas ان پٹ خانوں کا HTML "value" attribute پڑھتا ہے، لیکن
-    // صارف کے ٹائپ کرنے سے صرف DOM .value property بدلتی ہے — attribute
-    // وہیں پرانی رہتی ہے۔ اسی وجہ سے Jamah جیسے قابلِ ترمیم خانے (جو صارف
-    // نے بعد میں محفوظ شدہ انٹری پر لکھے) پرنٹ میں خالی نظر آتے تھے
-    // (2026-08-23 صارف کی نشاندہی پر ٹھیک کیا گیا)۔ کھینچنے سے پہلے ہر ان
-    // پٹ کا attribute اس کی موجودہ حقیقی قدر سے تازہ کر دیتے ہیں۔
-    card.querySelectorAll('input').forEach(inp=>{ inp.setAttribute('value', inp.value); });
+    // html2canvas خود input خانوں کے اندر کا متن قابلِ اعتماد طریقے سے
+    // نہیں کھینچتا (Jamah جیسے خانے پرنٹ میں خالی رہ جاتے تھے، چاہے قدر
+    // موجود ہو) — پہلے صرف "value" attribute تازہ کرنے کی کوشش کی تھی، وہ
+    // کافی نہیں تھا۔ اب مکمل حل: کھینچنے سے پہلے ہر input کو عارضی طور پر
+    // اسی جیسے دکھنے والے ایک <span> سے بدل دیتے ہیں (جس میں براہِ راست
+    // متن ہوتا ہے، جو html2canvas ہمیشہ درست کھینچتا ہے)، اور کھینچنے کے
+    // بعد اصل input واپس لے آتے ہیں (2026-08-23 صارف کی نشاندہی پر)۔
+    card.querySelectorAll('input').forEach(inp=>{
+      const span = document.createElement('span');
+      span.className = inp.className;
+      const inlineStyle = inp.getAttribute('style') || '';
+      span.setAttribute('style', inlineStyle + ';display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;');
+      span.textContent = inp.value;
+      inp.style.display = 'none';
+      inp.parentNode.insertBefore(span, inp);
+      inputSwaps.push({inp, span});
+    });
     const canvas = await html2canvas(card, {scale:3, backgroundColor:'#F4EFE2', useCORS:true});
+    inputSwaps.forEach(({inp, span})=>{ span.remove(); inp.style.display = ''; });
+    inputSwaps = [];
     if(typeof jspdf === 'undefined' || !jspdf.jsPDF) throw new Error('jsPDF-not-loaded');
     const { jsPDF } = jspdf;
     const imgData = canvas.toDataURL('image/png');
@@ -4230,6 +4243,7 @@ async function kataPrintEntry(btn){
     alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
     console.warn(err);
   } finally {
+    inputSwaps.forEach(({inp, span})=>{ span.remove(); inp.style.display = ''; }); // اگر html2canvas سے پہلے ہی کوئی خرابی آئی ہو تو بھی inputs واپس آ جائیں
     if(actions) actions.style.display = prevDisplay;
     btn.textContent = originalLabel; btn.disabled = false;
   }
