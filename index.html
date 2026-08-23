@@ -4206,6 +4206,13 @@ async function kataPrintEntry(btn){
     if(typeof window.measureAndSizeInput === 'function'){
       card.querySelectorAll('.cell-input').forEach(window.measureAndSizeInput);
     }
+    // html2canvas ان پٹ خانوں کا HTML "value" attribute پڑھتا ہے، لیکن
+    // صارف کے ٹائپ کرنے سے صرف DOM .value property بدلتی ہے — attribute
+    // وہیں پرانی رہتی ہے۔ اسی وجہ سے Jamah جیسے قابلِ ترمیم خانے (جو صارف
+    // نے بعد میں محفوظ شدہ انٹری پر لکھے) پرنٹ میں خالی نظر آتے تھے
+    // (2026-08-23 صارف کی نشاندہی پر ٹھیک کیا گیا)۔ کھینچنے سے پہلے ہر ان
+    // پٹ کا attribute اس کی موجودہ حقیقی قدر سے تازہ کر دیتے ہیں۔
+    card.querySelectorAll('input').forEach(inp=>{ inp.setAttribute('value', inp.value); });
     const canvas = await html2canvas(card, {scale:3, backgroundColor:'#F4EFE2', useCORS:true});
     if(typeof jspdf === 'undefined' || !jspdf.jsPDF) throw new Error('jsPDF-not-loaded');
     const { jsPDF } = jspdf;
