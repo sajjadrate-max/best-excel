@@ -106,7 +106,7 @@ window.loadAuthSDKs = async function(){
     --brand-blue:#1B3E73;
     --brand-blue-deep:#122647;
     --brand-red:#D42430;
-    --num-stroke: 1px; /* نمبروں کی موٹائی — 🖊 بٹن سے صارف خود کنٹرول کرتا ہے */
+    --num-stroke: 0px; /* نمبروں کی موٹائی — 🖊 بٹن سے صارف خود کنٹرول کرتا ہے */
     --row-line-height: 1; /* قطاروں کی اونچائی/قربت — 📏 بٹن سے صارف خود کنٹرول کرتا ہے */
   }
   *{box-sizing:border-box;}
@@ -140,7 +140,7 @@ window.loadAuthSDKs = async function(){
     letter-spacing:.02em;
     text-shadow:0 2px 6px rgba(0,0,0,.6), 0 0 22px rgba(0,0,0,.4);
     margin-bottom:10px;
-    font-weight:700;
+    font-weight:400;
   }
   .dove{ display:none; }
   .brand-badge{ display:none; }
@@ -208,7 +208,7 @@ window.loadAuthSDKs = async function(){
   }
   .big-title .excel{
     font-family:'Baloo 2', 'Anton', sans-serif;
-    font-weight:800;
+    font-weight:400;
     font-style:normal;
     transform:skewX(-6deg);
     font-size:clamp(24px,8vw,42px);
@@ -410,7 +410,7 @@ window.loadAuthSDKs = async function(){
     background:rgba(26,122,60,.65) !important;
   }
   .sheet-title{
-    font-weight:900 !important;
+    font-weight:400 !important;
     letter-spacing:.03em;
     font-size:30px !important;
     text-align:center !important;
@@ -429,7 +429,7 @@ window.loadAuthSDKs = async function(){
   .list-a-ref-style thead tr:nth-child(2) th{
     background:#7a2323 !important;
     color:#fff !important;
-    font-weight:600 !important;
+    font-weight:400 !important;
     font-size:12.5px !important;
     padding:8px 3px !important;
   }
@@ -478,7 +478,7 @@ window.loadAuthSDKs = async function(){
   .edit-table .formula-badge{
     display:inline;
     font-size:7px;
-    font-weight:700;
+    font-weight:400;
     color:var(--brand-red);
     letter-spacing:.03em;
     margin-inline-end:2px;
@@ -516,11 +516,11 @@ window.loadAuthSDKs = async function(){
     background:var(--maroon);
     color:var(--white);
     font-family:"Noto Naskh Arabic",serif;
-    font-weight:800;
+    font-weight:400;
     font-size:13px;
   }
   tr:nth-child(even) td{background:#FBF7EC;}
-  tr.hot td{background:#F1E3C6; font-weight:700;}
+  tr.hot td{background:#F1E3C6; font-weight:400;}
   .result{
     margin-top:4px;
     margin-bottom:4px;
@@ -533,7 +533,7 @@ window.loadAuthSDKs = async function(){
   .result .amt{
     font-family:"Courier Prime",monospace;
     font-size:30px;
-    font-weight:700;
+    font-weight:400;
     color:var(--maroon-deep);
     direction:ltr;
     display:inline-block;
@@ -553,7 +553,7 @@ window.loadAuthSDKs = async function(){
   }
   .totals .n{
     font-family:"Courier Prime",monospace;
-    font-size:17px;font-weight:900;color:var(--maroon-deep);
+    font-size:17px;font-weight:400;color:var(--maroon-deep);
     direction:ltr;
   }
   .totals .l{font-size:11px;color:#5b5346;margin-top:2px;}
@@ -626,7 +626,7 @@ window.loadAuthSDKs = async function(){
      آنے والے نمبر" کی شکایت آنے پر تینوں کھاتوں میں لاگو کر دیا گیا۔ اسی
      طرح بڑے نمبر (جیسے 16560) کالم کی تنگی کی وجہ سے دو لائنوں میں ٹوٹ
      جاتے تھے — nowrap لگایا اور کالم چوڑائی بھی بڑھائی (colgroup دیکھیں)۔
-     سائٹ کا عالمی font-weight:900 + text-stroke بہت موٹا لگ رہا تھا —
+     سائٹ کا عالمی font-weight:400 + text-stroke بہت موٹا لگ رہا تھا —
      یہاں مقامی طور پر ہلکا کر دیا۔ */
   .edit-table.wide-table .kata-num-readable,
   .edit-table.wide-table .cell-input.kata-num-readable,
@@ -635,7 +635,7 @@ window.loadAuthSDKs = async function(){
     text-size-adjust:100%;
     -webkit-text-size-adjust:100%;
     white-space:nowrap !important;
-    font-weight:600 !important;
+    font-weight:400 !important;
     -webkit-text-stroke:0 !important;
   }
   /* سیلزمین کھاتہ — #/Items/Weight کے حروف بھی موٹے لگ رہے تھے (2026-08-22
@@ -643,7 +643,7 @@ window.loadAuthSDKs = async function(){
      9px/7px) کو نہیں چھیڑا، صرف موٹائی ہلکی کی۔ صرف سیلزمین کھاتہ میں۔ */
   .edit-table.wide-table .kata-thin-text,
   .edit-table.wide-table .cell-input.kata-thin-text{
-    font-weight:600 !important;
+    font-weight:400 !important;
     -webkit-text-stroke:0 !important;
   }
   .edit-table.wide-table td.edit-cell{
@@ -706,8 +706,8 @@ window.loadAuthSDKs = async function(){
     padding:0px 0px;
     border-radius:1px;
     color:#000;
-    font-weight:900;
-    -webkit-text-stroke:var(--num-stroke) currentColor; /* font-weight:900 CSS کی سب سے موٹی حد ہے — اس سے مزید موٹا دکھانے کے لیے حروف کے گرد یہ اضافی خط (stroke) بڑھا دیا ہے۔ سائٹ بھر میں 🖊 بٹن سے قابلِ کنٹرول */
+    font-weight:400;
+    -webkit-text-stroke:var(--num-stroke) currentColor; /* font-weight:400 CSS کی سب سے موٹی حد ہے — اس سے مزید موٹا دکھانے کے لیے حروف کے گرد یہ اضافی خط (stroke) بڑھا دیا ہے۔ سائٹ بھر میں 🖊 بٹن سے قابلِ کنٹرول */
     outline:none;
     box-sizing:border-box;
     line-height:var(--row-line-height); /* قطاروں کی قربت — 📏 بٹن سے قابلِ کنٹرول */
@@ -743,14 +743,14 @@ window.loadAuthSDKs = async function(){
     background:rgba(76,175,80,.25) !important;
   }
   /* پوری ویب سائٹ کا ہر نمبر اور لفظ زیادہ سے زیادہ موٹا (bold) کر دیا ہے —
-     تاکہ کمزور نظر والوں کو بھی آسانی سے پڑھنے میں مدد ملے۔ font-weight:900
+     تاکہ کمزور نظر والوں کو بھی آسانی سے پڑھنے میں مدد ملے۔ font-weight:400
      CSS کی سب سے زیادہ موٹی قدر ہے (اس سے زیادہ موٹا ممکن نہیں)۔ کھاتہ
      (سیلزمین/ربنواز/Agency)، ریٹ لسٹ، Best Excel official، اور سرف کا
      ماہانہ حساب — سب جگہ لاگو ہے۔ */
   #kataListView, #kataDetailView,
   #tierListsContainer, #combinedTableContainer, #ledgerContainer,
   #msListView, #msDetailView{
-    font-weight:900 !important;
+    font-weight:400 !important;
   }
   #kataListView .edit-table th, #kataDetailView .edit-table th,
   #tierListsContainer .edit-table th, #combinedTableContainer .edit-table th, #ledgerContainer .edit-table th,
@@ -773,15 +773,15 @@ window.loadAuthSDKs = async function(){
   #kataListView h2, #kataDetailView h2,
   #tierListsContainer h2, #combinedTableContainer h2, #ledgerContainer h2,
   #msListView h2, #msDetailView h2{
-    font-weight:900 !important;
+    font-weight:400 !important;
   }
   .edit-table td.name-cell .cell-input{
     text-align:center;
     font-family:"Noto Naskh Arabic",serif;
-    font-weight:700;
+    font-weight:400;
     font-size:7.5px;
     color:#000;
-    -webkit-text-stroke:.25px currentColor;
+    -webkit-text-stroke:0 currentColor;
   }
   .edit-table .cell-val{
     display:block;
@@ -793,16 +793,16 @@ window.loadAuthSDKs = async function(){
     text-align:center;
     padding:0px 0px;
     color:#000;
-    font-weight:900;
+    font-weight:400;
     line-height:var(--row-line-height);
     -webkit-text-stroke:var(--num-stroke) currentColor;
   }
   .edit-table td.name-cell .cell-val{
     font-family:"Noto Naskh Arabic",serif;
-    font-weight:700;
+    font-weight:400;
     font-size:7.5px;
     color:#000;
-    -webkit-text-stroke:.25px currentColor;
+    -webkit-text-stroke:0 currentColor;
   }
 
   tr.hot td{background:#F1E3C6;}
@@ -929,7 +929,7 @@ window.loadAuthSDKs = async function(){
 .brand-badge .b-excel,
 .brand-red{
   color:#D9251C;
-  font-weight:900;
+  font-weight:400;
   -webkit-text-stroke:.7px #FFFBF2;
   paint-order:stroke fill;
 }
@@ -1159,7 +1159,7 @@ function siteTextPrompt(label, callback){
   <div class="scroll-fab" id="scrollFab" title="اوپر جائیں">⬆</div>
   <div class="scroll-fab" id="manualRefreshFab" title="دوسری ڈیوائسز کا تازہ ترین ڈیٹا ابھی منگوائیں" style="bottom:70px;background:#1e5f4a;">🔄</div>
   <div id="manualRefreshBox" class="hidden" style="position:fixed;left:16px;bottom:120px;z-index:60;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 3px 12px rgba(0,0,0,.25);padding:12px 16px;min-width:220px;text-align:center;">
-    <div id="manualRefreshPercent" style="font-size:22px;font-weight:700;color:#1e5f4a;">0%</div>
+    <div id="manualRefreshPercent" style="font-size:22px;font-weight:400;color:#1e5f4a;">0%</div>
     <div id="manualRefreshLabel" style="font-size:12px;margin-top:4px;">اپڈیٹ ہو رہا ہے...</div>
   </div>
   <div class="scroll-fab" id="siteUndoFab" title="پچھلی تبدیلی واپس کریں (پوری ویب سائٹ)" style="bottom:120px;background:#6b4a2e;">↩</div>
@@ -2384,11 +2384,11 @@ function buildLedgerTable(){
   const totalTr = document.createElement('tr');
   totalTr.className = 'hot';
   const totalKgTd = document.createElement('td');
-  totalKgTd.style.cssText = 'text-align:center;font-weight:700;white-space:nowrap;-webkit-text-stroke:.45px currentColor;';
+  totalKgTd.style.cssText = 'text-align:center;font-weight:400;white-space:nowrap;-webkit-text-stroke:0 currentColor;';
   const totalRateTd = document.createElement('td');
-  totalRateTd.style.cssText = 'text-align:center;font-weight:700;-webkit-text-stroke:.45px currentColor;';
+  totalRateTd.style.cssText = 'text-align:center;font-weight:400;-webkit-text-stroke:0 currentColor;';
   totalTr.innerHTML = `<td></td>
-    <td style="text-align:center;font-weight:700;-webkit-text-stroke:.45px currentColor;">مجموعہ</td>
+    <td style="text-align:center;font-weight:400;-webkit-text-stroke:0 currentColor;">مجموعہ</td>
     <td></td>`;
   totalTr.appendChild(totalKgTd);
   totalTr.appendChild(totalRateTd);
@@ -2782,7 +2782,7 @@ function msRenderEntryCard(entry, isLast){
   return `
     <div class="card ms-entry-card kata-entry-card">
       ${isLast ? kataDotsMenuHtml([{cls:'ms-delete-entry-btn', label:'🗑 حذف کریں'}]) : ''}
-      <div class="note" style="text-align:center;font-weight:700;">${kataFormatWhen(entry.createdAt)}</div>
+      <div class="note" style="text-align:center;font-weight:400;">${kataFormatWhen(entry.createdAt)}</div>
       <div class="edit-table wide-table">
         <table dir="ltr">
           <thead><tr><th>Items</th><th>Today CTN</th><th>Sabka CTN</th><th>Total CTN</th><th>Profit</th><th>Today Profit</th><th>Sabka Profit</th><th>Total Profit</th><th>Price</th><th>Today Price</th><th>Sabka Price</th><th>Total Price</th></tr></thead>
@@ -2801,7 +2801,7 @@ function msRenderEntryCard(entry, isLast){
             <tr><td style="text-align:right;padding-right:6px;">Transport Expensis</td><td>${exp.transport}</td></tr>
             <tr><td style="text-align:right;padding-right:6px;">Goods Expensis</td><td>${exp.goods}</td></tr>
             <tr><td style="text-align:right;padding-right:6px;">Other Expensis</td><td>${exp.other}</td></tr>
-            <tr class="hot"><td style="text-align:right;padding-right:6px;font-weight:700;">Original Profit</td><td style="font-weight:700;">${entry.originalProfit}</td></tr>
+            <tr class="hot"><td style="text-align:right;padding-right:6px;font-weight:400;">Original Profit</td><td style="font-weight:400;">${entry.originalProfit}</td></tr>
           </tbody>
         </table>
       </div>
@@ -2853,7 +2853,7 @@ function msRenderNewEntryForm(prevTotal, prevItemData){
             <tr><td style="text-align:right;padding-right:6px;">Transport Expensis</td><td><input type="number" inputmode="numeric" class="cell-input" data-ms-field="transport" style="border:1px solid var(--line);" value="0"></td></tr>
             <tr><td style="text-align:right;padding-right:6px;">Goods Expensis</td><td><input type="number" inputmode="numeric" class="cell-input" data-ms-field="goods" style="border:1px solid var(--line);" value="0"></td></tr>
             <tr><td style="text-align:right;padding-right:6px;">Other Expensis</td><td><input type="number" inputmode="numeric" class="cell-input" data-ms-field="other" style="border:1px solid var(--line);" value="0"></td></tr>
-            <tr class="hot"><td style="text-align:right;padding-right:6px;font-weight:700;">Original Profit</td><td data-ms-origprofit style="font-weight:700;">0</td></tr>
+            <tr class="hot"><td style="text-align:right;padding-right:6px;font-weight:400;">Original Profit</td><td data-ms-origprofit style="font-weight:400;">0</td></tr>
           </tbody>
         </table>
       </div>
@@ -3583,28 +3583,31 @@ const KATA_ITEMS = [
 // (ریٹ لسٹ میں ان کا کوئی متبادل پراڈکٹ نہیں)، اور "d" (فرق) کالم بھی
 // چھیڑا نہیں گیا — صرف weight/rate/prift۔
 const KATA_TO_RATELIST_KEY = {rs10:'rs10', rs50:'rs50', rs100:'rs100', rs150:'rs150', rs400:'rs400', rs1000:'rs1000', special:'kabotar', sada:'sada'};
-// کھاتہ آئٹم اور ریٹ لسٹ (packs) پراڈکٹ کو جوڑنے کا مرکزی فنکشن — key سے
-// تلاش (packs.find(x=>x.key===rlKey)) ناقابلِ اعتماد نکلا (2026-08-24،
-// "کل وزن" ہمیشہ 0 آنے کی اصل وجہ: key میچ ہی نہیں ہو رہا تھا، جیسا کہ
-// موجودہ آرکیٹیکچر نوٹ پہلے سے کہتا ہے کہ ریو-لنکنگ ہمیشہ POSITIONAL ہونی
-// چاہیے، key سے نہیں)۔ اب پوزیشن کے حساب سے (List A میں پراڈکٹ کی ترتیب:
-// Rs10,Rs50,Rs100,Rs150,Rs400,Rs1000,Special,sada — بالکل KATA_ITEMS کی
-// ترتیب جیسی) میچ کرتے ہیں — key بطور fallback ابھی بھی آزمایا جاتا ہے۔
+// لسٹ A میں آئٹمز اسی مقررہ ترتیب میں ہیں: Rs.10, Rs.50, Rs.100, Rs.150,
+// Rs.400, Rs.1000, Special, sada — یہ کھاتہ کے KATA_ITEMS کی ترتیب سے مکمل
+// ملتی ہے۔ چونکہ کلید (key) سے میچ کرنا ناقابلِ بھروسہ نکلا (ریٹ لسٹ کی
+// اصل کلیدیں کبھی کبھی مختلف/تبدیل شدہ ہو سکتی ہیں)، اسی جگہ (پوزیشن) سے
+// جوڑنا زیادہ قابلِ اعتماد ہے — 2026-08-24 کی وزن والی خرابی کی اصل وجہ
+// یہی نکلی تھی۔
 const KATA_RATELIST_INDEX = {rs10:0, rs50:1, rs100:2, rs150:3, rs400:4, rs1000:5, special:6, sada:7};
+// کھاتہ کے کسی بھی آئٹم کے لیے ریٹ لسٹ (packs) میں اس کی صحیح قطار ڈھونڈتا
+// ہے — پہلے کلید (key) سے میچ کرنے کی کوشش، نہ ملے تو مقررہ پوزیشن سے۔ اب
+// ہر جگہ (sync، نئی انٹری فارم، لائیو حساب، محفوظ کرنا) یہی ایک فنکشن
+// استعمال ہوتا ہے، تاکہ سب جگہ ایک جیسا اور قابلِ بھروسہ نتیجہ آئے۔
 function kataFindPack(itemKey){
-  if(typeof packs === 'undefined' || !Array.isArray(packs)) return null;
+  if(typeof packs === 'undefined' || !packs) return null;
   const rlKey = KATA_TO_RATELIST_KEY[itemKey];
-  if(!rlKey) return null; // Z Net Bill
-  const byKey = packs.find(x=>x.key === rlKey);
-  if(byKey) return byKey;
-  const idx = KATA_RATELIST_INDEX[itemKey];
-  return (idx != null && packs[idx]) ? packs[idx] : null;
+  let p = rlKey ? packs.find(x=>x.key === rlKey) : null;
+  if(!p){
+    const idx = KATA_RATELIST_INDEX[itemKey];
+    if(idx != null && packs[idx]) p = packs[idx];
+  }
+  return p || null;
 }
 function syncKataItemsFromRateList(){
   if(typeof packs === 'undefined' || !Array.isArray(packs)) return;
   KATA_ITEMS.forEach(item=>{
-    const rlKey = KATA_TO_RATELIST_KEY[item.key];
-    if(!rlKey) return; // Z Net Bill — no ریٹ لسٹ equivalent, leave as-is
+    if(!KATA_TO_RATELIST_KEY[item.key] && KATA_RATELIST_INDEX[item.key] == null) return; // Z Net Bill — no ریٹ لسٹ equivalent, leave as-is
     const p = kataFindPack(item.key);
     if(!p) return;
     const agencyB = Number(p.agencyB) || 0;
@@ -4475,9 +4478,9 @@ function kataRenderEntryCard(entry, isLast, idx){
   return `
     <div class="card kata-entry-card" id="${entryDomId}">
       ${isLast ? kataDotsMenuHtml([{cls:'kata-delete-entry-btn', label:'🗑 حذف کریں'}]) : ''}
-      <div class="note" style="text-align:center;font-weight:700;">${kataFormatWhen(entry.createdAt)}</div>
+      <div class="note" style="text-align:center;font-weight:400;">${kataFormatWhen(entry.createdAt)}</div>
       ${entry.salesman ? `<div class="note" style="text-align:center;">سیلزمین: ${kataEscape(entry.salesman)}</div>` : ''}
-      <div style="text-align:center;font-weight:900;font-size:16px;color:#1B5FD9;margin-bottom:6px;">Best Excel Washing powder</div>
+      <div style="text-align:center;font-weight:400;font-size:16px;color:#1B5FD9;margin-bottom:6px;">Best Excel Washing powder</div>
       <div class="edit-table wide-table">
         <table dir="ltr">
           <colgroup>${showDiscount
@@ -4492,44 +4495,40 @@ function kataRenderEntryCard(entry, isLast, idx){
       ${kataInstance === 'salesman' ? `
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">${sumT}</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${sumT}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.price) || 0}</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.price) || 0}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total Price</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.profit) || 0}</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.profit) || 0}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total Profit</div>
         </div>
       </div>` : `
       <div style="display:flex;gap:10px;margin-top:8px;">${kataInstance === 'ribnawaz' ? `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">${entry.kharch||0}</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${entry.kharch||0}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">خرچہ</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">${entry.less||0}</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${entry.less||0}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Less</div>
         </div>` : `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">${entry.kharch||0}</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${entry.kharch||0}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">کرایہ</div>
         </div>`}
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">${sumT}</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${sumT}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
         </div>
       </div>`}
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
-        </div>
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">${((Number(entry.weightKg)||0)/40).toFixed(2)}</div>
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
         </div>
       </div>
       ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya, idx)}
@@ -4671,7 +4670,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <div class="note" style="text-align:center;">
         <div style="margin-bottom:4px;">${nameLabel}</div>
         <input type="text" class="cell-input" data-kata-field="salesman" style="border:1px solid var(--line);text-align:center;" value="${kataEscape(kataOpenName||'')}" disabled>
-        <div style="font-weight:900;font-size:16px;color:#1B5FD9;margin-top:6px;">Best Excel Washing powder</div>
+        <div style="font-weight:400;font-size:16px;color:#1B5FD9;margin-top:6px;">Best Excel Washing powder</div>
       </div>
       <div class="edit-table wide-table">
         <table dir="ltr">
@@ -4694,66 +4693,59 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       ${kataInstance === 'salesman' ? `
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-t style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0</div>
+          <div class="n" data-kata-sum-t style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-price style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0</div>
+          <div class="n" data-kata-sum-price style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total Price</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-profit style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0</div>
+          <div class="n" data-kata-sum-profit style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total Profit</div>
         </div>
       </div>
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0.00</div>
+          <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
-        </div>
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-weight-man style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0.00</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
         </div>
       </div>` : `
       <div style="display:flex;gap:10px;margin-top:8px;">${kataInstance === 'ribnawaz' ? `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;box-sizing:border-box;">
-          <input type="number" inputmode="numeric" class="cell-input" data-kata-field="kharch" style="border:none;background:transparent;font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;width:100%;box-sizing:border-box;text-align:center;padding:0;" value="0">
+          <input type="number" inputmode="numeric" class="cell-input" data-kata-field="kharch" style="border:none;background:transparent;font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;width:100%;box-sizing:border-box;text-align:center;padding:0;" value="0">
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">خرچہ</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;box-sizing:border-box;">
-          <input type="number" inputmode="numeric" class="cell-input" data-kata-field="less" style="border:none;background:transparent;font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;width:100%;box-sizing:border-box;text-align:center;padding:0;" value="0">
+          <input type="number" inputmode="numeric" class="cell-input" data-kata-field="less" style="border:none;background:transparent;font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;width:100%;box-sizing:border-box;text-align:center;padding:0;" value="0">
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Less</div>
         </div>` : `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;box-sizing:border-box;">
-          <input type="number" inputmode="numeric" class="cell-input" data-kata-field="kharch" style="border:none;background:transparent;font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;width:100%;box-sizing:border-box;text-align:center;padding:0;" value="0">
+          <input type="number" inputmode="numeric" class="cell-input" data-kata-field="kharch" style="border:none;background:transparent;font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;width:100%;box-sizing:border-box;text-align:center;padding:0;" value="0">
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">کرایہ</div>
         </div>`}
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-t style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0</div>
+          <div class="n" data-kata-sum-t style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
         </div>
       </div>${kataInstance !== 'agency' ? `
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-profit style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0</div>
+          <div class="n" data-kata-sum-profit style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total Profit</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-price style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0</div>
+          <div class="n" data-kata-sum-price style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total Price</div>
         </div>
       </div>` : ''}
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0.00</div>
+          <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
         </div>
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-weight-man style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0.00</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
-        </div>
-      </div>`}
+      </div>
+      <div data-kata-sabka-debug style="font-size:10px;color:#b00;direction:ltr;text-align:left;word-break:break-all;margin-top:4px;padding:4px;background:#fff3f3;border:1px dashed #b00;"></div>`}
       <div class="edit-table" style="margin-top:8px;">
         <table dir="ltr">
           ${agencySimple ? '<colgroup><col style="width:30%"><col style="width:70%"></colgroup>' : ''}
@@ -4825,19 +4817,14 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
         const wI = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="weight"]`);
         const weightPerPiece = kataParseWeightGrams((wI && wI.value) != null ? wI.value : item.weight);
         const pW = kataFindPack(item.key);
-        const pWctn = pW ? (Number(pW.ctn) || 0) : 0;
-        const pcsPerCtn = pWctn || (item.pcsPerCtn || 0);
+        const pcsPerCtn = pW ? (Number(pW.ctn) || 0) : (item.pcsPerCtn || 0);
         todayWeightGrams += weightPerPiece * pcsPerCtn * t;
       }
     });
     const sumTEl = document.querySelector('[data-kata-sum-t]');
     if(sumTEl) sumTEl.textContent = todayT;
     const sumWeightEl = document.querySelector('[data-kata-sum-weight]');
-    const weightKgVal = todayWeightGrams / 1000;
-    if(sumWeightEl) sumWeightEl.textContent = weightKgVal.toFixed(2);
-    // "من" (1 من = 40 کلوگرام) — کلوگرام باکس کے ساتھ دوسرا خانہ (2026-08-24 صارف کی درخواست پر)
-    const sumWeightManEl = document.querySelector('[data-kata-sum-weight-man]');
-    if(sumWeightManEl) sumWeightManEl.textContent = (weightKgVal / 40).toFixed(2);
+    if(sumWeightEl) sumWeightEl.textContent = (todayWeightGrams / 1000).toFixed(2);
     const kharchInput = document.querySelector('[data-kata-field="kharch"]');
     const kharch = Number((kharchInput && kharchInput.value) || 0) || 0;
     // ربنواز کھاتہ — صارف کی درخواست پر (2026-08-22): "کرایہ" کو "خرچہ" کر
@@ -4858,14 +4845,18 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
     // پہلی انٹری میں "سابقہ" خود لکھی جا سکتی ہے — تب اسی خانے سے پڑھیں،
     // ورنہ ہمیشہ کی طرح پچھلی انٹری کی قدر (prevTotal) استعمال ہو۔
     const sabkaTI = document.querySelector('[data-kata-sabka="t"]');
-    const sabkaBase = sabkaTI ? {
-      t: Number(sabkaTI.value) || 0,
-      price: Number((document.querySelector('[data-kata-sabka="price"]')||{}).value) || 0,
-      profit: Number((document.querySelector('[data-kata-sabka="profit"]')||{}).value) || 0,
-      discount: Number((document.querySelector('[data-kata-sabka="discount"]')||{}).value) || 0,
+    const sabkaPI = document.querySelector('[data-kata-sabka="price"]');
+    const sabkaBase = (sabkaTI || sabkaPI) ? {
+      t: Number((sabkaTI && sabkaTI.value) || 0) || 0,
+      price: Number((sabkaPI && sabkaPI.value) || (prevTotal.price||0)) || 0,
+      profit: Number((document.querySelector('[data-kata-sabka="profit"]')||{}).value || prevTotal.profit || 0) || 0,
+      discount: Number((document.querySelector('[data-kata-sabka="discount"]')||{}).value || prevTotal.discount || 0) || 0,
     } : prevTotal;
     const totT = sabkaBase.t + todayT, totPrice = sabkaBase.price + todayPrice;
     const totProfit = (sabkaBase.profit||0) + todayProfit;
+    window._kataSabkaDebug = {hasSabkaTI: !!sabkaTI, hasSabkaPI: !!sabkaPI, sabkaBase, prevTotal, todayPrice, totPrice};
+    const dbgEl = document.querySelector('[data-kata-sabka-debug]');
+    if(dbgEl) dbgEl.textContent = 'DEBUG: ' + JSON.stringify(window._kataSabkaDebug);
     const set = (sel, val)=>{ const el = document.querySelector(sel); if(el) el.textContent = val; };
     set('[data-kata-today-t]', todayT);
     set('[data-kata-today-price]', todayPrice);
@@ -5077,10 +5068,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
     // pcsPerCtn بھی محفوظ کر لیتے ہیں تاکہ آئندہ ریٹ لسٹ بدلنے پر بھی یہ
     // پرانی انٹری کا وزن درست (تاریخی) رہے۔
     if(!isZNet){
-      // Pcs خالی/0 کی صورت میں بھی پرانی محفوظ قدر پر واپس (اوپر
-      // recomputeTotalsBlock جیسا ہی — 2026-08-24)۔
-      const pCtn = p ? (Number(p.ctn) || 0) : 0;
-      const pcsPerCtn = pCtn || (item.pcsPerCtn || 0);
+      const pcsPerCtn = p ? (Number(p.ctn) || 0) : (item.pcsPerCtn || 0);
       items[item.key].pcsPerCtn = pcsPerCtn;
       todayWeightGrams += kataParseWeightGrams(liveWeight) * pcsPerCtn * t;
     }
@@ -5196,7 +5184,7 @@ function kataShowSavedToast(){
   const toast = document.createElement('div');
   toast.id = 'kataSavedToast';
   toast.textContent = '✅ انٹری محفوظ ہو گئی';
-  toast.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1a7a3c;color:#fff;padding:10px 20px;border-radius:20px;font-weight:700;font-size:14px;z-index:9999;box-shadow:0 2px 10px rgba(0,0,0,.3);';
+  toast.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1a7a3c;color:#fff;padding:10px 20px;border-radius:20px;font-weight:400;font-size:14px;z-index:9999;box-shadow:0 2px 10px rgba(0,0,0,.3);';
   document.body.appendChild(toast);
   setTimeout(()=>{ toast.style.transition='opacity .4s'; toast.style.opacity='0'; setTimeout(()=>toast.remove(), 400); }, 2200);
 }
