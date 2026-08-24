@@ -2111,15 +2111,23 @@ async function shareCardAsImage(tier, btn){
     }
     const { jsPDF } = jspdf;
     const imgData = canvas.toDataURL('image/png');
+    // html2canvas کو زیادہ صاف (crisp) تصویر کے لیے scale:3 دیا گیا تھا —
+    // لیکن canvas.width/height اسی 3 گنا کے حساب سے پکسل میں آتے ہیں،
+    // جنہیں سیدھا "pt" مان لینے سے PDF کا صفحہ اصل کاغذ سے تین گنا بڑا بن
+    // جاتا تھا — اسی وجہ سے پرنٹ پیش منظر میں مواد چھوٹا/ایک طرف سمٹا ہوا
+    // اور کئی صفحوں میں بٹا نظر آ رہا تھا (2026-08-24 صارف کی نشاندہی
+    // پر)۔ اب صفحے کا حقیقی سائز 3 سے تقسیم کر کے درست کر دیا — تصویر پھر
+    // بھی اسی ہائی-ریزولوشن میں رہتی ہے، بس صفحہ اب حقیقی پیمانے کا ہے۔
+    const pdfW = canvas.width / 3, pdfH = canvas.height / 3;
     // Page sized to the table's own proportions۔ صارف کی شکایت پر
     // (2026-08-24): orientation خودکار طے کرنے کی بجائے ہمیشہ سیدھا
     // (portrait) — کھاتہ کے پرنٹ کی طرح، پوری سائٹ پر یکساں رویہ۔
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'pt',
-      format: [canvas.width, canvas.height],
+      format: [pdfW, pdfH],
     });
-    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
     const blob = pdf.output('blob');
     const fileName = baseName + '.pdf';
     if(!blob) throw new Error('no-blob');
@@ -4431,12 +4439,18 @@ async function kataPrintEntry(btn){
     // چوڑائی/اونچائی کے تناسب سے خودکار کرنے کی بجائے، اب کھاتہ کی
     // انٹری ہمیشہ سیدھی (portrait) ہی بنے گی، چونکہ مواد ہمیشہ اوپر سے
     // نیچے پڑھا جاتا ہے — چوڑی ٹیبل ہونے کے باوجود (2026-08-24)۔
+    // html2canvas کا scale:3 صاف تصویر کے لیے ہے — لیکن canvas.width/
+    // height اسی 3 گنا حساب سے پکسل میں آتے ہیں، جنہیں سیدھا "pt" مان
+    // لینے سے PDF کا صفحہ اصل سے تین گنا بڑا بن جاتا تھا (اسی لیے پرنٹ
+    // میں مواد چھوٹا/ایک طرف سمٹا اور 3 صفحوں میں بٹا نظر آ رہا تھا)۔ اب
+    // صفحے کا حقیقی سائز 3 سے تقسیم کر کے درست کر دیا۔
+    const pdfW = canvas.width / 3, pdfH = canvas.height / 3;
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'pt',
-      format: [canvas.width, canvas.height],
+      format: [pdfW, pdfH],
     });
-    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
     const blob = pdf.output('blob');
     if(!blob) throw new Error('no-blob');
     await sharePdfDirectly(blob, 'kata-entry.pdf', 'کھاتہ انٹری');
