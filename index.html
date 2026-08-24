@@ -936,6 +936,55 @@ window.loadAuthSDKs = async function(){
 </style>
 </head>
 <body>
+<div id="siteOfflineBlock" style="position:fixed;inset:0;background:#F4EFE2;z-index:999999;display:none;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;text-align:center;">
+  <div style="max-width:340px;">
+    <div style="font-size:44px;margin-bottom:12px;">📶</div>
+    <div style="font-size:19px;font-weight:400;color:#7a2323;margin-bottom:8px;">انٹرنیٹ نہیں آ رہا</div>
+    <div style="font-size:14px;color:#5b5346;line-height:1.7;margin-bottom:18px;">یہ ویب سائٹ کلاؤڈ سے ڈیٹا لاتی ہے — بغیر انٹرنیٹ کے کام نہیں کر سکتی۔ براہِ کرم وائی فائی یا موبائل ڈیٹا آن کریں۔</div>
+    <button type="button" id="siteOfflineRetryBtn" style="padding:10px 24px;font-size:14px;border:none;border-radius:6px;background:#7a2323;color:#fff;cursor:pointer;">دوبارہ کوشش کریں</button>
+  </div>
+</div>
+<script>
+// ---------- انٹرنیٹ نہ ہونے پر پوری سائٹ روک دینا (2026-08-24) ----------
+// پہلے بغیر انٹرنیٹ کے صفحہ خالی نظر آتا تھا (کلاؤڈ ڈیٹا کبھی نہ آنے کی
+// وجہ سے) جس سے صارف کو لگتا تھا ڈیٹا ضائع ہو گیا — اب واضح پیغام کے ساتھ
+// پوری سائٹ ہی روک دی جاتی ہے، جب تک انٹرنیٹ واپس نہ آئے۔
+// navigator.onLine مکمل قابلِ بھروسہ نہیں (بعض اوقات وائی فائی سے جڑا ہو
+// مگر اصل انٹرنیٹ نہ آ رہا ہو تب بھی true دے دیتا ہے) اس لیے صرف اس پر
+// انحصار کی بجائے ایک ہلکی سی حقیقی نیٹ ورک درخواست سے بھی تصدیق کرتے ہیں۔
+(function(){
+  const block = document.getElementById('siteOfflineBlock');
+  const retryBtn = document.getElementById('siteOfflineRetryBtn');
+  let checking = false;
+  async function reallyOnline(){
+    if(!navigator.onLine) return false;
+    try{
+      // کیشے سے بچنے کے لیے بے ترتیب سوال، ٹائم آؤٹ کے ساتھ
+      const ctrl = new AbortController();
+      const t = setTimeout(()=>ctrl.abort(), 4000);
+      await fetch(location.href, {method:'HEAD', cache:'no-store', signal: ctrl.signal});
+      clearTimeout(t);
+      return true;
+    } catch(e){
+      return false;
+    }
+  }
+  async function checkAndUpdate(){
+    if(checking) return;
+    checking = true;
+    const online = await reallyOnline();
+    block.style.display = online ? 'none' : 'flex';
+    checking = false;
+  }
+  window.addEventListener('online', checkAndUpdate);
+  window.addEventListener('offline', ()=>{ block.style.display = 'flex'; });
+  if(retryBtn) retryBtn.addEventListener('click', checkAndUpdate);
+  // صفحہ کھلتے ہی فوراً چیک، پھر ہر 15 سیکنڈ بعد (تاکہ درمیان میں نیٹ
+  // جانے پر بھی خودکار روک لگے)۔
+  checkAndUpdate();
+  setInterval(checkAndUpdate, 15000);
+})();
+</script>
 <div id="siteTextPromptModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
   <div class="auth-box" style="text-align:center;">
     <h2 id="siteTextPromptLabel" style="text-align:center;font-size:16px;border:none;"></h2>
@@ -4530,6 +4579,10 @@ function kataRenderEntryCard(entry, isLast, idx){
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
         </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${((Number(entry.weightKg)||0)/40).toFixed(2)}</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
+        </div>
       </div>
       ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya, idx)}
       <div class="kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
@@ -4710,6 +4763,10 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
         </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div class="n" data-kata-sum-weight-mann style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
+        </div>
       </div>` : `
       <div style="display:flex;gap:10px;margin-top:8px;">${kataInstance === 'ribnawaz' ? `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;box-sizing:border-box;">
@@ -4744,8 +4801,11 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
         </div>
-      </div>
-      <div data-kata-sabka-debug style="font-size:10px;color:#b00;direction:ltr;text-align:left;word-break:break-all;margin-top:4px;padding:4px;background:#fff3f3;border:1px dashed #b00;"></div>`}
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div class="n" data-kata-sum-weight-mann style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
+        </div>
+      </div>`}
       <div class="edit-table" style="margin-top:8px;">
         <table dir="ltr">
           ${agencySimple ? '<colgroup><col style="width:30%"><col style="width:70%"></colgroup>' : ''}
@@ -4825,6 +4885,9 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
     if(sumTEl) sumTEl.textContent = todayT;
     const sumWeightEl = document.querySelector('[data-kata-sum-weight]');
     if(sumWeightEl) sumWeightEl.textContent = (todayWeightGrams / 1000).toFixed(2);
+    // کل وزن (من) — 1 من = 40 کلوگرام (صارف کا بتایا ہوا تبادلہ)۔
+    const sumWeightMannEl = document.querySelector('[data-kata-sum-weight-mann]');
+    if(sumWeightMannEl) sumWeightMannEl.textContent = (todayWeightGrams / 1000 / 40).toFixed(2);
     const kharchInput = document.querySelector('[data-kata-field="kharch"]');
     const kharch = Number((kharchInput && kharchInput.value) || 0) || 0;
     // ربنواز کھاتہ — صارف کی درخواست پر (2026-08-22): "کرایہ" کو "خرچہ" کر
@@ -4854,9 +4917,6 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
     } : prevTotal;
     const totT = sabkaBase.t + todayT, totPrice = sabkaBase.price + todayPrice;
     const totProfit = (sabkaBase.profit||0) + todayProfit;
-    window._kataSabkaDebug = {hasSabkaTI: !!sabkaTI, hasSabkaPI: !!sabkaPI, sabkaBase, prevTotal, todayPrice, totPrice};
-    const dbgEl = document.querySelector('[data-kata-sabka-debug]');
-    if(dbgEl) dbgEl.textContent = 'DEBUG: ' + JSON.stringify(window._kataSabkaDebug);
     const set = (sel, val)=>{ const el = document.querySelector(sel); if(el) el.textContent = val; };
     set('[data-kata-today-t]', todayT);
     set('[data-kata-today-price]', todayPrice);
