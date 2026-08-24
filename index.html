@@ -2111,11 +2111,11 @@ async function shareCardAsImage(tier, btn){
     }
     const { jsPDF } = jspdf;
     const imgData = canvas.toDataURL('image/png');
-    // Page sized to the table's own proportions (portrait or landscape,
-    // whichever the captured table actually is) so nothing gets cropped
-    // or padded with empty margins.
+    // Page sized to the table's own proportions۔ صارف کی شکایت پر
+    // (2026-08-24): orientation خودکار طے کرنے کی بجائے ہمیشہ سیدھا
+    // (portrait) — کھاتہ کے پرنٹ کی طرح، پوری سائٹ پر یکساں رویہ۔
     const pdf = new jsPDF({
-      orientation: canvas.width >= canvas.height ? 'landscape' : 'portrait',
+      orientation: 'portrait',
       unit: 'pt',
       format: [canvas.width, canvas.height],
     });
@@ -4427,8 +4427,12 @@ async function kataPrintEntry(btn){
     if(typeof jspdf === 'undefined' || !jspdf.jsPDF) throw new Error('jsPDF-not-loaded');
     const { jsPDF } = jspdf;
     const imgData = canvas.toDataURL('image/png');
+    // پرنٹ کاغذ پر ترچھا/سیڈوے آنے کی شکایت ملی — orientation کا فیصلہ
+    // چوڑائی/اونچائی کے تناسب سے خودکار کرنے کی بجائے، اب کھاتہ کی
+    // انٹری ہمیشہ سیدھی (portrait) ہی بنے گی، چونکہ مواد ہمیشہ اوپر سے
+    // نیچے پڑھا جاتا ہے — چوڑی ٹیبل ہونے کے باوجود (2026-08-24)۔
     const pdf = new jsPDF({
-      orientation: canvas.width >= canvas.height ? 'landscape' : 'portrait',
+      orientation: 'portrait',
       unit: 'pt',
       format: [canvas.width, canvas.height],
     });
