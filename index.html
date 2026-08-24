@@ -2111,23 +2111,24 @@ async function shareCardAsImage(tier, btn){
     }
     const { jsPDF } = jspdf;
     const imgData = canvas.toDataURL('image/png');
-    // html2canvas کو زیادہ صاف (crisp) تصویر کے لیے scale:3 دیا گیا تھا —
-    // لیکن canvas.width/height اسی 3 گنا کے حساب سے پکسل میں آتے ہیں،
-    // جنہیں سیدھا "pt" مان لینے سے PDF کا صفحہ اصل کاغذ سے تین گنا بڑا بن
-    // جاتا تھا — اسی وجہ سے پرنٹ پیش منظر میں مواد چھوٹا/ایک طرف سمٹا ہوا
-    // اور کئی صفحوں میں بٹا نظر آ رہا تھا (2026-08-24 صارف کی نشاندہی
-    // پر)۔ اب صفحے کا حقیقی سائز 3 سے تقسیم کر کے درست کر دیا — تصویر پھر
-    // بھی اسی ہائی-ریزولوشن میں رہتی ہے، بس صفحہ اب حقیقی پیمانے کا ہے۔
-    const pdfW = canvas.width / 3, pdfH = canvas.height / 3;
+    // پہلے یہاں PDF کا صفحہ کارڈ کے اپنے پکسل سائز کے برابر بنایا جاتا
+    // تھا — اگر کارڈ حقیقی کاغذ سے چوڑا/لمبا نکلے تو پرنٹ کرتے وقت کنارے
+    // کٹ جاتے (کھاتہ کی طرح یہاں بھی)۔ اب اصل کاغذ (A4) سائز مقرر کر کے،
+    // پوری تصویر اسی میں سما جانے تک خودکار چھوٹی کر دی جاتی ہے (2026-08-24)۔
+    const A4_W = 595.28, A4_H = 841.89, MARGIN = 20;
+    const imgW = canvas.width / 3, imgH = canvas.height / 3;
+    const fitScale = Math.min((A4_W - MARGIN*2) / imgW, (A4_H - MARGIN*2) / imgH);
+    const drawW = imgW * fitScale, drawH = imgH * fitScale;
+    const offsetX = (A4_W - drawW) / 2, offsetY = MARGIN;
     // Page sized to the table's own proportions۔ صارف کی شکایت پر
     // (2026-08-24): orientation خودکار طے کرنے کی بجائے ہمیشہ سیدھا
     // (portrait) — کھاتہ کے پرنٹ کی طرح، پوری سائٹ پر یکساں رویہ۔
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'pt',
-      format: [pdfW, pdfH],
+      format: [A4_W, A4_H],
     });
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
+    pdf.addImage(imgData, 'PNG', offsetX, offsetY, drawW, drawH);
     const blob = pdf.output('blob');
     const fileName = baseName + '.pdf';
     if(!blob) throw new Error('no-blob');
@@ -4439,18 +4440,23 @@ async function kataPrintEntry(btn){
     // چوڑائی/اونچائی کے تناسب سے خودکار کرنے کی بجائے، اب کھاتہ کی
     // انٹری ہمیشہ سیدھی (portrait) ہی بنے گی، چونکہ مواد ہمیشہ اوپر سے
     // نیچے پڑھا جاتا ہے — چوڑی ٹیبل ہونے کے باوجود (2026-08-24)۔
-    // html2canvas کا scale:3 صاف تصویر کے لیے ہے — لیکن canvas.width/
-    // height اسی 3 گنا حساب سے پکسل میں آتے ہیں، جنہیں سیدھا "pt" مان
-    // لینے سے PDF کا صفحہ اصل سے تین گنا بڑا بن جاتا تھا (اسی لیے پرنٹ
-    // میں مواد چھوٹا/ایک طرف سمٹا اور 3 صفحوں میں بٹا نظر آ رہا تھا)۔ اب
-    // صفحے کا حقیقی سائز 3 سے تقسیم کر کے درست کر دیا۔
-    const pdfW = canvas.width / 3, pdfH = canvas.height / 3;
+    // پہلے یہاں PDF کا صفحہ خود کھاتہ کارڈ کے اپنے پکسل سائز کے برابر
+    // بنایا جاتا تھا — اگر کارڈ حقیقی کاغذ سے چوڑا/لمبا نکلے تو پرنٹ
+    // کرتے وقت کنارے کٹ جاتے (جیسا صارف نے دکھایا)۔ اب اصل کاغذ (A4)
+    // سائز مقرر کر کے، پوری تصویر اسی میں سما جانے تک خودکار چھوٹی کر دی
+    // جاتی ہے — چاہے کارٹن کتنی ہی چوڑی ٹیبل کیوں نہ ہو، پورا کھاتا ہمیشہ
+    // ایک ہی صفحے میں آئے گا (2026-08-24 صارف کی مزید نشاندہی پر)۔
+    const A4_W = 595.28, A4_H = 841.89, MARGIN = 20;
+    const imgW = canvas.width / 3, imgH = canvas.height / 3;
+    const fitScale = Math.min((A4_W - MARGIN*2) / imgW, (A4_H - MARGIN*2) / imgH);
+    const drawW = imgW * fitScale, drawH = imgH * fitScale;
+    const offsetX = (A4_W - drawW) / 2, offsetY = MARGIN;
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'pt',
-      format: [pdfW, pdfH],
+      format: [A4_W, A4_H],
     });
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
+    pdf.addImage(imgData, 'PNG', offsetX, offsetY, drawW, drawH);
     const blob = pdf.output('blob');
     if(!blob) throw new Error('no-blob');
     await sharePdfDirectly(blob, 'kata-entry.pdf', 'کھاتہ انٹری');
