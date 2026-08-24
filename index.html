@@ -949,40 +949,21 @@ window.loadAuthSDKs = async function(){
 // پہلے بغیر انٹرنیٹ کے صفحہ خالی نظر آتا تھا (کلاؤڈ ڈیٹا کبھی نہ آنے کی
 // وجہ سے) جس سے صارف کو لگتا تھا ڈیٹا ضائع ہو گیا — اب واضح پیغام کے ساتھ
 // پوری سائٹ ہی روک دی جاتی ہے، جب تک انٹرنیٹ واپس نہ آئے۔
-// navigator.onLine مکمل قابلِ بھروسہ نہیں (بعض اوقات وائی فائی سے جڑا ہو
-// مگر اصل انٹرنیٹ نہ آ رہا ہو تب بھی true دے دیتا ہے) اس لیے صرف اس پر
-// انحصار کی بجائے ایک ہلکی سی حقیقی نیٹ ورک درخواست سے بھی تصدیق کرتے ہیں۔
+// (2026-08-24: پہلے یہاں navigator.onLine کے ساتھ ایک حقیقی fetch() سے بھی
+// تصدیق کی جاتی تھی — لیکن اگر صفحہ ڈاؤن لوڈ شدہ فائل سے content://...
+// کے ذریعے کھولا جائے (جیسے صارف اکثر کرتا ہے) تو وہ fetch ہمیشہ ناکام ہو
+// جاتا ہے چاہے انٹرنیٹ موجود ہو، جس سے یہ پیغام غلطی سے ہمیشہ نظر آتا
+// رہتا۔ اب صرف navigator.onLine — سادہ اور ہر جگہ قابلِ بھروسہ۔)
 (function(){
   const block = document.getElementById('siteOfflineBlock');
   const retryBtn = document.getElementById('siteOfflineRetryBtn');
-  let checking = false;
-  async function reallyOnline(){
-    if(!navigator.onLine) return false;
-    try{
-      // کیشے سے بچنے کے لیے بے ترتیب سوال، ٹائم آؤٹ کے ساتھ
-      const ctrl = new AbortController();
-      const t = setTimeout(()=>ctrl.abort(), 4000);
-      await fetch(location.href, {method:'HEAD', cache:'no-store', signal: ctrl.signal});
-      clearTimeout(t);
-      return true;
-    } catch(e){
-      return false;
-    }
-  }
-  async function checkAndUpdate(){
-    if(checking) return;
-    checking = true;
-    const online = await reallyOnline();
-    block.style.display = online ? 'none' : 'flex';
-    checking = false;
+  function checkAndUpdate(){
+    block.style.display = navigator.onLine ? 'none' : 'flex';
   }
   window.addEventListener('online', checkAndUpdate);
-  window.addEventListener('offline', ()=>{ block.style.display = 'flex'; });
+  window.addEventListener('offline', checkAndUpdate);
   if(retryBtn) retryBtn.addEventListener('click', checkAndUpdate);
-  // صفحہ کھلتے ہی فوراً چیک، پھر ہر 15 سیکنڈ بعد (تاکہ درمیان میں نیٹ
-  // جانے پر بھی خودکار روک لگے)۔
   checkAndUpdate();
-  setInterval(checkAndUpdate, 15000);
 })();
 </script>
 <div id="siteTextPromptModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
@@ -4368,6 +4349,27 @@ async function kataPrintEntry(btn){
   const prevDisplay = actions ? actions.style.display : '';
   if(actions) actions.style.display = 'none'; // don't capture the print/delete buttons themselves
   let inputSwaps = [];
+  let hiddenPrintCells = [];
+  // سیلزمین کھاتہ — صارف کی درخواست پر پرنٹ سے 6 کالمز (Rate، Profit،
+  // Discount، D.Total، Sabka CTN، Total CTN) ہمیشہ غائب رہیں — چاہے موبائل
+  // سے پرنٹ ہو یا کمپیوٹر سے۔ یہ صرف پرنٹ/PDF پر اثر انداز ہوتا ہے، خود
+  // ویب سائٹ پر یہ کالمز ویسے ہی نظر آتے رہیں گے (2026-08-24)۔ نیچے
+  // باکسز اور Sabka/Today/Total والا ٹیبل الگ ہے، اسے نہیں چھیڑا۔
+  if(kataInstance === 'salesman'){
+    const itemTable = card.querySelector('.wide-table table');
+    if(itemTable){
+      [5,7,9,10,11].forEach(pos=>{
+        itemTable.querySelectorAll(`tr > *:nth-child(${pos})`).forEach(cell=>{
+          hiddenPrintCells.push({cell, prev: cell.style.display});
+          cell.style.display = 'none';
+        });
+        itemTable.querySelectorAll(`colgroup > col:nth-child(${pos})`).forEach(col=>{
+          hiddenPrintCells.push({cell: col, prev: col.style.display});
+          col.style.display = 'none';
+        });
+      });
+    }
+  }
   // پہلے یہاں ٹیبل کو مکمل چوڑا (max-content) کر کے کھینچا جاتا تھا کیونکہ
   // موبائل پر چوڑی ٹیبل دیکھنے کے لیے سائیڈ سکرول کرنی پڑتی تھی اور
   // html2canvas صرف نظر آنے والا حصہ کھینچتا تھا۔ اب ٹیبل fixed layout کی
@@ -4415,6 +4417,7 @@ async function kataPrintEntry(btn){
     console.warn(err);
   } finally {
     inputSwaps.forEach(({inp, span})=>{ span.remove(); inp.style.display = ''; }); // اگر html2canvas سے پہلے ہی کوئی خرابی آئی ہو تو بھی inputs واپس آ جائیں
+    hiddenPrintCells.forEach(({cell, prev})=>{ cell.style.display = prev; }); // چھپائے گئے کالمز ویب سائٹ پر واپس دکھا دیں
     if(actions) actions.style.display = prevDisplay;
     btn.textContent = originalLabel; btn.disabled = false;
   }
@@ -4542,18 +4545,26 @@ function kataRenderEntryCard(entry, isLast, idx){
         </table>
       </div>
       ${kataInstance === 'salesman' ? `
-      <div style="display:flex;gap:10px;margin-top:8px;">
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${sumT}</div>
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
+      <div style="display:flex;margin-top:8px;border:1px solid var(--line);border-radius:3px;overflow:hidden;">
+        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
+          <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${sumT}</div>
+          <div style="font-size:7px;color:#5b5346;margin-top:1px;">Total CTN</div>
         </div>
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.price) || 0}</div>
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total Price</div>
+        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
+          <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.price) || 0}</div>
+          <div style="font-size:7px;color:#5b5346;margin-top:1px;">Total Price</div>
         </div>
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.profit) || 0}</div>
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total Profit</div>
+        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
+          <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.profit) || 0}</div>
+          <div style="font-size:7px;color:#5b5346;margin-top:1px;">Total Profit</div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
+          <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>
+          <div style="font-size:7px;color:#5b5346;margin-top:1px;">وزن (kg)</div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;">
+          <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${((Number(entry.weightKg)||0)/40).toFixed(2)}</div>
+          <div style="font-size:7px;color:#5b5346;margin-top:1px;">وزن (من)</div>
         </div>
       </div>` : `
       <div style="display:flex;gap:10px;margin-top:8px;">${kataInstance === 'ribnawaz' ? `
@@ -4573,7 +4584,7 @@ function kataRenderEntryCard(entry, isLast, idx){
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${sumT}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
         </div>
-      </div>`}
+      </div>
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>
@@ -4583,7 +4594,7 @@ function kataRenderEntryCard(entry, isLast, idx){
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${((Number(entry.weightKg)||0)/40).toFixed(2)}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
         </div>
-      </div>
+      </div>`}
       ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya, idx)}
       <div class="kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
         <button type="button" class="kata-print-entry-btn" style="padding:5px 14px;font-size:12px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 پرنٹ</button>
@@ -4744,28 +4755,26 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
         </table>
       </div>
       ${kataInstance === 'salesman' ? `
-      <div style="display:flex;gap:10px;margin-top:8px;">
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-t style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
+      <div style="display:flex;margin-top:8px;border:1px solid var(--line);border-radius:3px;overflow:hidden;">
+        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
+          <div class="n" data-kata-sum-t style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
+          <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Total CTN</div>
         </div>
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-price style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total Price</div>
+        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
+          <div class="n" data-kata-sum-price style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
+          <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Total Price</div>
         </div>
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-profit style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total Profit</div>
+        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
+          <div class="n" data-kata-sum-profit style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
+          <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Total Profit</div>
         </div>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:8px;">
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
+        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
+          <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
+          <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">وزن (kg)</div>
         </div>
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-weight-mann style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
+        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;">
+          <div class="n" data-kata-sum-weight-mann style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
+          <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">وزن (من)</div>
         </div>
       </div>` : `
       <div style="display:flex;gap:10px;margin-top:8px;">${kataInstance === 'ribnawaz' ? `
