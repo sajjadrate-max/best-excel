@@ -2126,12 +2126,13 @@ async function shareCardAsImage(tier, btn){
     // پوری تصویر اسی میں سما جانے تک خودکار چھوٹی کر دی جاتی ہے (2026-08-24)۔
     const A4_W = 595.28, A4_H = 841.89, MARGIN = 20;
     const imgW = canvas.width / 3, imgH = canvas.height / 3;
-    // چوڑائی صفحے میں سما جانے تک ہی چھوٹی کی جاتی ہے (ورنہ سائیڈ سے کٹتی
-    // تھی) لیکن اونچائی اب چوڑائی والی ہی نسبت پر منحصر نہیں — پورے خالی
-    // صفحے کو بھرنے کے لیے خانے نیچے تک کھلے کھلے (لمبے) کر دیے جاتے ہیں
-    // (صارف کی درخواست، 2026-08-24)۔
-    const drawW = A4_W - MARGIN*2, drawH = A4_H - MARGIN*2;
-    const offsetX = MARGIN, offsetY = MARGIN;
+    // پچھلی بار خانے پورے صفحے میں "کھینچ" کر پھیلائے تھے — لیکن jsPDF اصل
+    // تناسب کے بغیر ایسا کرنے پر تصویر کو سٹریچ کرنے کی بجائے کاٹ دیتا ہے۔
+    // اب دوبارہ اصل تناسب کے ساتھ ہی صفحے میں زیادہ سے زیادہ (بغیر کٹے)
+    // پھیلایا جاتا ہے (2026-08-24)۔
+    const fitScale = Math.min((A4_W - MARGIN*2) / imgW, (A4_H - MARGIN*2) / imgH);
+    const drawW = imgW * fitScale, drawH = imgH * fitScale;
+    const offsetX = (A4_W - drawW) / 2, offsetY = (A4_H - drawH) / 2;
     // Page sized to the table's own proportions۔ صارف کی شکایت پر
     // (2026-08-24): orientation خودکار طے کرنے کی بجائے ہمیشہ سیدھا
     // (portrait) — کھاتہ کے پرنٹ کی طرح، پوری سائٹ پر یکساں رویہ۔
@@ -4426,10 +4427,17 @@ async function kataPrintEntry(btn){
   }
   // کمپیوٹر (Ctrl+P/براؤزر پرنٹ) کے لیے پس منظر (رنگ/تصویر) نہ آئے — یہ
   // @media print CSS میں پہلے سے سنبھالا گیا ہے، یہاں صرف موبائل کے
-  // "🖨 پرنٹ" (PDF) بٹن کے لیے کارڈ کا پس منظر عارضی طور پر سادہ سفید
-  // کر دیتے ہیں (2026-08-24)۔
-  const prevCardBg = card.style.background;
-  card.style.background = '#ffffff';
+  // "🖨 پرنٹ" (PDF) بٹن کے لیے پس منظر عارضی طور پر سادہ سفید کر دیتے ہیں۔
+  // پہلے صرف کارڈ کا اپنا background بدلا تھا — لیکن اصل سجاوٹی تصویر
+  // (آڑو رنگ + کپڑے کا واٹر مارک) دراصل کارڈ کے اندر موجود ہر .edit-table
+  // خانے کا اپنا الگ background-image ہے، اس لیے وہی نہیں چھپ رہی تھی —
+  // اب دونوں کو چھپا رہے ہیں (2026-08-24)۔
+  const prevBackgrounds = [];
+  [card, ...card.querySelectorAll('.edit-table')].forEach(el=>{
+    prevBackgrounds.push({el, prev: el.getAttribute('style') || ''});
+    el.style.background = '#ffffff';
+    el.style.backgroundImage = 'none';
+  });
   // پہلے یہاں ٹیبل کو مکمل چوڑا (max-content) کر کے کھینچا جاتا تھا کیونکہ
   // موبائل پر چوڑی ٹیبل دیکھنے کے لیے سائیڈ سکرول کرنی پڑتی تھی اور
   // html2canvas صرف نظر آنے والا حصہ کھینچتا تھا۔ اب ٹیبل fixed layout کی
@@ -4475,13 +4483,15 @@ async function kataPrintEntry(btn){
     // ایک ہی صفحے میں آئے گا (2026-08-24 صارف کی مزید نشاندہی پر)۔
     const A4_W = 595.28, A4_H = 841.89, MARGIN = 20;
     const imgW = canvas.width / 3, imgH = canvas.height / 3;
-    // چوڑائی صفحے میں سما جانے تک ہی چھوٹی کی جاتی ہے (ورنہ سائیڈ سے کٹتی
-    // تھی) لیکن اونچائی اب چوڑائی والی ہی نسبت پر منحصر نہیں — پورے خالی
-    // صفحے کو بھرنے کے لیے خانے نیچے تک کھلے کھلے (لمبے) کر دیے جاتے ہیں
-    // (صارف کی درخواست، 2026-08-24) — پہلے خالی جگہ اوپر نیچے بچ جاتی تھی۔
-    const widthScale = (A4_W - MARGIN*2) / imgW;
-    const drawW = A4_W - MARGIN*2, drawH = A4_H - MARGIN*2;
-    const offsetX = MARGIN, offsetY = MARGIN;
+    // پچھلی بار خانے نیچے تک "کھینچ" کر پورے صفحے میں پھیلائے تھے — لیکن
+    // PDF بنانے والا ٹول (jsPDF) اصل تناسب کے بغیر ایسا کرنے پر تصویر کو
+    // سٹریچ کرنے کی بجائے کاٹ دیتا ہے، اسی وجہ سے بائیں طرف کے کالم (#،
+    // Items) غائب ہو گئے تھے۔ اب دوبارہ اصل تناسب کے ساتھ ہی صفحے میں
+    // زیادہ سے زیادہ (بغیر کٹے) پھیلایا جاتا ہے (2026-08-24، صحیح ہونا
+    // "کھلا کھلا" ہونے سے زیادہ ضروری ہے)۔
+    const fitScale = Math.min((A4_W - MARGIN*2) / imgW, (A4_H - MARGIN*2) / imgH);
+    const drawW = imgW * fitScale, drawH = imgH * fitScale;
+    const offsetX = (A4_W - drawW) / 2, offsetY = (A4_H - drawH) / 2;
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'pt',
@@ -4497,7 +4507,7 @@ async function kataPrintEntry(btn){
   } finally {
     inputSwaps.forEach(({inp, span})=>{ span.remove(); inp.style.display = ''; }); // اگر html2canvas سے پہلے ہی کوئی خرابی آئی ہو تو بھی inputs واپس آ جائیں
     hiddenPrintCells.forEach(({cell, prev})=>{ cell.style.display = prev; }); // چھپائے گئے کالمز ویب سائٹ پر واپس دکھا دیں
-    card.style.background = prevCardBg; // کارڈ کا اصل پس منظر واپس
+    prevBackgrounds.forEach(({el, prev})=>{ el.setAttribute('style', prev); }); // اصل پس منظر واپس
     if(actions) actions.style.display = prevDisplay;
     btn.textContent = originalLabel; btn.disabled = false;
   }
@@ -4631,12 +4641,12 @@ function kataRenderEntryCard(entry, isLast, idx){
           <div style="font-size:7px;color:#5b5346;margin-top:1px;">Total CTN</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
-          <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.price) || 0}</div>
-          <div style="font-size:7px;color:#5b5346;margin-top:1px;">Total Price</div>
-        </div>
-        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.profit) || 0}</div>
           <div style="font-size:7px;color:#5b5346;margin-top:1px;">Total Profit</div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
+          <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.price) || 0}</div>
+          <div style="font-size:7px;color:#5b5346;margin-top:1px;">Total Price</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>
@@ -4841,12 +4851,12 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Total CTN</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
-          <div class="n" data-kata-sum-price style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
-          <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Total Price</div>
-        </div>
-        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           <div class="n" data-kata-sum-profit style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Total Profit</div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
+          <div class="n" data-kata-sum-price style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
+          <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Total Price</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
