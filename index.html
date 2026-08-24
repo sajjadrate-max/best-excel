@@ -957,6 +957,14 @@ window.loadAuthSDKs = async function(){
     break-before:page;
     page-break-before:always;
   }
+  /* پس منظر کی سجاوٹی تصویر/رنگ (آڑو کا میلا، کپڑے کی تصویر وغیرہ) کمپیوٹر
+     پرنٹ میں نظر نہ آئے — صرف سادہ سفید صفحہ (صارف کی درخواست، 2026-08-24)۔
+     جدول کے ہیڈر رنگ (میرون/نیلا) اسی طرح پرنٹ ہوتے رہیں گے، یہ صرف
+     کارڈ کے اپنے پس منظر پر لاگو ہے۔ */
+  .card, .kata-entry-card{
+    background:#fff !important;
+    background-image:none !important;
+  }
 }
 </style>
 </head>
@@ -2118,9 +2126,12 @@ async function shareCardAsImage(tier, btn){
     // پوری تصویر اسی میں سما جانے تک خودکار چھوٹی کر دی جاتی ہے (2026-08-24)۔
     const A4_W = 595.28, A4_H = 841.89, MARGIN = 20;
     const imgW = canvas.width / 3, imgH = canvas.height / 3;
-    const fitScale = Math.min((A4_W - MARGIN*2) / imgW, (A4_H - MARGIN*2) / imgH);
-    const drawW = imgW * fitScale, drawH = imgH * fitScale;
-    const offsetX = (A4_W - drawW) / 2, offsetY = MARGIN;
+    // چوڑائی صفحے میں سما جانے تک ہی چھوٹی کی جاتی ہے (ورنہ سائیڈ سے کٹتی
+    // تھی) لیکن اونچائی اب چوڑائی والی ہی نسبت پر منحصر نہیں — پورے خالی
+    // صفحے کو بھرنے کے لیے خانے نیچے تک کھلے کھلے (لمبے) کر دیے جاتے ہیں
+    // (صارف کی درخواست، 2026-08-24)۔
+    const drawW = A4_W - MARGIN*2, drawH = A4_H - MARGIN*2;
+    const offsetX = MARGIN, offsetY = MARGIN;
     // Page sized to the table's own proportions۔ صارف کی شکایت پر
     // (2026-08-24): orientation خودکار طے کرنے کی بجائے ہمیشہ سیدھا
     // (portrait) — کھاتہ کے پرنٹ کی طرح، پوری سائٹ پر یکساں رویہ۔
@@ -4403,7 +4414,22 @@ async function kataPrintEntry(btn){
         });
       });
     }
+    // نیچے والے Sabka/Today/Total خلاصے میں سے بھی Discount کالم پرنٹ میں
+    // نظر نہ آئے (صارف کی درخواست، 2026-08-24) — یہ ٹیبل .wide-table نہیں
+    // اس لیے الگ سے چنا جاتا ہے، آخری (5ویں) کالم پر ہوتا ہے۔
+    card.querySelectorAll('.edit-table:not(.wide-table) table').forEach(t=>{
+      t.querySelectorAll('thead tr > *:nth-child(5), tbody tr > *:nth-child(5)').forEach(cell=>{
+        hiddenPrintCells.push({cell, prev: cell.style.display});
+        cell.style.display = 'none';
+      });
+    });
   }
+  // کمپیوٹر (Ctrl+P/براؤزر پرنٹ) کے لیے پس منظر (رنگ/تصویر) نہ آئے — یہ
+  // @media print CSS میں پہلے سے سنبھالا گیا ہے، یہاں صرف موبائل کے
+  // "🖨 پرنٹ" (PDF) بٹن کے لیے کارڈ کا پس منظر عارضی طور پر سادہ سفید
+  // کر دیتے ہیں (2026-08-24)۔
+  const prevCardBg = card.style.background;
+  card.style.background = '#ffffff';
   // پہلے یہاں ٹیبل کو مکمل چوڑا (max-content) کر کے کھینچا جاتا تھا کیونکہ
   // موبائل پر چوڑی ٹیبل دیکھنے کے لیے سائیڈ سکرول کرنی پڑتی تھی اور
   // html2canvas صرف نظر آنے والا حصہ کھینچتا تھا۔ اب ٹیبل fixed layout کی
@@ -4449,9 +4475,13 @@ async function kataPrintEntry(btn){
     // ایک ہی صفحے میں آئے گا (2026-08-24 صارف کی مزید نشاندہی پر)۔
     const A4_W = 595.28, A4_H = 841.89, MARGIN = 20;
     const imgW = canvas.width / 3, imgH = canvas.height / 3;
-    const fitScale = Math.min((A4_W - MARGIN*2) / imgW, (A4_H - MARGIN*2) / imgH);
-    const drawW = imgW * fitScale, drawH = imgH * fitScale;
-    const offsetX = (A4_W - drawW) / 2, offsetY = MARGIN;
+    // چوڑائی صفحے میں سما جانے تک ہی چھوٹی کی جاتی ہے (ورنہ سائیڈ سے کٹتی
+    // تھی) لیکن اونچائی اب چوڑائی والی ہی نسبت پر منحصر نہیں — پورے خالی
+    // صفحے کو بھرنے کے لیے خانے نیچے تک کھلے کھلے (لمبے) کر دیے جاتے ہیں
+    // (صارف کی درخواست، 2026-08-24) — پہلے خالی جگہ اوپر نیچے بچ جاتی تھی۔
+    const widthScale = (A4_W - MARGIN*2) / imgW;
+    const drawW = A4_W - MARGIN*2, drawH = A4_H - MARGIN*2;
+    const offsetX = MARGIN, offsetY = MARGIN;
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'pt',
@@ -4467,6 +4497,7 @@ async function kataPrintEntry(btn){
   } finally {
     inputSwaps.forEach(({inp, span})=>{ span.remove(); inp.style.display = ''; }); // اگر html2canvas سے پہلے ہی کوئی خرابی آئی ہو تو بھی inputs واپس آ جائیں
     hiddenPrintCells.forEach(({cell, prev})=>{ cell.style.display = prev; }); // چھپائے گئے کالمز ویب سائٹ پر واپس دکھا دیں
+    card.style.background = prevCardBg; // کارڈ کا اصل پس منظر واپس
     if(actions) actions.style.display = prevDisplay;
     btn.textContent = originalLabel; btn.disabled = false;
   }
