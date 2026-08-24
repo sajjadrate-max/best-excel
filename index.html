@@ -582,6 +582,7 @@ window.loadAuthSDKs = async function(){
     white-space:normal; /* nowrap کی جگہ — تنگ کالم میں لمبا لفظ/نمبر اوپر نیچے لپٹ (wrap) جائے، سائیڈ میں نہ نکلے */
     word-break:break-word;
     overflow-wrap:break-word;
+    overflow:hidden; /* nowrap لگے ہوئے بڑے نمبر (kata-num-readable) کہیں کالم کی حد سے باہر نکل کر پوری ٹیبل کو چوڑا نہ کر دیں — اسی وجہ سے سائیڈ سے کٹنے کی شکایت آئی تھی (2026-08-24) */
   }
   .edit-table.wide-table th{
     padding:0px 0px;
