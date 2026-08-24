@@ -415,6 +415,37 @@ window.loadAuthSDKs = async function(){
     font-size:30px !important;
     text-align:center !important;
   }
+  /* لسٹ A — صارف کی دی گئی حوالہ تصویر (میرون تھیم) کے مطابق، صرف اسی
+     لسٹ پر (2026-08-23)۔ باقی لسٹیں (B/C/سیلزمین/دکاندار) اور Profit کالم
+     کی اندرونی رنگت نہیں چھیڑی۔ */
+  .list-a-ref-style .list-a-ref-title{
+    background:#7a2323 !important;
+    color:#fff !important;
+    font-size:26px !important;
+    font-weight:400 !important;
+    padding:14px 6px !important;
+    border-radius:6px 6px 0 0;
+  }
+  .list-a-ref-style thead tr:nth-child(2) th{
+    background:#7a2323 !important;
+    color:#fff !important;
+    font-weight:600 !important;
+    font-size:12.5px !important;
+    padding:8px 3px !important;
+  }
+  .list-a-ref-style tbody tr:nth-child(odd) td{
+    background:#faf6ec !important;
+  }
+  .list-a-ref-style tbody tr:nth-child(even) td{
+    background:#efe6d3 !important;
+  }
+  .list-a-ref-style tbody .cell-val,
+  .list-a-ref-style tbody .cell-input{
+    font-weight:400 !important;
+    -webkit-text-stroke:0 !important;
+    color:#1a1210 !important;
+    font-size:13px !important;
+  }
   .master-all-lock-btn{
     font-size:14px !important;
     vertical-align:middle;
@@ -1496,6 +1527,7 @@ function buildAllTierTables(){
   tiers.forEach(tier=>{
     const card = document.createElement('div');
     card.className = 'card tier-card';
+    card.classList.add('list-a-ref-style'); // نیچے CSS دیکھیں — صارف کی دی گئی حوالہ تصویر کا میرون تھیم، اب ریٹ لسٹ کی تمام کارڈز (A/B/C/سیلزمین/دکاندار) پر (2026-08-23)
 
     const h2 = document.createElement('h2');
     h2.style.textAlign = 'center';
@@ -1508,6 +1540,46 @@ function buildAllTierTables(){
     shareBtn.textContent = '📤 پرنٹ کریں';
     shareBtn.addEventListener('click', ()=> shareCardAsImage(tier, shareBtn));
     card.appendChild(shareBtn);
+
+    if(tier.master){
+      // صارف کی طرف سے دی گئی حوالہ فہرست (تصویر) کو ایک ہی بار میں لسٹ A
+      // میں بھر دینے کا بٹن — Weight/Pcs/Price/Agency چاروں سیٹ کرتا ہے،
+      // Profit کو بالکل نہیں چھیڑتا (وہ ویسے بھی خودکار Price-Agency سے
+      // بنتا ہے) — 2026-08-23 صارف کی درخواست پر۔ عام حالت میں چھپا رہتا
+      // ہے، صرف اس بٹن کو دبانے پر اثر پڑتا ہے، اس لیے کسی موجودہ ڈیٹا کو
+      // خطرہ نہیں جب تک صراحتاً نہ دبایا جائے۔
+      const importBtn = document.createElement('button');
+      importBtn.type = 'button';
+      importBtn.className = 'share-btn';
+      importBtn.style.background = '#1e5f4a';
+      importBtn.textContent = '📋 حوالہ نمبر بھریں (Weight/Pcs/Price/Agency)';
+      importBtn.addEventListener('click', ()=>{
+        if(!confirm('یہ لسٹ A کے Weight, Pcs, Price اور Agency کے تمام خانے نیچے دی گئی مقرر فہرست سے بھر دے گا (Profit کو نہیں چھیڑے گا)۔ جاری رکھیں؟')) return;
+        const ref = {
+          rs10:    {weight:'17',      pcs:'288', price:2400, agency:2100},
+          rs50:    {weight:'102',     pcs:'48',  price:2160, agency:1840},
+          rs100:   {weight:'204',     pcs:'24',  price:2160, agency:1840},
+          rs150:   {weight:'310',     pcs:'24',  price:3100, agency:2580},
+          rs400:   {weight:'1000',    pcs:'12',  price:4250, agency:3710},
+          rs1000:  {weight:'2550',    pcs:'4',   price:3550, agency:3050},
+          kabotar: {weight:'20.000',  pcs:'1',   price:6200, agency:5560},
+          sada:    {weight:'20.000',  pcs:'1',   price:4000, agency:3490},
+        };
+        packs.forEach(p=>{
+          const r = ref[p.key];
+          if(!r) return;
+          p.tpcs = r.weight;      // "Weight" کالم
+          p.ctn = r.pcs;          // "Pcs" کالم
+          p.mrp = r.price;        // "Price" کالم
+          p.company = r.agency;   // "Agency" کالم (List A میں اسی نام سے محفوظ ہوتا ہے)
+          p.agencyBManual = false; p.agencyCManual = false; // خودکار حساب دوبارہ چلنے دیں
+        });
+        recalcDependentTiers();
+        buildAllTierTables();
+        if(typeof scheduleSiteDataSave === 'function') scheduleSiteDataSave();
+      });
+      card.appendChild(importBtn);
+    }
 
     const wrap = document.createElement('div');
     wrap.className = 'edit-table';
@@ -1530,7 +1602,7 @@ function buildAllTierTables(){
 
     const thead = document.createElement('thead');
     const titleRow = document.createElement('tr');
-    titleRow.innerHTML = `<th colspan="${tier.slug === 'dukandar' ? 4 : 6}" class="sheet-title" dir="ltr"><span class="brand-badge"><span class="b-best">Best</span> <span class="b-excel">Excel</span></span></th>`;
+    titleRow.innerHTML = `<th colspan="${tier.slug === 'dukandar' ? 4 : 6}" class="sheet-title list-a-ref-title" dir="ltr">Best Excel</th>`;
     thead.appendChild(titleRow);
 
     if(tier.master){
@@ -1881,6 +1953,13 @@ async function renderTierCanvas(btn){
   if(typeof window.measureAndSizeInput === 'function'){
     el.querySelectorAll('.cell-input').forEach(window.measureAndSizeInput);
   }
+  // 🔒/🔓 لاک بٹن کا ایموجی html2canvas میں صحیح نہیں کھینچا جاتا (رنگین
+  // ڈبے کی طرح، غلط جگہ پر نظر آتا تھا — Agency ہیڈر کے اوپر عجیب نشان
+  // بن جاتا تھا) — اسی لیے کھینچنے سے پہلے تمام لاک بٹن عارضی طور پر چھپا
+  // دیتے ہیں، کھینچنے کے فوراً بعد واپس دکھا دیتے ہیں (2026-08-23)۔
+  const lockBtns = el.querySelectorAll('.row-lock-btn, .master-all-lock-btn');
+  const lockPrevDisplay = [];
+  lockBtns.forEach(b=>{ lockPrevDisplay.push(b.style.display); b.style.display = 'none'; });
   // چوڑی ٹیبل (موبائل پر سائیڈ سکرول والی) کو html2canvas صرف نظر آنے
   // والا حصہ ہی کھینچتا تھا، پورا نہیں — اسی لیے کچھ کالم کٹے ہوئے آتے
   // تھے۔ کھینچنے سے پہلے مکمل چوڑا (بغیر سکرول) کر دیتے ہیں، بعد میں
@@ -1890,11 +1969,15 @@ async function renderTierCanvas(btn){
   // والا حصہ کھینچتا تھا۔ اب ٹیبل fixed layout کی وجہ سے پہلے ہی مکمل
   // اسکرین میں فٹ ہے (کوئی سکرول نہیں) — اسی موجودہ حالت میں کھینچنا اب
   // زیادہ درست ہے، ورنہ پرنٹ ویب سائٹ سے مختلف (زیادہ چوڑا) نظر آتا۔
-  return await html2canvas(el, {
-    scale: 3,                 // high-res export
-    backgroundColor: '#F4EFE2', // matches the card's cream background
-    useCORS: true,
-  });
+  try{
+    return await html2canvas(el, {
+      scale: 3,                 // high-res export
+      backgroundColor: '#F4EFE2', // matches the card's cream background
+      useCORS: true,
+    });
+  } finally {
+    lockBtns.forEach((b,i)=>{ b.style.display = lockPrevDisplay[i]; });
+  }
 }
 
 
@@ -3517,6 +3600,10 @@ function syncKataItemsFromRateList(){
     // براہِ راست ریٹ لسٹ کی موجودہ قدر، کبھی پرانی قدر پر انحصار نہیں۔
     item.weight = p.tpcs;
     item.rate = agencyB; // Price — ریٹ لسٹ B کارڈ کا ایجنسی ریٹ
+    // فی کارٹن پیس تعداد — نیا "کل وزن" باکس اسی سے فی کارٹن وزن نکالتا ہے
+    // (فی پیس Weight × یہ تعداد) — دیکھیں kataWireLiveFormulas کا نوٹ
+    // (2026-08-23)۔
+    item.pcsPerCtn = Number(p.ctn) || 0;
     // Profit — اب بالکل ریٹ لسٹ B کارڈ کے اپنے "Profit" کالم جتنا ہی
     // (Price CTN منفی Agency)، پہلے کی "B منفی Company" فارمولے کی بجائے
     // (2026-08-16 تبدیل کیا گیا، تصویر میں B کارڈ کے Profit کالم سے
@@ -3887,6 +3974,16 @@ function kataEscape(s){
   const d = document.createElement('div');
   d.textContent = String(s);
   return d.innerHTML;
+}
+
+// "26g"/"20kg"/"1000g" جیسی Weight قدروں سے صرف عددی حصہ نکال کر ہمیشہ
+// گرام میں واپس کرتا ہے — "کل وزن" باکس کے لیے (2026-08-23)۔ اکائی نہ ملے
+// تو 'g' فرض کر لیا جاتا ہے۔
+function kataParseWeightGrams(str){
+  if(str == null) return 0;
+  const s = String(str).trim().toLowerCase();
+  const num = parseFloat(s) || 0;
+  return s.endsWith('kg') ? num * 1000 : num;
 }
 
 // Small "⋮" corner menu, reused for both کھاتہ book delete (list view) and
@@ -4408,6 +4505,12 @@ function kataRenderEntryCard(entry, isLast, idx){
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
         </div>
       </div>`}
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">${(entry.weightKg||0).toFixed ? entry.weightKg.toFixed(2) : (entry.weightKg||0)}</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
+        </div>
+      </div>
       ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya, idx)}
       <div class="kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
         <button type="button" class="kata-print-entry-btn" style="padding:5px 14px;font-size:12px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 پرنٹ</button>
@@ -4582,6 +4685,12 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <div class="n" data-kata-sum-profit style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total Profit</div>
         </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0.00</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
+        </div>
       </div>` : `
       <div style="display:flex;gap:10px;margin-top:8px;">${kataInstance === 'ribnawaz' ? `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;box-sizing:border-box;">
@@ -4610,7 +4719,13 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <div class="n" data-kata-sum-price style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total Price</div>
         </div>
-      </div>` : ''}`}
+      </div>` : ''}
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0.00</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
+        </div>
+      </div>`}
       <div class="edit-table" style="margin-top:8px;">
         <table dir="ltr">
           ${agencySimple ? '<colgroup><col style="width:30%"><col style="width:70%"></colgroup>' : ''}
@@ -4655,7 +4770,7 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
 
   const showDiscount = kataShowDiscount();
   function recomputeTotalsBlock(){
-    let todayT = 0, todayRate = 0, todayDiscount = 0, todayProfit = 0;
+    let todayT = 0, todayRate = 0, todayDiscount = 0, todayProfit = 0, todayWeightGrams = 0;
     KATA_ITEMS.forEach(item=>{
       const tI = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`);
       const t = Number((tI && tI.value) || 0) || 0;
@@ -4672,9 +4787,19 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
         const d = Number((dI && dI.value) || 0) || 0;
         todayDiscount += d * t;
       }
+      // کل وزن — فی پیس Weight (خانے میں لکھی موجودہ قدر) × ریٹ لسٹ کے Pcs
+      // (فی کارٹن تعداد) × T CTN = اس آئٹم کی آج کی کل وزن (گرام میں)۔ Z
+      // Net Bill کو یہاں سے بھی خارج رکھا ہے (وہ اصل سٹاک نہیں)۔
+      if(!isZNet){
+        const wI = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="weight"]`);
+        const weightPerPiece = kataParseWeightGrams((wI && wI.value) != null ? wI.value : item.weight);
+        todayWeightGrams += weightPerPiece * (item.pcsPerCtn || 0) * t;
+      }
     });
     const sumTEl = document.querySelector('[data-kata-sum-t]');
     if(sumTEl) sumTEl.textContent = todayT;
+    const sumWeightEl = document.querySelector('[data-kata-sum-weight]');
+    if(sumWeightEl) sumWeightEl.textContent = (todayWeightGrams / 1000).toFixed(2);
     const kharchInput = document.querySelector('[data-kata-field="kharch"]');
     const kharch = Number((kharchInput && kharchInput.value) || 0) || 0;
     // ربنواز کھاتہ — صارف کی درخواست پر (2026-08-22): "کرایہ" کو "خرچہ" کر
@@ -4886,7 +5011,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
   prevItemData = prevItemData || {};
   const showDiscount = kataShowDiscount();
   const items = {};
-  let todayT = 0, todayRate = 0, todayDiscount = 0, todayProfit = 0;
+  let todayT = 0, todayRate = 0, todayDiscount = 0, todayProfit = 0, todayWeightGrams = 0;
   KATA_ITEMS.forEach(item=>{
     const rlKey = KATA_TO_RATELIST_KEY[item.key];
     const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
@@ -4910,6 +5035,14 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
     const priftTotal = livePrift * t;
     items[item.key] = {t, price, rate: liveRate, name: liveName, weight: liveWeight, prift: livePrift, priftTotal};
     if(liveIdx != null) items[item.key].idx = liveIdx;
+    // کل وزن — فی پیس Weight (وہی جو ابھی محفوظ ہوا) × ریٹ لسٹ کے Pcs (فی
+    // کارٹن تعداد) × T CTN، Z Net Bill کے بغیر (2026-08-23)۔ آئٹم کا اپنا
+    // pcsPerCtn بھی محفوظ کر لیتے ہیں تاکہ آئندہ ریٹ لسٹ بدلنے پر بھی یہ
+    // پرانی انٹری کا وزن درست (تاریخی) رہے۔
+    if(!isZNet){
+      items[item.key].pcsPerCtn = item.pcsPerCtn || 0;
+      todayWeightGrams += kataParseWeightGrams(liveWeight) * (item.pcsPerCtn || 0) * t;
+    }
     todayProfit += priftTotal;
     if(showDiscount){
       const dInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="discount"]`);
@@ -4991,7 +5124,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
     const entries = kataLocalGetEntries(kataOpenId);
     entries.push({
       id: 'e' + Date.now() + Math.random().toString(36).slice(2,7),
-      items, sabka, today, total, jamah, bqaya, salesman, kharch, less, cellColors,
+      items, sabka, today, total, jamah, bqaya, salesman, kharch, less, cellColors, weightKg: Math.round((todayWeightGrams/1000)*100)/100,
       createdAt: new Date().toISOString(),
     });
     kataLocalSaveEntries(kataOpenId, entries);
@@ -5003,7 +5136,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
 
   try{
     await kataCol().doc(kataOpenId).collection('entries').add({
-      items, sabka, today, total, jamah, bqaya, salesman, kharch, less, cellColors,
+      items, sabka, today, total, jamah, bqaya, salesman, kharch, less, cellColors, weightKg: Math.round((todayWeightGrams/1000)*100)/100,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
     kataShowSavedToast();
