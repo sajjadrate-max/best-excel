@@ -933,6 +933,30 @@ window.loadAuthSDKs = async function(){
   -webkit-text-stroke:.7px #FFFBF2;
   paint-order:stroke fill;
 }
+/* ---------- براؤزر کے اپنے پرنٹ (Ctrl+P) کے لیے (2026-08-24) ----------
+   ایپ کا اپنا "🖨 پرنٹ" بٹن (PDF بنا کر شیئر کرتا ہے) اس سے الگ ہے اور
+   متاثر نہیں ہوتا۔ یہ صرف اس وقت لاگو ہوتا ہے جب صارف براؤزر کے مینو یا
+   Ctrl+P سے براہِ راست پرنٹ کرے — ورنہ صفحہ خالی/بے ترتیب نظر آتا تھا
+   کیونکہ سائٹ کے لیے کوئی پرنٹ اسٹائل شیٹ سرے سے موجود ہی نہیں تھی۔ */
+@media print{
+  * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+  nav, .scroll-fab, #siteOfflineBlock, #siteTextPromptModal,
+  .row-lock-btn, .master-all-lock-btn, .kata-entry-actions,
+  .share-btn, #kataNewEntryCard, .kata-dots-wrap{
+    display:none !important;
+  }
+  /* ہر محفوظ شدہ کھاتہ انٹری اپنے الگ صفحے پر — پہلی انٹری سے پہلے نیا
+     صفحہ نہیں (ورنہ شروع میں ایک خالی صفحہ آ جاتا)، بعد کی ہر انٹری سے
+     پہلے نیا صفحہ شروع ہو۔ */
+  .kata-entry-card{
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+  .kata-entry-card + .kata-entry-card{
+    break-before:page;
+    page-break-before:always;
+  }
+}
 </style>
 </head>
 <body>
