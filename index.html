@@ -3583,12 +3583,29 @@ const KATA_ITEMS = [
 // (ریٹ لسٹ میں ان کا کوئی متبادل پراڈکٹ نہیں)، اور "d" (فرق) کالم بھی
 // چھیڑا نہیں گیا — صرف weight/rate/prift۔
 const KATA_TO_RATELIST_KEY = {rs10:'rs10', rs50:'rs50', rs100:'rs100', rs150:'rs150', rs400:'rs400', rs1000:'rs1000', special:'kabotar', sada:'sada'};
+// کھاتہ آئٹم اور ریٹ لسٹ (packs) پراڈکٹ کو جوڑنے کا مرکزی فنکشن — key سے
+// تلاش (packs.find(x=>x.key===rlKey)) ناقابلِ اعتماد نکلا (2026-08-24،
+// "کل وزن" ہمیشہ 0 آنے کی اصل وجہ: key میچ ہی نہیں ہو رہا تھا، جیسا کہ
+// موجودہ آرکیٹیکچر نوٹ پہلے سے کہتا ہے کہ ریو-لنکنگ ہمیشہ POSITIONAL ہونی
+// چاہیے، key سے نہیں)۔ اب پوزیشن کے حساب سے (List A میں پراڈکٹ کی ترتیب:
+// Rs10,Rs50,Rs100,Rs150,Rs400,Rs1000,Special,sada — بالکل KATA_ITEMS کی
+// ترتیب جیسی) میچ کرتے ہیں — key بطور fallback ابھی بھی آزمایا جاتا ہے۔
+const KATA_RATELIST_INDEX = {rs10:0, rs50:1, rs100:2, rs150:3, rs400:4, rs1000:5, special:6, sada:7};
+function kataFindPack(itemKey){
+  if(typeof packs === 'undefined' || !Array.isArray(packs)) return null;
+  const rlKey = KATA_TO_RATELIST_KEY[itemKey];
+  if(!rlKey) return null; // Z Net Bill
+  const byKey = packs.find(x=>x.key === rlKey);
+  if(byKey) return byKey;
+  const idx = KATA_RATELIST_INDEX[itemKey];
+  return (idx != null && packs[idx]) ? packs[idx] : null;
+}
 function syncKataItemsFromRateList(){
   if(typeof packs === 'undefined' || !Array.isArray(packs)) return;
   KATA_ITEMS.forEach(item=>{
     const rlKey = KATA_TO_RATELIST_KEY[item.key];
     if(!rlKey) return; // Z Net Bill — no ریٹ لسٹ equivalent, leave as-is
-    const p = packs.find(x=>x.key === rlKey);
+    const p = kataFindPack(item.key);
     if(!p) return;
     const agencyB = Number(p.agencyB) || 0;
     const mrp = Number(p.mrp) || 0;
@@ -4507,8 +4524,12 @@ function kataRenderEntryCard(entry, isLast, idx){
       </div>`}
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">${(entry.weightKg||0).toFixed ? entry.weightKg.toFixed(2) : (entry.weightKg||0)}</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">${((Number(entry.weightKg)||0)/40).toFixed(2)}</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
         </div>
       </div>
       ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya, idx)}
@@ -4583,8 +4604,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
   // Profit اور T.Profit کالم مکمل ہٹا دیے۔ صرف Agency میں۔
   const agencySimple = kataInstance === 'agency';
   KATA_ITEMS.forEach((item, idx)=>{
-    const rlKey = KATA_TO_RATELIST_KEY[item.key];
-    const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
+    const p = kataFindPack(item.key);
     const liveName = item.name;
     // Z Net Bill کی دونوں قطاریں کسی ریٹ لسٹ پراڈکٹ سے منسلک نہیں — پوری
     // طرح دستی انٹری کے لیے ہیں، اس لیے ان کا Rate اور Profit بھی (باقی
@@ -4691,6 +4711,10 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0.00</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
         </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div class="n" data-kata-sum-weight-man style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0.00</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
+        </div>
       </div>` : `
       <div style="display:flex;gap:10px;margin-top:8px;">${kataInstance === 'ribnawaz' ? `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;box-sizing:border-box;">
@@ -4724,6 +4748,10 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0.00</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div class="n" data-kata-sum-weight-man style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:700;color:var(--maroon-deep);direction:ltr;">0.00</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
         </div>
       </div>`}
       <div class="edit-table" style="margin-top:8px;">
@@ -4789,17 +4817,27 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
       }
       // کل وزن — فی پیس Weight (خانے میں لکھی موجودہ قدر) × ریٹ لسٹ کے Pcs
       // (فی کارٹن تعداد) × T CTN = اس آئٹم کی آج کی کل وزن (گرام میں)۔ Z
-      // Net Bill کو یہاں سے بھی خارج رکھا ہے (وہ اصل سٹاک نہیں)۔
+      // Net Bill کو یہاں سے بھی خارج رکھا ہے (وہ اصل سٹاک نہیں)۔ پہلے یہاں
+      // item.pcsPerCtn (sync کے دوران محفوظ شدہ) پر انحصار تھا جو 0 دکھا
+      // رہا تھا — اب براہِ راست ریٹ لسٹ (packs) سے اسی لمحے تازہ نکالتے
+      // ہیں، کسی cached قدر پر انحصار نہیں (2026-08-23)۔
       if(!isZNet){
         const wI = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="weight"]`);
         const weightPerPiece = kataParseWeightGrams((wI && wI.value) != null ? wI.value : item.weight);
-        todayWeightGrams += weightPerPiece * (item.pcsPerCtn || 0) * t;
+        const pW = kataFindPack(item.key);
+        const pWctn = pW ? (Number(pW.ctn) || 0) : 0;
+        const pcsPerCtn = pWctn || (item.pcsPerCtn || 0);
+        todayWeightGrams += weightPerPiece * pcsPerCtn * t;
       }
     });
     const sumTEl = document.querySelector('[data-kata-sum-t]');
     if(sumTEl) sumTEl.textContent = todayT;
     const sumWeightEl = document.querySelector('[data-kata-sum-weight]');
-    if(sumWeightEl) sumWeightEl.textContent = (todayWeightGrams / 1000).toFixed(2);
+    const weightKgVal = todayWeightGrams / 1000;
+    if(sumWeightEl) sumWeightEl.textContent = weightKgVal.toFixed(2);
+    // "من" (1 من = 40 کلوگرام) — کلوگرام باکس کے ساتھ دوسرا خانہ (2026-08-24 صارف کی درخواست پر)
+    const sumWeightManEl = document.querySelector('[data-kata-sum-weight-man]');
+    if(sumWeightManEl) sumWeightManEl.textContent = (weightKgVal / 40).toFixed(2);
     const kharchInput = document.querySelector('[data-kata-field="kharch"]');
     const kharch = Number((kharchInput && kharchInput.value) || 0) || 0;
     // ربنواز کھاتہ — صارف کی درخواست پر (2026-08-22): "کرایہ" کو "خرچہ" کر
@@ -5013,8 +5051,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
   const items = {};
   let todayT = 0, todayRate = 0, todayDiscount = 0, todayProfit = 0, todayWeightGrams = 0;
   KATA_ITEMS.forEach(item=>{
-    const rlKey = KATA_TO_RATELIST_KEY[item.key];
-    const p = rlKey && typeof packs !== 'undefined' ? packs.find(x=>x.key === rlKey) : null;
+    const p = kataFindPack(item.key);
     const isZNet = item.key === 'znet1' || item.key === 'znet2';
     const liveName = item.name;
     // فارم میں جو Weight اصل میں لکھا ہوا نظر آ رہا ہے وہی محفوظ ہو — پہلے
@@ -5040,8 +5077,12 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
     // pcsPerCtn بھی محفوظ کر لیتے ہیں تاکہ آئندہ ریٹ لسٹ بدلنے پر بھی یہ
     // پرانی انٹری کا وزن درست (تاریخی) رہے۔
     if(!isZNet){
-      items[item.key].pcsPerCtn = item.pcsPerCtn || 0;
-      todayWeightGrams += kataParseWeightGrams(liveWeight) * (item.pcsPerCtn || 0) * t;
+      // Pcs خالی/0 کی صورت میں بھی پرانی محفوظ قدر پر واپس (اوپر
+      // recomputeTotalsBlock جیسا ہی — 2026-08-24)۔
+      const pCtn = p ? (Number(p.ctn) || 0) : 0;
+      const pcsPerCtn = pCtn || (item.pcsPerCtn || 0);
+      items[item.key].pcsPerCtn = pcsPerCtn;
+      todayWeightGrams += kataParseWeightGrams(liveWeight) * pcsPerCtn * t;
     }
     todayProfit += priftTotal;
     if(showDiscount){
