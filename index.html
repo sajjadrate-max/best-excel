@@ -4505,7 +4505,11 @@ async function kataPrintEntry(btn){
     const pageH = pdf.internal.pageSize.getHeight();
     const margin = 20;
     const availW = pageW - margin*2;
-    const scale = Math.min(availW / canvas.width, (pageH - margin*2) / canvas.height);
+    // صارف کی درخواست (2026-08-25): زوم مزید کم کریں تاکہ مکمل کھاتہ صرف
+    // آدھے صفحے میں آ جائے — اب لمبائی کی حد آدھے صفحے تک محدود ہے
+    // (پہلے 1.1x زیادہ سے زیادہ تھا، اب آدھے صفحے کی اونچائی بنیاد ہے)۔
+    const halfAvailH = (pageH - margin*2) / 2;
+    const scale = Math.min(availW / canvas.width, halfAvailH / canvas.height);
     const drawW = canvas.width * scale;
     const drawH = canvas.height * scale;
     pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
