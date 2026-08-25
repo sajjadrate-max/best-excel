@@ -484,6 +484,30 @@ window.loadAuthSDKs = async function(){
     -webkit-text-stroke:0 !important;
     color:#1a1210 !important;
   }
+  /* صارف نے دوبارہ حوالہ تصویر بھیجی (2026-08-25) — لیکن صرف پرنٹ میں یہ
+     "باریک باریک" (uniform تنگ) خانے چاہئیں، خود ویب سائٹ (لائیو صفحہ) پر
+     نہیں — اس لیے یہ صرف اس وقت لاگو ہوتا ہے جب کارڈ پر عارضی طور پر
+     kata-print-tight کلاس بھی موجود ہو (صرف پرنٹ/کیپچر کے وقت، کوڈ میں
+     kataPrintEntry کی طرف سے لگائی اور ہٹائی جاتی ہے)۔ ویب سائٹ کا اپنا
+     سائز (kata-num-readable 8px, kata-normal-size 9px وغیرہ) ہمیشہ کی طرح
+     رہے گا۔ */
+  .kata-print-tight.kata-ref-style thead th,
+  .kata-print-tight.kata-ref-style tbody .cell-val,
+  .kata-print-tight.kata-ref-style tbody .cell-input,
+  .kata-print-tight.kata-ref-style tbody .kata-num-readable,
+  .kata-print-tight.kata-ref-style tbody .kata-normal-size,
+  .kata-print-tight.kata-ref-style tbody .kata-smaller-size,
+  .kata-print-tight.kata-ref-style tbody .kata-thin-text{
+    font-size:10px !important;
+    line-height:1 !important;
+    white-space:normal !important;
+  }
+  .kata-print-tight.kata-ref-style tbody td{
+    padding:1px 1px !important;
+  }
+  .kata-print-tight.kata-ref-style thead th{
+    padding:3px 1px !important;
+  }
   .master-all-lock-btn{
     font-size:14px !important;
     vertical-align:middle;
@@ -4428,12 +4452,12 @@ async function kataPrintEntry(btn){
   if(actions) actions.style.display = 'none'; // don't capture the print/delete buttons themselves
   let inputSwaps = [];
   let hiddenPrintCells = [];
-  // سیلزمین اور ربنواز دونوں کھاتوں — صارف کی درخواست پر پرنٹ سے 6 کالمز
-  // (Rate، Profit، Discount، D.Total، Sabka CTN، Total CTN میں سے Total CTN
-  // کے سوا باقی 5) ہمیشہ غائب رہیں — چاہے موبائل سے پرنٹ ہو یا کمپیوٹر سے۔
-  // یہ صرف پرنٹ/PDF پر اثر انداز ہوتا ہے، خود ویب سائٹ پر یہ کالمز ویسے ہی
-  // نظر آتے رہیں گے (پہلے صرف سیلزمین کے لیے تھا، 2026-08-25 کو ربنواز کے
-  // لیے بھی بڑھا دیا گیا)۔
+  // سیلزمین اور ربنواز دونوں کھاتوں — پرنٹ سے وہی 5 کالمز (Rate، Profit،
+  // Discount، D.Total، Sabka CTN) اور ٹوٹلز باکس کے CTN/Discount کالمز
+  // ہمیشہ کی طرح غائب رہیں (2026-08-25 کو واپس بحال کیا گیا — صارف نے
+  // وضاحت کی کہ کالمز نہیں بدلنے تھے، صرف خانوں کا سائز چھوٹا/کمپیکٹ
+  // چاہیے تھا)۔ یہ صرف پرنٹ/PDF پر اثر انداز ہوتا ہے، خود ویب سائٹ پر یہ
+  // کالمز ویسے ہی نظر آتے رہیں گے۔
   if(kataInstance === 'salesman' || kataInstance === 'ribnawaz'){
     const itemTable = card.querySelector('.wide-table table');
     if(itemTable){
@@ -4448,9 +4472,6 @@ async function kataPrintEntry(btn){
         });
       });
     }
-    // نیچے والا Sabka/Today/Total/Jamah/Jamah/Bqaya باکس (totals table) —
-    // اس کا CTN کالم (2واں) اور Discount کالم (5واں/آخری) دونوں پرنٹ سے
-    // غائب کریں (صارف کی درخواست 2026-08-25، خود ویب سائٹ پر نظر آتے رہیں گے)۔
     const totalsTable = card.querySelector('.edit-table:not(.wide-table) table');
     if(totalsTable){
       [2,5].forEach(pos=>{
@@ -4467,6 +4488,7 @@ async function kataPrintEntry(btn){
   // وجہ سے پہلے ہی مکمل اسکرین میں فٹ ہے (کوئی سکرول نہیں) — اسی موجودہ
   // حالت میں کھینچنا اب زیادہ درست ہے، ورنہ پرنٹ ویب سائٹ سے مختلف نظر آتا۔
   try{
+    card.classList.add('kata-print-tight'); // صرف پرنٹ کے وقت — کیپچر کے بعد نیچے finally میں ہٹا دیا جاتا ہے، ویب سائٹ پر کبھی نظر نہیں آتا
     try{ await document.fonts.ready; } catch(e){ /* proceed anyway */ }
     if(typeof window.measureAndSizeInput === 'function'){
       card.querySelectorAll('.cell-input').forEach(window.measureAndSizeInput);
@@ -4488,6 +4510,7 @@ async function kataPrintEntry(btn){
       inp.parentNode.insertBefore(span, inp);
       inputSwaps.push({inp, span});
     });
+    const cardRect = card.getBoundingClientRect(); // ویب سائٹ پر خانہ اصل میں کتنا "چھوٹا" نظر آتا ہے، اسی سائز کو پرنٹ کے لیے بنیاد بنائیں گے
     const canvas = await html2canvas(card, {scale:3, backgroundColor:'#F4EFE2', useCORS:true});
     inputSwaps.forEach(({inp, span})=>{ span.remove(); inp.style.display = ''; });
     inputSwaps = [];
@@ -4497,23 +4520,28 @@ async function kataPrintEntry(btn){
     // پرنٹر کا پرنٹ ڈائیلاگ عام طور پر ہمیشہ Portrait کاغذ فرض کرتا ہے —
     // پہلے یہاں کھاتے کی چوڑی ٹیبل کے مطابق PDF کا صفحہ بھی چوڑا (landscape)
     // بنایا جاتا تھا، جس کی وجہ سے پرنٹر پر کاغذ الٹی/پسیلی (sideways) نکل
-    // رہا تھا۔ اب صفحہ ہمیشہ سیدھا (Portrait، A4) رکھتے ہیں اور تصویر کو
-    // اسی کے اندر چوڑائی کے مطابق سکیل کر کے اوپر سے فٹ کرتے ہیں — نہ
-    // گھمائی جاتی ہے، نہ کٹتی ہے، ہمیشہ سیدھی نظر آئے گی (2026-08-25)۔
+    // رہا تھا۔ اب صفحہ ہمیشہ سیدھا (Portrait، A4) رکھتے ہیں۔
     const pdf = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4' });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    // صارف کی درخواست (2026-08-25): پرنٹ بالکل ویسا ہی آئے جیسا اسکرین پر
-    // نظر آتا ہے (میرون عنوان، رنگین ٹیبل، خلاصہ خانے، Sabka/Today/Total
-    // باکس — سب کچھ) — نہ کھینچا ہوا، نہ کٹا ہوا۔ اسی لیے یہاں صرف تناسب
-    // برقرار رکھنے والا (aspect-preserving) سادہ فٹ استعمال کرتے ہیں —
-    // پہلے کی آدھے صفحے پر زبردستی کھینچنے والی تبدیلی ہٹا دی گئی۔
     const margin = 34;
+    // صارف کی درخواست (2026-08-25): پرنٹ کو زبردستی بڑا کر کے صفحہ بھرنے
+    // کی بجائے، بالکل اسی چھوٹے/کمپیکٹ سائز میں رکھیں جیسے ویب سائٹ پر
+    // (فون سکرین پر) نظر آتا ہے — اسی لیے html2canvas کی اندرونی 3x
+    // ریزولیوشن کو یہاں الٹا (÷3) کر کے کارڈ کے اصل CSS پکسل سائز پر واپس
+    // لے آتے ہیں (1 پکسل ≈ 0.75pt)، صفحہ نہیں بھرتے — نیچے خالی جگہ رہے
+    // گی، وہی مقصود ہے۔
+    const pxToPt = 0.75;
+    let drawW = cardRect.width * pxToPt;
+    let drawH = cardRect.height * pxToPt;
+    // صارف کی درخواست (2026-08-25): پرنٹ صفحے کے چوتھے حصے (1/4) جتنا
+    // چھوٹا ہو — تناسب برقرار رکھتے ہوئے۔
     const availW = pageW - margin*2;
     const availH = pageH - margin*2;
-    const scale = Math.min(availW / canvas.width, availH / canvas.height);
-    const drawW = canvas.width * scale;
-    const drawH = canvas.height * scale;
+    const targetMaxH = availH / 4;
+    const safetyScale = Math.min(1, availW / drawW, targetMaxH / drawH);
+    drawW *= safetyScale;
+    drawH *= safetyScale;
     pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
     const blob = pdf.output('blob');
     if(!blob) throw new Error('no-blob');
@@ -4522,6 +4550,7 @@ async function kataPrintEntry(btn){
     alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
     console.warn(err);
   } finally {
+    card.classList.remove('kata-print-tight');
     inputSwaps.forEach(({inp, span})=>{ span.remove(); inp.style.display = ''; }); // اگر html2canvas سے پہلے ہی کوئی خرابی آئی ہو تو بھی inputs واپس آ جائیں
     hiddenPrintCells.forEach(({cell, prev})=>{ cell.style.display = prev; }); // چھپائے گئے کالمز ویب سائٹ پر واپس دکھا دیں
     if(actions) actions.style.display = prevDisplay;
