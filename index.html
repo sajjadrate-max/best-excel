@@ -2169,7 +2169,7 @@ async function shareCardAsImage(tier, btn){
     // آئے — یہ تناسب برقرار رکھنے والا (aspect-preserving) فٹ نہیں بلکہ
     // جان بوجھ کر چوڑائی کو کم کیا گیا ہے۔
     const drawH = pageH - margin*2;
-    const widthNarrowFactor = 0.62;
+    const widthNarrowFactor = 0.40;
     const drawW = drawH * (canvas.width / canvas.height) * widthNarrowFactor;
     pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
     const blob = pdf.output('blob');
