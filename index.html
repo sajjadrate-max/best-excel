@@ -4446,12 +4446,21 @@ async function kataPrintEntry(btn){
     if(typeof jspdf === 'undefined' || !jspdf.jsPDF) throw new Error('jsPDF-not-loaded');
     const { jsPDF } = jspdf;
     const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF({
-      orientation: canvas.width >= canvas.height ? 'landscape' : 'portrait',
-      unit: 'pt',
-      format: [canvas.width, canvas.height],
-    });
-    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+    // پرنٹر کا پرنٹ ڈائیلاگ عام طور پر ہمیشہ Portrait کاغذ فرض کرتا ہے —
+    // پہلے یہاں کھاتے کی چوڑی ٹیبل کے مطابق PDF کا صفحہ بھی چوڑا (landscape)
+    // بنایا جاتا تھا، جس کی وجہ سے پرنٹر پر کاغذ الٹی/پسیلی (sideways) نکل
+    // رہا تھا۔ اب صفحہ ہمیشہ سیدھا (Portrait، A4) رکھتے ہیں اور تصویر کو
+    // اسی کے اندر چوڑائی کے مطابق سکیل کر کے اوپر سے فٹ کرتے ہیں — نہ
+    // گھمائی جاتی ہے، نہ کٹتی ہے، ہمیشہ سیدھی نظر آئے گی (2026-08-25)۔
+    const pdf = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    const availW = pageW - margin*2;
+    const scale = Math.min(availW / canvas.width, (pageH - margin*2) / canvas.height);
+    const drawW = canvas.width * scale;
+    const drawH = canvas.height * scale;
+    pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
     const blob = pdf.output('blob');
     if(!blob) throw new Error('no-blob');
     await sharePdfDirectly(blob, 'kata-entry.pdf', 'کھاتہ انٹری');
