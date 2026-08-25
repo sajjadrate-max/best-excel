@@ -2115,15 +2115,23 @@ async function shareCardAsImage(tier, btn){
     }
     const { jsPDF } = jspdf;
     const imgData = canvas.toDataURL('image/png');
-    // Page sized to the table's own proportions (portrait or landscape,
-    // whichever the captured table actually is) so nothing gets cropped
-    // or padded with empty margins.
-    const pdf = new jsPDF({
-      orientation: canvas.width >= canvas.height ? 'landscape' : 'portrait',
-      unit: 'pt',
-      format: [canvas.width, canvas.height],
-    });
-    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+    // پرنٹر کا پرنٹ ڈائیلاگ ہمیشہ Portrait کاغذ فرض کرتا ہے — پہلے یہاں
+    // چوڑی ٹیبل کے مطابق صفحہ بھی چوڑا (landscape) بنایا جاتا تھا، جس کی
+    // وجہ سے کاغذ سیدھا نہیں بلکہ ترچھا/الٹی طرف (sideways) نکلتا تھا۔ اب
+    // ہمیشہ سیدھا (Portrait، A4) صفحہ رکھتے ہیں اور تصویر کو اسی کے اندر
+    // چوڑائی کے مطابق سکیل کر کے اوپر سے فٹ کرتے ہیں — یہی حل کھاتے کے
+    // پرنٹ (kataPrintEntry) میں پہلے کیا جا چکا تھا، یہاں ریٹ لسٹ کے لیے
+    // بھی وہی لگایا (2026-08-25، صارف کی نشاندہی پر — پرنٹ سیدھا/صحیح
+    // ترتیب سے آنا چاہیے)۔
+    const pdf = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    const availW = pageW - margin*2;
+    const scale = Math.min(availW / canvas.width, (pageH - margin*2) / canvas.height);
+    const drawW = canvas.width * scale;
+    const drawH = canvas.height * scale;
+    pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
     const blob = pdf.output('blob');
     const fileName = baseName + '.pdf';
     if(!blob) throw new Error('no-blob');
