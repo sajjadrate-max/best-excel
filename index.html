@@ -450,6 +450,40 @@ window.loadAuthSDKs = async function(){
     color:#1a1210 !important;
     font-size:13px !important;
   }
+  /* کھاتہ (سیلزمین/ربنواز/Agency) ٹیبلز — صارف کی درخواست پر (2026-08-25)
+     بالکل وہی میرون/تنگ حوالہ ڈیزائن جو List A میں پہلے سے موجود ہے، اب
+     تینوں کھاتوں کی ٹیبل پر بھی — عنوان بینر + خانے ایک دوسرے کے قریب۔ */
+  .kata-ref-title{
+    background:#7a2323 !important;
+    color:#fff !important;
+    font-size:15px !important;
+    font-weight:400 !important;
+    padding:7px 6px !important;
+    border-radius:6px 6px 0 0;
+    text-align:center;
+    margin:6px 0 0 0 !important;
+  }
+  .kata-ref-style thead tr th{
+    background:#7a2323 !important;
+    color:#fff !important;
+    font-weight:400 !important;
+    padding:5px 2px !important;
+  }
+  .kata-ref-style tbody tr:nth-child(odd) td{
+    background:#faf6ec !important;
+  }
+  .kata-ref-style tbody tr:nth-child(even) td{
+    background:#efe6d3 !important;
+  }
+  .kata-ref-style tbody td{
+    padding:2px 2px !important;
+  }
+  .kata-ref-style tbody .cell-val,
+  .kata-ref-style tbody .cell-input{
+    font-weight:400 !important;
+    -webkit-text-stroke:0 !important;
+    color:#1a1210 !important;
+  }
   .master-all-lock-btn{
     font-size:14px !important;
     vertical-align:middle;
@@ -4598,8 +4632,8 @@ function kataRenderEntryCard(entry, isLast, idx){
       ${isLast ? kataDotsMenuHtml([{cls:'kata-delete-entry-btn', label:'🗑 حذف کریں'}]) : ''}
       <div class="note" style="text-align:center;font-weight:400;">${kataFormatWhen(entry.createdAt)}</div>
       ${entry.salesman ? `<div class="note" style="text-align:center;">سیلزمین: ${kataEscape(entry.salesman)}</div>` : ''}
-      <div style="text-align:center;font-weight:400;font-size:16px;color:#1B5FD9;margin-bottom:6px;">Best Excel Washing powder</div>
-      <div class="edit-table wide-table">
+      <div class="kata-ref-title">Best Excel Washing powder</div>
+      <div class="edit-table wide-table kata-ref-style">
         <table dir="ltr">
           <colgroup>${showDiscount
             ? '<col style="width:3%"><col style="width:17%"><col style="width:10%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
@@ -4800,9 +4834,9 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <div class="note" style="text-align:center;">
         <div style="margin-bottom:4px;">${nameLabel}</div>
         <input type="text" class="cell-input" data-kata-field="salesman" style="border:1px solid var(--line);text-align:center;" value="${kataEscape(kataOpenName||'')}" disabled>
-        <div style="font-weight:400;font-size:16px;color:#1B5FD9;margin-top:6px;">Best Excel Washing powder</div>
       </div>
-      <div class="edit-table wide-table">
+      <div class="kata-ref-title">Best Excel Washing powder</div>
+      <div class="edit-table wide-table kata-ref-style">
         <table dir="ltr">
           <colgroup>${showDiscount
             ? '<col style="width:3%"><col style="width:17%"><col style="width:10%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
