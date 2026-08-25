@@ -4503,13 +4503,15 @@ async function kataPrintEntry(btn){
     const pdf = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4' });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 20;
+    // صارف کی درخواست (2026-08-25): پرنٹ بالکل ویسا ہی آئے جیسا اسکرین پر
+    // نظر آتا ہے (میرون عنوان، رنگین ٹیبل، خلاصہ خانے، Sabka/Today/Total
+    // باکس — سب کچھ) — نہ کھینچا ہوا، نہ کٹا ہوا۔ اسی لیے یہاں صرف تناسب
+    // برقرار رکھنے والا (aspect-preserving) سادہ فٹ استعمال کرتے ہیں —
+    // پہلے کی آدھے صفحے پر زبردستی کھینچنے والی تبدیلی ہٹا دی گئی۔
+    const margin = 34;
     const availW = pageW - margin*2;
-    // صارف کی درخواست (2026-08-25): زوم مزید کم کریں تاکہ مکمل کھاتہ صرف
-    // آدھے صفحے میں آ جائے — اب لمبائی کی حد آدھے صفحے تک محدود ہے
-    // (پہلے 1.1x زیادہ سے زیادہ تھا، اب آدھے صفحے کی اونچائی بنیاد ہے)۔
-    const halfAvailH = (pageH - margin*2) / 2;
-    const scale = Math.min(availW / canvas.width, halfAvailH / canvas.height);
+    const availH = pageH - margin*2;
+    const scale = Math.min(availW / canvas.width, availH / canvas.height);
     const drawW = canvas.width * scale;
     const drawH = canvas.height * scale;
     pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
