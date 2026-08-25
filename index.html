@@ -994,6 +994,26 @@ window.loadAuthSDKs = async function(){
     overflow:visible !important;
   }
   @page{ margin:8mm; }
+  /* موبائل کے "🖨 پرنٹ" (PDF) بٹن میں پہلے سے یہی رویہ JS کے ذریعے تھا —
+     لیکن Ctrl+P (براؤزر کا اپنا پرنٹ) اس سے مکمل الگ راستہ ہے، وہاں یہ
+     کبھی لاگو نہیں ہوا تھا۔ اب صرف سیلزمین کھاتہ میں، دونوں طریقوں سے
+     پرنٹ کرنے پر یکساں طور پر یہی کالمز چھپیں: Rate، Profit، Discount،
+     D.Total، Sabka CTN — Total CTN نظر آتا رہے گا (صارف کی اصل ہدایت،
+     2026-08-25)۔ */
+  body[data-kata-instance="salesman"] .kata-entry-card .wide-table table tr > *:nth-child(5),
+  body[data-kata-instance="salesman"] .kata-entry-card .wide-table table tr > *:nth-child(7),
+  body[data-kata-instance="salesman"] .kata-entry-card .wide-table table tr > *:nth-child(9),
+  body[data-kata-instance="salesman"] .kata-entry-card .wide-table table tr > *:nth-child(10),
+  body[data-kata-instance="salesman"] .kata-entry-card .wide-table table tr > *:nth-child(11),
+  body[data-kata-instance="salesman"] .kata-entry-card .wide-table table colgroup > col:nth-child(5),
+  body[data-kata-instance="salesman"] .kata-entry-card .wide-table table colgroup > col:nth-child(7),
+  body[data-kata-instance="salesman"] .kata-entry-card .wide-table table colgroup > col:nth-child(9),
+  body[data-kata-instance="salesman"] .kata-entry-card .wide-table table colgroup > col:nth-child(10),
+  body[data-kata-instance="salesman"] .kata-entry-card .wide-table table colgroup > col:nth-child(11),
+  body[data-kata-instance="salesman"] .kata-entry-card .edit-table:not(.wide-table) table thead tr > *:nth-child(5),
+  body[data-kata-instance="salesman"] .kata-entry-card .edit-table:not(.wide-table) table tbody tr > *:nth-child(5){
+    display:none !important;
+  }
 }
 </style>
 </head>
@@ -1597,6 +1617,7 @@ document.querySelectorAll('nav button').forEach(btn=>{
     // book left open from the other instance.
     if(btn.dataset.kataInstance && btn.dataset.kataInstance !== kataInstance){
       kataInstance = btn.dataset.kataInstance;
+      document.body.setAttribute('data-kata-instance', kataInstance); // پرنٹ CSS کو یہ جاننے کے لیے چاہیے کہ کون سا کھاتہ فعال ہے (2026-08-25)
       kataOpenId = null;
       kataOpenName = '';
       kataOpenEntries = [];
@@ -3783,6 +3804,7 @@ let kataLocalMode = false;  // true when login is off — uses localStorage on t
 let kataOpenCarryForward = null; // set from the opened book's .carryForward when it has no entries yet (after an automatic monthly rollover)
 let kataOpenClosed = false; // true once this book has been auto-closed by a monthly rollover — view only, no new entries
 let kataInstance = 'salesman'; // which named ledger section is active — 'salesman' is the original/default (unprefixed storage keys, for backward compatibility with existing data), any other value (e.g. 'ribnawaz') gets its own separate namespace
+if(document.body) document.body.setAttribute('data-kata-instance', kataInstance); // پرنٹ CSS کے لیے (2026-08-25)
 // Discount خانے صرف سیلزمین کھاتے میں دکھائے جاتے ہیں — ربنواز اور Agency
 // کھاتوں میں بالکل نہیں (2026-08-21، صریح صارف کی ہدایت پر)۔
 function kataShowDiscount(){ return kataInstance === 'salesman' || kataInstance === 'ribnawaz'; }
