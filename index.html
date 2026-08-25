@@ -984,6 +984,16 @@ window.loadAuthSDKs = async function(){
     background:#fff !important;
     background-image:none !important;
   }
+  /* پرنٹ پریویو میں دائیں طرف کے کالم کٹنے کی شکایت — کسی جگہ فکسڈ چوڑائی
+     پرنٹ کے قابلِ پرنٹ حصے سے تجاوز کر رہی تھی۔ اب سب کچھ زبردستی 100%
+     چوڑائی کے اندر مقید (2026-08-25)۔ */
+  html, body, main, .card, .kata-entry-card,
+  .edit-table, .edit-table table{
+    max-width:100% !important;
+    width:100% !important;
+    overflow:visible !important;
+  }
+  @page{ margin:8mm; }
 }
 </style>
 </head>
