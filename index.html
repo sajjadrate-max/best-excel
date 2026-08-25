@@ -2157,7 +2157,7 @@ async function shareCardAsImage(tier, btn){
 
     await sharePdfDirectly(blob, fileName, tier.title);
   } catch(err){
-    alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
+    alert('PDF بنانے میں مسئلہ ہوا: ' + (err && err.message ? err.message : err));
   } finally {
     btn.textContent = originalLabel;
     btn.disabled = false;
@@ -4499,7 +4499,7 @@ async function kataPrintEntry(btn){
     if(!blob) throw new Error('no-blob');
     await sharePdfDirectly(blob, 'kata-entry.pdf', 'کھاتہ انٹری');
   } catch(err){
-    alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
+    alert('PDF بنانے میں مسئلہ ہوا: ' + (err && err.message ? err.message : err));
     console.warn(err);
   } finally {
     inputSwaps.forEach(({inp, span})=>{ span.remove(); inp.style.display = ''; }); // اگر html2canvas سے پہلے ہی کوئی خرابی آئی ہو تو بھی inputs واپس آ جائیں
