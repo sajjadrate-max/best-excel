@@ -2127,10 +2127,16 @@ async function shareCardAsImage(tier, btn){
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
     const margin = 20;
-    const availW = pageW - margin*2;
-    const scale = Math.min(availW / canvas.width, (pageH - margin*2) / canvas.height);
-    const drawW = canvas.width * scale;
-    const drawH = canvas.height * scale;
+    // صارف کی درخواست (2026-08-25): پہلے تصویر صرف چوڑائی کے مطابق سیدھی
+    // فٹ ہوتی تھی، جس سے وہ صفحے کے اوپری حصے میں ہی رک جاتی تھی اور نیچے
+    // کا بڑا حصہ خالی رہ جاتا تھا۔ اب لمبائی کو مکمل صفحے کے آخر تک
+    // پھیلاتے ہیں، اور چوڑائی کو جان بوجھ کر تناسب سے کم رکھتے ہیں (0.62
+    // فیکٹر) تاکہ صفحہ مکمل استعمال ہو اور تصویر پہلے سے پتلی/تنگ نظر
+    // آئے — یہ تناسب برقرار رکھنے والا (aspect-preserving) فٹ نہیں بلکہ
+    // جان بوجھ کر چوڑائی کو کم کیا گیا ہے۔
+    const drawH = pageH - margin*2;
+    const widthNarrowFactor = 0.62;
+    const drawW = drawH * (canvas.width / canvas.height) * widthNarrowFactor;
     pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
     const blob = pdf.output('blob');
     const fileName = baseName + '.pdf';
