@@ -5715,11 +5715,8 @@ function scheduleGmailBackup(){
   if(!GMAIL_BACKUP_WEBAPP_URL) return; // ابھی سیٹ نہیں ہوا — خاموشی سے کچھ نہ کریں
   clearTimeout(gmailBackupDebounceTimer);
   gmailBackupDebounceTimer = setTimeout(()=>{
-    const lastSent = Number(localStorage.getItem(GMAIL_BACKUP_LAST_SENT_KEY) || 0);
-    if(Date.now() - lastSent >= GMAIL_BACKUP_MIN_INTERVAL_MS){
-      sendGmailBackupNow();
-    }
-  }, 20000); // ایک ہی وقت کی کئی تبدیلیوں کو ایک ساتھ جمع کرنے کے لیے 20 سیکنڈ انتظار
+    sendGmailBackupNow();
+  }, 20000); // ایک ہی وقت کی کئی تبدیلیوں کو ایک ساتھ جمع کرنے کے لیے 20 سیکنڈ انتظار — اب ہر بار میل جاتی ہے، 60 منٹ کی پابندی ہٹا دی گئی
 }
 function sendGmailBackupNow(){
   if(!GMAIL_BACKUP_WEBAPP_URL) return;
