@@ -4675,7 +4675,7 @@ function kataRenderEntryCard(entry, isLast, idx){
     rows += `<tr>
       <td style="${kataColorStyleFor(cc, item.key+'-idx')}"><span class="${thinClass.trim()}">${(v.idx != null && v.idx !== '') ? kataEscape(v.idx) : (idx+1)}</span></td>
       <td style="text-align:left;padding-left:6px;${nameColor}${kataColorStyleFor(cc, item.key+'-name')}"><span class="${thinClass.trim()}">${kataEscape(name)}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-weight')}"><span class="${thinClass.trim()}">${kataEscape(weight)}</span></td>
+      <td style="${kataColorStyleFor(cc, item.key+'-weight')}"><span class="${thinClass.trim()}">${kataEscape(weight)}</span>${v.sabkaNote ? `<span style="font-size:6px;color:#8a6d00;margin-right:2px;">(${kataEscape(v.sabkaNote)})</span>` : ''}</td>
       <td style="${kataColorStyleFor(cc, item.key+'-t')}"><span class="cell-val${numClass}">${v.t}</span></td>
       <td style="${kataColorStyleFor(cc, item.key+'-rate')}"><span class="cell-val${numClass}">${rate}</span></td>
       <td style="${kataColorStyleFor(cc, item.key+'-totalrate')}"><span class="cell-val${numClass}">${v.price}</span></td>${priftCells}${discountCells}
@@ -4861,12 +4861,12 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
     rows += `<tr>
       <td data-color-key="${item.key}-idx" class="kata-normal-size${thinClass}" style="${kataInstance === 'salesman' ? 'padding:2px;' : ''}">${
         kataInstance === 'salesman'
-          ? `<input type="text" inputmode="numeric" class="cell-input kata-normal-size${thinClass}" data-kata-field="idx" data-kata-item="${item.key}" style="border:1px solid var(--line);width:100%;box-sizing:border-box;margin-bottom:2px;padding:0;" value="${idx+1}"><input type="color" data-kata-idxcolor="${item.key}" title="اس نمبر کا رنگ" style="width:100%;height:14px;padding:0;border:1px solid var(--line);border-radius:2px;cursor:pointer;">`
+          ? `<input type="text" inputmode="numeric" class="cell-input kata-normal-size${thinClass}" data-kata-field="idx" data-kata-item="${item.key}" style="border:1px solid var(--line);width:100%;box-sizing:border-box;" value="${idx+1}">`
           : (idx+1)
       }</td>
       <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(liveName)}"></td>
-      <td data-color-key="${item.key}-weight"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${kataEscape(liveWeight)}"></td>
-      <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input${numClass}" data-kata-field="t" data-kata-item="${item.key}" data-kata-tctn-order="${idx}" style="border:1px solid var(--line);" value="0"></td>
+      <td data-color-key="${item.key}-weight" style="display:flex;align-items:center;gap:2px;padding:1px;"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);flex:1;min-width:0;" value="${kataEscape(liveWeight)}"><input type="text" inputmode="numeric" maxlength="2" title="سابقہ (پرانا حصہ) — صرف نوٹ کے لیے" data-kata-field="sabkaNote" data-kata-item="${item.key}" style="width:16px;height:14px;font-size:6px;padding:0;border:1px solid var(--line);text-align:center;box-sizing:border-box;flex-shrink:0;"></td>
+      <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input${numClass}" data-kata-field="t" data-kata-item="${item.key}" data-kata-tctn-order="${idx}" style="border:1px solid var(--line);background-color:#d9f2d9;" value="0"></td>
       <td data-color-key="${item.key}-rate"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${liveRate}" ${isZNet ? '' : 'disabled'}></td>
       <td data-color-key="${item.key}-totalrate"><span class="cell-val${numClass}" data-kata-totalrate="${item.key}">0</span></td>${priftCells}${discountCells}
     </tr>`;
@@ -5137,25 +5137,6 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
 
     if(nameInput) nameInput.addEventListener('input', ()=>{ item.name = nameInput.value; item.nameManual = true; });
     if(weightInput) weightInput.addEventListener('input', ()=>{ item.weight = weightInput.value; });
-    // سیلزمین کھاتہ — # کالم اب قابلِ تبدیل ہے اور اس پر رنگ بھی لگایا جا
-    // سکتا ہے (2026-08-23 صارف کی درخواست پر)۔ رنگ اسی موجودہ نظام
-    // (data-color-key + cellColors) سے محفوظ ہوتا ہے جو باقی رنگے گئے
-    // خانوں کے لیے پہلے سے موجود ہے — انٹری محفوظ کرتے وقت خودکار اٹھا
-    // لیا جاتا ہے۔
-    if(kataInstance === 'salesman'){
-      const idxColorInput = document.querySelector(`[data-kata-idxcolor="${item.key}"]`);
-      const applyIdxColor = ()=>{
-        const td = idxColorInput.closest('[data-color-key]');
-        if(td) td.style.backgroundColor = idxColorInput.value;
-      };
-      // 'input' زیادہ تر براؤزرز میں رنگ منتخب کرتے ہی فوراً کام کرتا ہے،
-      // لیکن بعض کمپیوٹرز/براؤزرز پر صرف 'change' ہی چلتا ہے (جب پکر بند
-      // ہو) — دونوں لگا دیے تاکہ ہر صورت میں رنگ لگے (2026-08-26)۔
-      if(idxColorInput){
-        idxColorInput.addEventListener('input', applyIdxColor);
-        idxColorInput.addEventListener('change', applyIdxColor);
-      }
-    }
     if(tInput) tInput.addEventListener('input', refreshRow);
     if(discountInput) discountInput.addEventListener('input', refreshRow);
     // Z Net Bill — Rate/Profit یہاں دستی ٹائپ کیے جا سکتے ہیں (باقی
@@ -5288,11 +5269,18 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
     const rateInputEl = document.querySelector(`[data-kata-rate="${item.key}"]`);
     const liveRate = isZNet ? (Number((rateInputEl && rateInputEl.value) || 0) || 0) : (p ? (Number(p.agencyB) || 0) : item.rate);
     const t = Number(document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`).value) || 0;
+    // صارف کی درخواست (2026-08-26): Weight کے ساتھ ایک بہت چھوٹا سا خانہ —
+    // صرف نوٹ کے لیے کہ اس مجموعی تعداد میں کتنا حصہ پرانا (سابقہ) ہے۔ یہ
+    // حساب میں کہیں استعمال نہیں ہوتا، صرف محفوظ ہو کر دوبارہ دکھایا جاتا
+    // ہے۔ سیلزمین/ربنواز/Agency تینوں میں — باقی سب ویسے کا ویسا ہے۔
+    const sabkaNoteInputEl = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="sabkaNote"]`);
+    const sabkaNote = sabkaNoteInputEl ? sabkaNoteInputEl.value : '';
     const price = liveRate * t;
     const priftInputEl = document.querySelector(`[data-kata-prift="${item.key}"]`);
     const livePrift = isZNet ? (Number((priftInputEl && priftInputEl.value) || 0) || 0) : item.prift;
     const priftTotal = livePrift * t;
     items[item.key] = {t, price, rate: liveRate, name: liveName, weight: liveWeight, prift: livePrift, priftTotal};
+    if(sabkaNote) items[item.key].sabkaNote = sabkaNote;
     if(liveIdx != null) items[item.key].idx = liveIdx;
     // کل وزن — فی پیس Weight (وہی جو ابھی محفوظ ہوا) × ریٹ لسٹ کے Pcs (فی
     // کارٹن تعداد) × T CTN، Z Net Bill کے بغیر (2026-08-23)۔ آئٹم کا اپنا
