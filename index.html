@@ -4533,7 +4533,7 @@ async function kataPrintEntry(btn){
     const pdf = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4' });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 34;
+    const margin = 22; // صارف کی درخواست (2026-08-26): سائز مزید بڑا کرنے کے لیے مارجن کم کیا (34→22)
     // صارف کی درخواست (2026-08-25): پرنٹ کو زبردستی بڑا کر کے صفحہ بھرنے
     // کی بجائے، بالکل اسی چھوٹے/کمپیکٹ سائز میں رکھیں جیسے ویب سائٹ پر
     // (فون سکرین پر) نظر آتا ہے — اسی لیے html2canvas کی اندرونی 3x
@@ -4548,7 +4548,12 @@ async function kataPrintEntry(btn){
     // پورا صفحہ استعمال کرنے کی بنیاد بنایا ہے۔
     const availW = pageW - margin*2;
     const availH = pageH - margin*2;
-    const safetyScale = availW / drawW;
+    const sizeBoost = 1.12; // صارف کی درخواست (2026-08-26): پورے صفحے کی چوڑائی بھرنے کے بعد بھی مجموعی سائز تھوڑا مزید بڑا کریں
+    let safetyScale = (availW / drawW) * sizeBoost;
+    if(drawH * safetyScale > availH){
+      // لمبی انٹریوں کے لیے حفاظتی حد — تاکہ صفحے کی لمبائی سے تجاوز نہ ہو اور نیچے کا حصہ کٹے نہیں
+      safetyScale = availH / drawH;
+    }
     drawW *= safetyScale;
     drawH *= safetyScale;
     pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
@@ -4680,7 +4685,7 @@ function kataRenderEntryCard(entry, isLast, idx){
       <div class="edit-table wide-table kata-ref-style">
         <table dir="ltr">
           <colgroup>${showDiscount
-            ? '<col style="width:3%"><col style="width:17%"><col style="width:10%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
+            ? '<col style="width:6%"><col style="width:14%"><col style="width:10%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
             : agencySimple
             ? '<col style="width:8%"><col style="width:30%"><col style="width:14%"><col style="width:14%"><col style="width:16%"><col style="width:18%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
@@ -4883,7 +4888,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <div class="edit-table wide-table kata-ref-style">
         <table dir="ltr">
           <colgroup>${showDiscount
-            ? '<col style="width:3%"><col style="width:17%"><col style="width:10%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
+            ? '<col style="width:6%"><col style="width:14%"><col style="width:10%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
             : agencySimple
             ? '<col style="width:8%"><col style="width:30%"><col style="width:14%"><col style="width:14%"><col style="width:16%"><col style="width:18%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
