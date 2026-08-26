@@ -4556,6 +4556,12 @@ async function kataPrintEntry(btn){
     }
     drawW *= safetyScale;
     drawH *= safetyScale;
+    // صارف کی درخواست (2026-08-26): چھوٹی انٹریوں میں نیچے خالی جگہ بچ
+    // جاتی تھی — اب لمبائی کو بھی صفحے کی پوری اونچائی تک کھینچ دیتے ہیں
+    // (چوڑائی وہی رہتی ہے) تاکہ خالی جگہ نہ رہے۔
+    if(drawH < availH){
+      drawH = availH;
+    }
     pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
     const blob = pdf.output('blob');
     if(!blob) throw new Error('no-blob');
@@ -4855,7 +4861,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
     rows += `<tr>
       <td data-color-key="${item.key}-idx" class="kata-normal-size${thinClass}" style="${kataInstance === 'salesman' ? 'padding:2px;' : ''}">${
         kataInstance === 'salesman'
-          ? `<input type="text" inputmode="numeric" class="cell-input kata-normal-size${thinClass}" data-kata-field="idx" data-kata-item="${item.key}" style="border:1px solid var(--line);width:100%;box-sizing:border-box;margin-bottom:2px;padding:0;" value="${idx+1}"><input type="color" data-kata-idxcolor="${item.key}" title="اس نمبر کا رنگ" style="width:100%;height:8px;padding:0;border:1px solid var(--line);border-radius:2px;cursor:pointer;">`
+          ? `<input type="text" inputmode="numeric" class="cell-input kata-normal-size${thinClass}" data-kata-field="idx" data-kata-item="${item.key}" style="border:1px solid var(--line);width:100%;box-sizing:border-box;margin-bottom:2px;padding:0;" value="${idx+1}"><input type="color" data-kata-idxcolor="${item.key}" title="اس نمبر کا رنگ" style="width:100%;height:14px;padding:0;border:1px solid var(--line);border-radius:2px;cursor:pointer;">`
           : (idx+1)
       }</td>
       <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(liveName)}"></td>
@@ -5138,10 +5144,17 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
     // لیا جاتا ہے۔
     if(kataInstance === 'salesman'){
       const idxColorInput = document.querySelector(`[data-kata-idxcolor="${item.key}"]`);
-      if(idxColorInput) idxColorInput.addEventListener('input', ()=>{
+      const applyIdxColor = ()=>{
         const td = idxColorInput.closest('[data-color-key]');
         if(td) td.style.backgroundColor = idxColorInput.value;
-      });
+      };
+      // 'input' زیادہ تر براؤزرز میں رنگ منتخب کرتے ہی فوراً کام کرتا ہے،
+      // لیکن بعض کمپیوٹرز/براؤزرز پر صرف 'change' ہی چلتا ہے (جب پکر بند
+      // ہو) — دونوں لگا دیے تاکہ ہر صورت میں رنگ لگے (2026-08-26)۔
+      if(idxColorInput){
+        idxColorInput.addEventListener('input', applyIdxColor);
+        idxColorInput.addEventListener('change', applyIdxColor);
+      }
     }
     if(tInput) tInput.addEventListener('input', refreshRow);
     if(discountInput) discountInput.addEventListener('input', refreshRow);
