@@ -508,6 +508,15 @@ window.loadAuthSDKs = async function(){
   .kata-print-tight.kata-ref-style thead th{
     padding:3px 1px !important;
   }
+  /* Jamah جیسے خانوں (input) کا اپنا بارڈر ہوتا ہے — پچھلی بار خانہ اتنا
+     تنگ کر دیا گیا کہ بارڈر عین ہندسے کے بیچ میں سے گزرنے لگا (لکیر جیسی
+     نظر آنے لگی)۔ صرف انہی input خانوں کو تھوڑی زیادہ اونچائی/line-height
+     دیتے ہیں تاکہ یہ ٹکراؤ ختم ہو — یہ صرف پرنٹ کے وقت لاگو ہوتا ہے،
+     ویب سائٹ متاثر نہیں ہوتی (2026-08-26)۔ */
+  .kata-print-tight .cell-input{
+    line-height:1.5 !important;
+    padding:1px 2px !important;
+  }
   .master-all-lock-btn{
     font-size:14px !important;
     vertical-align:middle;
@@ -4534,12 +4543,12 @@ async function kataPrintEntry(btn){
     const pxToPt = 0.75;
     let drawW = cardRect.width * pxToPt;
     let drawH = cardRect.height * pxToPt;
-    // صارف کی درخواست (2026-08-25): پرنٹ صفحے کے مکمل (1/1) حصے جتنا ہو
-    // — تناسب برقرار رکھتے ہوئے۔
+    // صارف کی درخواست (2026-08-26): چوڑائی مزید بڑھائیں (خانے کچھ چوڑے
+    // ہوں)، چاہے لمبائی نیچے کی طرف تھوڑی مزید بڑھ جائے — اب چوڑائی کو
+    // پورا صفحہ استعمال کرنے کی بنیاد بنایا ہے۔
     const availW = pageW - margin*2;
     const availH = pageH - margin*2;
-    const targetMaxH = availH;
-    const safetyScale = Math.min(availW / drawW, targetMaxH / drawH);
+    const safetyScale = availW / drawW;
     drawW *= safetyScale;
     drawH *= safetyScale;
     pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
@@ -5679,8 +5688,57 @@ function firebaseSyncSet(key, valueStr){
       updatedAt: (typeof firebase !== 'undefined' && firebase.firestore) ? firebase.firestore.FieldValue.serverTimestamp() : Date.now()
     }).catch(err=> console.warn('cloud sync save failed for', key, err));
   }
+  scheduleGmailBackup(); // ہر تبدیلی پر Gmail بیک اپ کا وقت مقرر کریں (2026-08-26)
 }
 window.firebaseSyncSet = firebaseSyncSet;
+
+// ---------- Gmail بیک اپ (2026-08-26، صارف کی درخواست) ----------
+// مقصد: Firebase کے علاوہ، مکمل ڈیٹا کی ایک کاپی صارف کے اپنے Gmail پر بھی
+// ای میل کی صورت میں محفوظ ہوتی رہے، تاکہ اگر Firebase میں کبھی کوئی مسئلہ
+// ہو تو ڈیٹا Gmail سے واپس مل سکے۔
+// طریقہ کار: ایک Google Apps Script ویب ایپ (خود صارف کے Google اکاؤنٹ میں،
+// مفت) یہاں سے آنے والا ڈیٹا وصول کر کے اسی صارف کو ای میل کر دیتا ہے —
+// ویب سائٹ خود براہِ راست کسی کے Gmail تک نہیں پہنچ سکتی، یہ گوگل کی حد ہے۔
+// GMAIL_BACKUP_WEBAPP_URL خالی ہونے تک یہ فیچر مکمل خاموش رہتا ہے (کچھ نہیں
+// بھیجا جاتا) — صارف کے Apps Script deploy کر کے URL دینے کے بعد ہی فعال ہو۔
+//
+// ⚠️ Gmail کی روزانہ ای میل بھیجنے کی حد ہے (عام اکاؤنٹ پر تقریباً 100/دن)،
+// اس لیے ہر چھوٹی تبدیلی پر الگ ای میل نہیں بھیجتے — ہر تبدیلی کے بعد ایک
+// ٹائمر لگتا ہے، اور مکمل ڈیٹا کی ایک ای میل زیادہ سے زیادہ ہر 60 منٹ میں
+// ایک بار بھیجی جاتی ہے (پچھلے گھنٹے کی سب تبدیلیاں ایک ہی ای میل میں شامل
+// ہو کر جاتی ہیں)۔
+const GMAIL_BACKUP_WEBAPP_URL = ""; // یہاں Apps Script Deploy کرنے کے بعد ملنے والا ویب ایپ URL پیسٹ کریں
+const GMAIL_BACKUP_MIN_INTERVAL_MS = 60 * 60 * 1000; // 60 منٹ
+const GMAIL_BACKUP_LAST_SENT_KEY = 'gmailBackupLastSentAt';
+let gmailBackupDebounceTimer = null;
+function scheduleGmailBackup(){
+  if(!GMAIL_BACKUP_WEBAPP_URL) return; // ابھی سیٹ نہیں ہوا — خاموشی سے کچھ نہ کریں
+  clearTimeout(gmailBackupDebounceTimer);
+  gmailBackupDebounceTimer = setTimeout(()=>{
+    const lastSent = Number(localStorage.getItem(GMAIL_BACKUP_LAST_SENT_KEY) || 0);
+    if(Date.now() - lastSent >= GMAIL_BACKUP_MIN_INTERVAL_MS){
+      sendGmailBackupNow();
+    }
+  }, 20000); // ایک ہی وقت کی کئی تبدیلیوں کو ایک ساتھ جمع کرنے کے لیے 20 سیکنڈ انتظار
+}
+function sendGmailBackupNow(){
+  if(!GMAIL_BACKUP_WEBAPP_URL) return;
+  try{
+    const allData = {};
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      allData[k] = localStorage.getItem(k);
+    }
+    fetch(GMAIL_BACKUP_WEBAPP_URL, {
+      method: 'POST',
+      mode: 'no-cors', // Apps Script ویب ایپ سے جواب پڑھنے کی ضرورت نہیں، صرف بھیجنا مقصود ہے
+      headers: {'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ sentAt: new Date().toString(), data: allData })
+    }).catch(err=> console.warn('gmail backup send failed', err));
+    localStorage.setItem(GMAIL_BACKUP_LAST_SENT_KEY, String(Date.now()));
+  }catch(err){ console.warn('gmail backup error', err); }
+}
+window.sendGmailBackupNow = sendGmailBackupNow; // ضرورت پڑنے پر فوری/دستی بیک اپ کے لیے کنسول یا بٹن سے بلایا جا سکتا ہے
 
 // ---------- کھاتوں کی فہرست کا خاص، محفوظ طریقہ (2026-08-16 بگ فکس) ----------
 // اصل مسئلہ: اگر دو ڈیوائسز ایک دوسرے سے ابھی تک نہ ملی ہوں اور دونوں پر
