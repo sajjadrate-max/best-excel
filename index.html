@@ -4539,7 +4539,7 @@ async function kataPrintEntry(btn){
     const availW = pageW - margin*2;
     const availH = pageH - margin*2;
     const targetMaxH = availH;
-    const safetyScale = Math.min(1, availW / drawW, targetMaxH / drawH);
+    const safetyScale = Math.min(availW / drawW, targetMaxH / drawH);
     drawW *= safetyScale;
     drawH *= safetyScale;
     pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
