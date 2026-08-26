@@ -4534,11 +4534,11 @@ async function kataPrintEntry(btn){
     const pxToPt = 0.75;
     let drawW = cardRect.width * pxToPt;
     let drawH = cardRect.height * pxToPt;
-    // صارف کی درخواست (2026-08-25): پرنٹ صفحے کے آدھے حصے (1/2) جتنا
-    // چھوٹا ہو — تناسب برقرار رکھتے ہوئے۔
+    // صارف کی درخواست (2026-08-25): پرنٹ صفحے کے مکمل (1/1) حصے جتنا ہو
+    // — تناسب برقرار رکھتے ہوئے۔
     const availW = pageW - margin*2;
     const availH = pageH - margin*2;
-    const targetMaxH = availH / 2;
+    const targetMaxH = availH;
     const safetyScale = Math.min(1, availW / drawW, targetMaxH / drawH);
     drawW *= safetyScale;
     drawH *= safetyScale;
