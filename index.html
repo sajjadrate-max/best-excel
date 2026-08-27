@@ -4691,7 +4691,7 @@ function kataRenderEntryCard(entry, isLast, idx){
       <div class="edit-table wide-table kata-ref-style">
         <table dir="ltr">
           <colgroup>${showDiscount
-            ? '<col style="width:6%"><col style="width:14%"><col style="width:10%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
+            ? '<col style="width:6%"><col style="width:11%"><col style="width:13%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
             : agencySimple
             ? '<col style="width:8%"><col style="width:30%"><col style="width:14%"><col style="width:14%"><col style="width:16%"><col style="width:18%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
@@ -4865,7 +4865,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           : (idx+1)
       }</td>
       <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(liveName)}"></td>
-      <td data-color-key="${item.key}-weight" style="display:flex;align-items:center;gap:2px;padding:1px;"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);flex:1;min-width:0;" value="${kataEscape(liveWeight)}"><input type="text" inputmode="numeric" maxlength="2" title="سابقہ (پرانا حصہ) — صرف نوٹ کے لیے" data-kata-field="sabkaNote" data-kata-item="${item.key}" style="width:16px;height:14px;font-size:6px;padding:0;border:1px solid var(--line);text-align:center;box-sizing:border-box;flex-shrink:0;"></td>
+      <td data-color-key="${item.key}-weight" style="display:flex;align-items:center;gap:1px;padding:1px;"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);flex:1;min-width:0;padding:0;" value="${kataEscape(liveWeight)}">${kataInstance === 'salesman' ? `<input type="text" inputmode="numeric" maxlength="2" title="سابقہ (پرانا حصہ) — صرف نوٹ کے لیے" data-kata-field="sabkaNote" data-kata-item="${item.key}" style="width:11px;height:12px;font-size:5px;padding:0;border:1px solid var(--line);text-align:center;box-sizing:border-box;flex-shrink:0;">` : ''}</td>
       <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input${numClass}" data-kata-field="t" data-kata-item="${item.key}" data-kata-tctn-order="${idx}" style="border:1px solid var(--line);background-color:#d9f2d9;" value="0"></td>
       <td data-color-key="${item.key}-rate"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${liveRate}" ${isZNet ? '' : 'disabled'}></td>
       <td data-color-key="${item.key}-totalrate"><span class="cell-val${numClass}" data-kata-totalrate="${item.key}">0</span></td>${priftCells}${discountCells}
@@ -4894,7 +4894,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <div class="edit-table wide-table kata-ref-style">
         <table dir="ltr">
           <colgroup>${showDiscount
-            ? '<col style="width:6%"><col style="width:14%"><col style="width:10%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
+            ? '<col style="width:6%"><col style="width:11%"><col style="width:13%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
             : agencySimple
             ? '<col style="width:8%"><col style="width:30%"><col style="width:14%"><col style="width:14%"><col style="width:16%"><col style="width:18%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
@@ -5273,7 +5273,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
     // صرف نوٹ کے لیے کہ اس مجموعی تعداد میں کتنا حصہ پرانا (سابقہ) ہے۔ یہ
     // حساب میں کہیں استعمال نہیں ہوتا، صرف محفوظ ہو کر دوبارہ دکھایا جاتا
     // ہے۔ سیلزمین/ربنواز/Agency تینوں میں — باقی سب ویسے کا ویسا ہے۔
-    const sabkaNoteInputEl = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="sabkaNote"]`);
+    const sabkaNoteInputEl = kataInstance === 'salesman' ? document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="sabkaNote"]`) : null;
     const sabkaNote = sabkaNoteInputEl ? sabkaNoteInputEl.value : '';
     const price = liveRate * t;
     const priftInputEl = document.querySelector(`[data-kata-prift="${item.key}"]`);
