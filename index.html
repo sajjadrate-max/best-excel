@@ -3840,6 +3840,9 @@ let kataInstance = 'salesman'; // which named ledger section is active — 'sale
 // Discount خانے صرف سیلزمین کھاتے میں دکھائے جاتے ہیں — ربنواز اور Agency
 // کھاتوں میں بالکل نہیں (2026-08-21، صریح صارف کی ہدایت پر)۔
 function kataShowDiscount(){ return kataInstance === 'salesman' || kataInstance === 'ribnawaz'; }
+// کرایہ کالم — صرف Agency کھاتہ میں، Discount کی طرح ہر انٹری میں آگے جمع
+// ہوتا اور Jamah سے گھٹتا رہتا ہے (صارف کی درخواست 2026-08-27)۔
+function kataShowKraya(){ return kataInstance === 'agency'; }
 let kataColLocked = {name:true, weight:true, t:false, rate:true, prift:true, d:true, salesman:false}; // lock buttons for the new-entry table's columns, like ریٹ لسٹ — Items/Weight share one combined lock (default locked, reference data). T CTN is typed fresh every single day, so it stays permanently open/editable — never included in the lock.
 let kataUndoStack = []; // {input, oldValue} — one entry per finished edit (on blur/change), so Undo reverts a whole edit at once, not per-keystroke
 let kataUndoRestoring = false; // guards against the programmatic restore itself being tracked as a new undo-able change
@@ -4680,13 +4683,18 @@ function kataRenderEntryCard(entry, isLast, idx){
     const priftCells = agencySimple ? '' : `
       <td style="${kataColorStyleFor(cc, item.key+'-prift')}"><span class="cell-val${numClass}">${prift}</span></td>
       <td style="${kataColorStyleFor(cc, item.key+'-totalprift')}"><span class="cell-val${numClass}">${priftTotal}</span></td>`;
+    // Agency کھاتہ — صارف کی درخواست پر (2026-08-27): ہر آئٹم کی اپنی فی
+    // کارٹن کرایہ اور ٹوٹل کرایہ (Discount/D.Total کی طرح)۔
+    const krayaCells = agencySimple ? `
+      <td style="${kataColorStyleFor(cc, item.key+'-krayarate')}"><span class="cell-val${numClass}">${v.krayaRate||0}</span></td>
+      <td style="${kataColorStyleFor(cc, item.key+'-krayatotal')}"><span class="cell-val${numClass}">${v.krayaTotal||0}</span></td>` : '';
     rows += `<tr>
       <td style="${kataColorStyleFor(cc, item.key+'-idx')}"><span class="${thinClass.trim()}">${(v.idx != null && v.idx !== '') ? kataEscape(v.idx) : (idx+1)}</span></td>
       <td style="text-align:left;padding-left:6px;${nameColor}${kataColorStyleFor(cc, item.key+'-name')}"><span class="${thinClass.trim()}">${kataEscape(name)}</span></td>
       <td style="${kataColorStyleFor(cc, item.key+'-weight')}"><span class="${thinClass.trim()}">${kataEscape(weight)}</span>${v.sabkaNote ? `<span style="font-size:6px;color:#8a6d00;margin-right:2px;">(${kataEscape(v.sabkaNote)})</span>` : ''}</td>
       <td style="${kataColorStyleFor(cc, item.key+'-t')}"><span class="cell-val${numClass}">${v.t}</span></td>
       <td style="${kataColorStyleFor(cc, item.key+'-rate')}"><span class="cell-val${numClass}">${rate}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-totalrate')}"><span class="cell-val${numClass}">${v.price}</span></td>${priftCells}${discountCells}
+      <td style="${kataColorStyleFor(cc, item.key+'-totalrate')}"><span class="cell-val${numClass}">${v.price}</span></td>${priftCells}${krayaCells}${discountCells}
     </tr>`;
   });
   const entryDomId = `kataEntry_${entry.id || Math.random().toString(36).slice(2)}`;
@@ -4701,9 +4709,9 @@ function kataRenderEntryCard(entry, isLast, idx){
           <colgroup>${showDiscount
             ? '<col style="width:6%"><col style="width:11%"><col style="width:13%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
             : agencySimple
-            ? '<col style="width:8%"><col style="width:30%"><col style="width:14%"><col style="width:14%"><col style="width:16%"><col style="width:18%">'
+            ? '<col style="width:6%"><col style="width:20%"><col style="width:11%"><col style="width:11%"><col style="width:13%"><col style="width:14%"><col style="width:12%"><col style="width:13%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
-          <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>T CTN</th><th>Rate</th><th>Total Rate</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
+          <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>T CTN</th><th>Rate</th><th>Total Rate</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th>فی کارٹن کرایہ</th><th>ٹوٹل کرایہ</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -4748,17 +4756,6 @@ function kataRenderEntryCard(entry, isLast, idx){
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
         </div>
       </div>
-      ${kataInstance === 'agency' ? `
-      <div style="display:flex;gap:10px;margin-top:8px;">
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${entry.perCartonKraya||0}</div>
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">فی کارٹن کرایہ</div>
-        </div>
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.perCartonKraya||0) * sumT}</div>
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">ٹوٹل کرایہ</div>
-        </div>
-      </div>` : ''}
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>
@@ -4837,6 +4834,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
   // نہیں کرتے، تاکہ کسی بھی وقتی ترتیب (sync کب چلا) کے مسئلے سے قطع نظر
   // ہمیشہ اسی لمحے کی تازہ ترین B لسٹ ہی نظر آئے۔
   const showDiscount = kataShowDiscount();
+  const showKraya = kataShowKraya();
   // Agency کھاتہ — صارف کی درخواست پر (2026-08-22) نئی انٹری فارم سے بھی
   // Profit اور T.Profit کالم مکمل ہٹا دیے۔ صرف Agency میں۔
   const agencySimple = kataInstance === 'agency';
@@ -4877,6 +4875,13 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
     const priftCells = agencySimple ? '' : `
       <td data-color-key="${item.key}-prift"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-prift="${item.key}" style="border:1px solid var(--line);" value="${liveProfitDefault}" ${isZNet ? '' : 'disabled'}></td>
       <td data-color-key="${item.key}-totalprift"><span class="cell-val${numClass}" data-kata-totalprift="${item.key}">0</span></td>`;
+    // Agency کھاتہ — صارف کی درخواست پر (2026-08-27): ہر آئٹم کی اپنی فی
+    // کارٹن کرایہ (دستی) اور ٹوٹل کرایہ (خودکار = ریٹ × T CTN)۔ پچھلی
+    // انٹری کی طرح "چپکنے والا" (Discount کی طرح)۔
+    const stickyKrayaRate = isZNet ? 0 : ((prevItemData[item.key] && prevItemData[item.key].krayaRate) || 0);
+    const krayaCells = agencySimple ? `
+      <td data-color-key="${item.key}-krayarate"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-field="krayaRate" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${stickyKrayaRate}"></td>
+      <td data-color-key="${item.key}-krayatotal"><span class="cell-val${numClass}" data-kata-krayatotal="${item.key}">0</span></td>` : '';
     rows += `<tr>
       <td data-color-key="${item.key}-idx" class="kata-normal-size${thinClass}" style="${kataInstance === 'salesman' ? 'padding:2px;' : ''}">${
         kataInstance === 'salesman'
@@ -4887,7 +4892,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <td data-color-key="${item.key}-weight" style="display:flex;align-items:center;gap:1px;padding:1px;"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);flex:1;min-width:0;padding:0;" value="${kataEscape(liveWeight)}">${kataInstance === 'salesman' ? `<input type="text" inputmode="numeric" maxlength="2" title="سابقہ (پرانا حصہ) — صرف نوٹ کے لیے" data-kata-field="sabkaNote" data-kata-item="${item.key}" style="width:11px;height:12px;font-size:5px;padding:0;border:1px solid var(--line);text-align:center;box-sizing:border-box;flex-shrink:0;">` : ''}</td>
       <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input${numClass}" data-kata-field="t" data-kata-item="${item.key}" data-kata-tctn-order="${idx}" style="border:1px solid var(--line);background-color:#d9f2d9;" value="0"></td>
       <td data-color-key="${item.key}-rate"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${liveRate}" ${isZNet ? '' : 'disabled'}></td>
-      <td data-color-key="${item.key}-totalrate"><span class="cell-val${numClass}" data-kata-totalrate="${item.key}">0</span></td>${priftCells}${discountCells}
+      <td data-color-key="${item.key}-totalrate"><span class="cell-val${numClass}" data-kata-totalrate="${item.key}">0</span></td>${priftCells}${krayaCells}${discountCells}
     </tr>`;
   });
   // پہلی انٹری (اس کھاتے میں ابھی تک کوئی ریکارڈ نہیں) میں "سابقہ" کی قطار
@@ -4915,7 +4920,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <colgroup>${showDiscount
             ? '<col style="width:6%"><col style="width:11%"><col style="width:13%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
             : agencySimple
-            ? '<col style="width:8%"><col style="width:30%"><col style="width:14%"><col style="width:14%"><col style="width:16%"><col style="width:18%">'
+            ? '<col style="width:6%"><col style="width:20%"><col style="width:11%"><col style="width:11%"><col style="width:13%"><col style="width:14%"><col style="width:12%"><col style="width:13%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
           <thead><tr>
             <th><button type="button" class="row-lock-btn" data-kata-lockbtn="all3"></button>#</th>
@@ -4923,7 +4928,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
             <th>Weight</th>
             <th>T CTN</th>
             <th>Rate</th>
-            <th>Total Rate</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}
+            <th>Total Rate</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th>فی کارٹن کرایہ</th><th>ٹوٹل کرایہ</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -4961,25 +4966,14 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Less</div>
         </div>` : `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;box-sizing:border-box;">
-          <input type="number" inputmode="numeric" class="cell-input" data-kata-field="kharch" style="border:none;background:transparent;font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;width:100%;box-sizing:border-box;text-align:center;padding:0;" value="0">
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">کرایہ</div>
+          <div class="n" data-kata-sum-kharch style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کرایہ</div>
         </div>`}
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div class="n" data-kata-sum-t style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
         </div>
-      </div>
-      ${kataInstance === 'agency' ? `
-      <div style="display:flex;gap:10px;margin-top:8px;">
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;box-sizing:border-box;">
-          <input type="number" inputmode="numeric" class="cell-input" data-kata-field="perCartonKraya" style="border:none;background:transparent;font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;width:100%;box-sizing:border-box;text-align:center;padding:0;" value="0">
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">فی کارٹن کرایہ</div>
-        </div>
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-total-kraya style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">ٹوٹل کرایہ</div>
-        </div>
-      </div>` : ''}${kataInstance !== 'agency' ? `
+      </div>${kataInstance !== 'agency' ? `
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div class="n" data-kata-sum-profit style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
@@ -5002,7 +4996,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       </div>`}
       <div class="edit-table" style="margin-top:8px;">
         <table dir="ltr">
-          ${agencySimple ? '<colgroup><col style="width:30%"><col style="width:70%"></colgroup>' : ''}
+          ${agencySimple ? '<colgroup><col style="width:25%"><col style="width:37%"><col style="width:38%"></colgroup>' : ''}
           <thead><tr><th></th>${agencySimple ? '' : '<th>CTN</th>'}<th>Price</th>${agencySimple ? '' : '<th>Profit</th>'}${showDiscount ? '<th>Discount</th>' : ''}</tr></thead>
           <tbody>
             ${sabkaRow}
@@ -5077,21 +5071,30 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
     });
     const sumTEl = document.querySelector('[data-kata-sum-t]');
     if(sumTEl) sumTEl.textContent = todayT;
-    // Agency کھاتہ — صارف کی درخواست پر (2026-08-27): فی کارٹن کرایہ ×
-    // Total CTN = ٹوٹل کرایہ، خودکار حساب، صرف Agency میں۔
-    if(kataInstance === 'agency'){
-      const perCartonKrayaInput = document.querySelector('[data-kata-field="perCartonKraya"]');
-      const perCartonKraya = Number((perCartonKrayaInput && perCartonKrayaInput.value) || 0) || 0;
-      const sumTotalKrayaEl = document.querySelector('[data-kata-sum-total-kraya]');
-      if(sumTotalKrayaEl) sumTotalKrayaEl.textContent = perCartonKraya * todayT;
-    }
     const sumWeightEl = document.querySelector('[data-kata-sum-weight]');
     if(sumWeightEl) sumWeightEl.textContent = (todayWeightGrams / 1000).toFixed(2);
     // کل وزن (من) — 1 من = 40 کلوگرام (صارف کا بتایا ہوا تبادلہ)۔
     const sumWeightMannEl = document.querySelector('[data-kata-sum-weight-mann]');
     if(sumWeightMannEl) sumWeightMannEl.textContent = (todayWeightGrams / 1000 / 40).toFixed(2);
-    const kharchInput = document.querySelector('[data-kata-field="kharch"]');
-    const kharch = Number((kharchInput && kharchInput.value) || 0) || 0;
+    // Agency کھاتہ — صارف کی درخواست پر (2026-08-27): "کرایہ" اب دستی نہیں،
+    // ہر آئٹم کی "ٹوٹل کرایہ" (فی کارٹن کرایہ × T CTN) کا مجموعہ خودکار
+    // بنتا ہے، اور Price میں پہلے کی طرح شامل ہوتا ہے۔
+    let kharch;
+    if(kataInstance === 'agency'){
+      kharch = 0;
+      KATA_ITEMS.forEach(item=>{
+        const krI = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="krayaRate"]`);
+        const tI2 = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`);
+        const kr = Number((krI && krI.value) || 0) || 0;
+        const t2 = Number((tI2 && tI2.value) || 0) || 0;
+        kharch += kr * t2;
+      });
+      const sumKharchEl = document.querySelector('[data-kata-sum-kharch]');
+      if(sumKharchEl) sumKharchEl.textContent = kharch;
+    } else {
+      const kharchInput = document.querySelector('[data-kata-field="kharch"]');
+      kharch = Number((kharchInput && kharchInput.value) || 0) || 0;
+    }
     // ربنواز کھاتہ — صارف کی درخواست پر (2026-08-22): "کرایہ" کو "خرچہ" کر
     // دیا اور ایک نیا "Less" خانہ بھی شامل کیا — یہ دونوں اب Price میں شامل
     // ہونے کی بجائے سیدھا Profit سے منفی ہوتے ہیں۔ Agency میں پرانا انداز
@@ -5154,9 +5157,11 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
     const nameInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="name"]`);
     const weightInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="weight"]`);
     const discountInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="discount"]`);
+    const krayaRateInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="krayaRate"]`);
     const totalRateCell = document.querySelector(`[data-kata-totalrate="${item.key}"]`);
     const totalPriftCell = document.querySelector(`[data-kata-totalprift="${item.key}"]`);
     const discountTotalCell = document.querySelector(`[data-kata-discounttotal="${item.key}"]`);
+    const krayaTotalCell = document.querySelector(`[data-kata-krayatotal="${item.key}"]`);
     const totalCtnCell = document.querySelector(`[data-kata-totalctn="${item.key}"]`);
     const isZNetItem = item.key === 'znet1' || item.key === 'znet2';
     const sabkaCtnForItem = isZNetItem ? 0 : ((prevItemData[item.key] && prevItemData[item.key].totalT) || 0);
@@ -5169,6 +5174,10 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
         const d = Number((discountInput && discountInput.value)||0)||0;
         discountTotalCell.textContent = d * getT();
       }
+      if(krayaTotalCell){
+        const kr = Number((krayaRateInput && krayaRateInput.value)||0)||0;
+        krayaTotalCell.textContent = kr * getT();
+      }
       if(totalCtnCell) totalCtnCell.textContent = isZNetItem ? 0 : (sabkaCtnForItem + getT());
       recomputeTotalsBlock();
     };
@@ -5177,6 +5186,7 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
     if(weightInput) weightInput.addEventListener('input', ()=>{ item.weight = weightInput.value; });
     if(tInput) tInput.addEventListener('input', refreshRow);
     if(discountInput) discountInput.addEventListener('input', refreshRow);
+    if(krayaRateInput) krayaRateInput.addEventListener('input', refreshRow);
     // Z Net Bill — Rate/Profit یہاں دستی ٹائپ کیے جا سکتے ہیں (باقی
     // آئٹمز کے برعکس)، اس لیے ان کی تبدیلی پر بھی قطار/کل خودکار تازہ ہو۔
     if(item.key === 'znet1' || item.key === 'znet2'){
@@ -5195,7 +5205,7 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
   document.querySelectorAll('[data-jamah]').forEach(input=>{
     input.addEventListener('input', recomputeTotalsBlock);
   });
-  ['kharch', 'less', 'perCartonKraya'].forEach(field=>{
+  ['kharch', 'less'].forEach(field=>{
     const input = document.querySelector(`[data-kata-field="${field}"]`);
     if(input) input.addEventListener('input', recomputeTotalsBlock);
   });
@@ -5289,8 +5299,9 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
 async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
   prevItemData = prevItemData || {};
   const showDiscount = kataShowDiscount();
+  const showKraya = kataShowKraya();
   const items = {};
-  let todayT = 0, todayRate = 0, todayDiscount = 0, todayProfit = 0, todayWeightGrams = 0;
+  let todayT = 0, todayRate = 0, todayDiscount = 0, todayProfit = 0, todayWeightGrams = 0, todayKrayaSum = 0;
   KATA_ITEMS.forEach(item=>{
     const p = kataFindPack(item.key);
     const isZNet = item.key === 'znet1' || item.key === 'znet2';
@@ -5350,6 +5361,17 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
         items[item.key].totalT = 0;
       }
     }
+    // Agency کھاتہ — صارف کی درخواست پر (2026-08-27): ہر آئٹم کی فی کارٹن
+    // کرایہ اور ٹوٹل کرایہ محفوظ کریں، اور سب کا مجموعہ todayKrayaSum میں
+    // جمع کرتے رہیں (بعد میں "کرایہ" باکس اور Price میں استعمال ہوتا ہے)۔
+    if(showKraya){
+      const krInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="krayaRate"]`);
+      const krayaRate = Number((krInput && krInput.value) || 0) || 0;
+      const krayaTotal = krayaRate * t;
+      items[item.key].krayaRate = krayaRate;
+      items[item.key].krayaTotal = krayaTotal;
+      todayKrayaSum += krayaTotal;
+    }
     // Z Net Bill کی تعداد CTN کے مجموعے میں شامل نہیں ہوتی (دیکھیں
     // recomputeTotalsBlock کا نوٹ) — باقی سب (Total Rate/Profit/Discount) پر اثر رہتا ہے۔
     if(!isZNet) todayT += t;
@@ -5361,16 +5383,13 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
   document.querySelectorAll('#kataDetailContainer [data-color-key]').forEach(td=>{
     if(td.style.backgroundColor) cellColors[td.dataset.colorKey] = td.style.backgroundColor;
   });
-  const kharchInput = document.querySelector('[data-kata-field="kharch"]');
-  const kharch = Number((kharchInput && kharchInput.value) || 0) || 0;
+  // Agency کھاتہ — صارف کی درخواست پر (2026-08-27): "کرایہ" اب دستی نہیں،
+  // ہر آئٹم کی "ٹوٹل کرایہ" کا مجموعہ (todayKrayaSum) ہی محفوظ ہوتا ہے۔
+  const kharch = showKraya ? todayKrayaSum : (Number((document.querySelector('[data-kata-field="kharch"]')||{}).value || 0) || 0);
   // ربنواز کھاتہ — خرچہ اور Less دونوں Price میں شامل ہونے کی بجائے Profit
   // سے منفی ہوتے ہیں (2026-08-22)۔ Agency میں پرانا انداز برقرار ہے۔
   const lessInput = document.querySelector('[data-kata-field="less"]');
   const less = Number((lessInput && lessInput.value) || 0) || 0;
-  // Agency کھاتہ — صارف کی درخواست پر (2026-08-27): فی کارٹن کرایہ محفوظ
-  // کریں، ٹوٹل کرایہ ہمیشہ اسی سے حساب ہو گا (perCartonKraya × Total CTN)۔
-  const perCartonKrayaInput = document.querySelector('[data-kata-field="perCartonKraya"]');
-  const perCartonKraya = Number((perCartonKrayaInput && perCartonKrayaInput.value) || 0) || 0;
   const isRibnawaz = kataInstance === 'ribnawaz';
   const todayPrice = isRibnawaz ? todayRate : (todayRate + kharch);
   if(isRibnawaz) todayProfit = todayProfit - kharch - less;
@@ -5414,7 +5433,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
     const entries = kataLocalGetEntries(kataOpenId);
     entries.push({
       id: 'e' + Date.now() + Math.random().toString(36).slice(2,7),
-      items, sabka, today, total, jamah, bqaya, salesman, kharch, less, perCartonKraya, cellColors, weightKg: Math.round((todayWeightGrams/1000)*100)/100,
+      items, sabka, today, total, jamah, bqaya, salesman, kharch, less, cellColors, weightKg: Math.round((todayWeightGrams/1000)*100)/100,
       createdAt: new Date().toISOString(),
     });
     kataLocalSaveEntries(kataOpenId, entries);
@@ -5426,7 +5445,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
 
   try{
     await kataCol().doc(kataOpenId).collection('entries').add({
-      items, sabka, today, total, jamah, bqaya, salesman, kharch, less, perCartonKraya, cellColors, weightKg: Math.round((todayWeightGrams/1000)*100)/100,
+      items, sabka, today, total, jamah, bqaya, salesman, kharch, less, cellColors, weightKg: Math.round((todayWeightGrams/1000)*100)/100,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
     kataShowSavedToast();
