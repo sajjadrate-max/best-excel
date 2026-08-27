@@ -525,6 +525,11 @@ window.loadAuthSDKs = async function(){
     line-height:1.5 !important;
     padding:1px 2px !important;
   }
+  /* صارف کی درخواست (2026-08-27): Agency پرنٹ میں "Per CTN Kraya" کالم نظر
+     نہ آئے (صرف Total Kraya رہے)، لیکن ویب سائٹ پر ویسے کا ویسا رہے۔ */
+  .kata-print-tight .kata-krayarate-col{
+    display:none;
+  }
   .master-all-lock-btn{
     font-size:14px !important;
     vertical-align:middle;
@@ -4316,10 +4321,14 @@ function kataRenderDetail(name){
   // صارف نے پچھلی انٹری میں خود کوئی مختلف Weight ٹائپ کیا ہو۔ اب پچھلی
   // انٹری میں جو Weight لکھا گیا تھا، وہی نئی انٹری میں پہلے سے بھرا آئے
   // گا — جب تک صارف خود تبدیل نہ کرے۔
+  // کرایہ بھی اسی طرح "چپکنے والا" ہے (2026-08-27، صارف کی درخواست پر) —
+  // ہر الگ کھاتے (Agency میں ہر کارٹن دار) کی اپنی فی کارٹن کرایہ الگ الگ
+  // محفوظ رہے، اگلی نئی انٹری میں خودکار وہی نظر آئے، جب تک صارف خود
+  // تبدیل نہ کرے۔
   const prevItemData = {};
   KATA_ITEMS.forEach(item=>{
     const v = lastEntry && lastEntry.items && lastEntry.items[item.key];
-    prevItemData[item.key] = {totalT: (v && v.totalT) || 0, discount: (v && v.discount) || 0, weight: (v && v.weight != null) ? v.weight : null};
+    prevItemData[item.key] = {totalT: (v && v.totalT) || 0, discount: (v && v.discount) || 0, weight: (v && v.weight != null) ? v.weight : null, krayaRate: (v && v.krayaRate) || 0};
   });
 
   let html = `<div class="card" style="text-align:center;">${kataDotsMenuHtml([{cls:'kata-book-delete-btn', label:'🗑 یہ کھاتہ حذف کریں'}])}<h2 style="border:none;margin:0;">${kataEscape(name)}${kataOpenClosed ? ' 🔒' : ''}</h2></div>`;
@@ -4686,7 +4695,7 @@ function kataRenderEntryCard(entry, isLast, idx){
     // Agency کھاتہ — صارف کی درخواست پر (2026-08-27): ہر آئٹم کی اپنی فی
     // کارٹن کرایہ اور ٹوٹل کرایہ (Discount/D.Total کی طرح)۔
     const krayaCells = agencySimple ? `
-      <td style="${kataColorStyleFor(cc, item.key+'-krayarate')}"><span class="cell-val${numClass}">${v.krayaRate||0}</span></td>
+      <td style="${kataColorStyleFor(cc, item.key+'-krayarate')}" class="kata-krayarate-col"><span class="cell-val${numClass}">${v.krayaRate||0}</span></td>
       <td style="${kataColorStyleFor(cc, item.key+'-krayatotal')}"><span class="cell-val${numClass}">${v.krayaTotal||0}</span></td>` : '';
     rows += `<tr>
       <td style="${kataColorStyleFor(cc, item.key+'-idx')}"><span class="${thinClass.trim()}">${(v.idx != null && v.idx !== '') ? kataEscape(v.idx) : (idx+1)}</span></td>
@@ -4709,9 +4718,9 @@ function kataRenderEntryCard(entry, isLast, idx){
           <colgroup>${showDiscount
             ? '<col style="width:6%"><col style="width:11%"><col style="width:13%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
             : agencySimple
-            ? '<col style="width:6%"><col style="width:20%"><col style="width:11%"><col style="width:11%"><col style="width:13%"><col style="width:14%"><col style="width:12%"><col style="width:13%">'
+            ? '<col style="width:6%"><col style="width:20%"><col style="width:11%"><col style="width:11%"><col style="width:13%"><col style="width:14%"><col class="kata-krayarate-col" style="width:12%"><col style="width:13%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
-          <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>T CTN</th><th>Rate</th><th>Total Rate</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th>فی کارٹن کرایہ</th><th>ٹوٹل کرایہ</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
+          <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>T CTN</th><th>Rate</th><th>Total Rate</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Per CTN Kraya</th><th>Total Kraya</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -4749,7 +4758,7 @@ function kataRenderEntryCard(entry, isLast, idx){
         </div>` : `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${entry.kharch||0}</div>
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">کرایہ</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">Kraya</div>
         </div>`}
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${sumT}</div>
@@ -4759,11 +4768,11 @@ function kataRenderEntryCard(entry, isLast, idx){
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">${kataInstance === 'agency' ? 'Total Weight (kg)' : 'کل وزن (کلوگرام)'}</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${((Number(entry.weightKg)||0)/40).toFixed(2)}</div>
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">${kataInstance === 'agency' ? 'Total Weight (Maund)' : 'کل وزن (من)'}</div>
         </div>
       </div>`}
       ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya, idx)}
@@ -4880,7 +4889,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
     // انٹری کی طرح "چپکنے والا" (Discount کی طرح)۔
     const stickyKrayaRate = isZNet ? 0 : ((prevItemData[item.key] && prevItemData[item.key].krayaRate) || 0);
     const krayaCells = agencySimple ? `
-      <td data-color-key="${item.key}-krayarate"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-field="krayaRate" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${stickyKrayaRate}"></td>
+      <td data-color-key="${item.key}-krayarate" class="kata-krayarate-col"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-field="krayaRate" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${stickyKrayaRate}"></td>
       <td data-color-key="${item.key}-krayatotal"><span class="cell-val${numClass}" data-kata-krayatotal="${item.key}">0</span></td>` : '';
     rows += `<tr>
       <td data-color-key="${item.key}-idx" class="kata-normal-size${thinClass}" style="${kataInstance === 'salesman' ? 'padding:2px;' : ''}">${
@@ -4920,7 +4929,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <colgroup>${showDiscount
             ? '<col style="width:6%"><col style="width:11%"><col style="width:13%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
             : agencySimple
-            ? '<col style="width:6%"><col style="width:20%"><col style="width:11%"><col style="width:11%"><col style="width:13%"><col style="width:14%"><col style="width:12%"><col style="width:13%">'
+            ? '<col style="width:6%"><col style="width:20%"><col style="width:11%"><col style="width:11%"><col style="width:13%"><col style="width:14%"><col class="kata-krayarate-col" style="width:12%"><col style="width:13%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
           <thead><tr>
             <th><button type="button" class="row-lock-btn" data-kata-lockbtn="all3"></button>#</th>
@@ -4928,7 +4937,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
             <th>Weight</th>
             <th>T CTN</th>
             <th>Rate</th>
-            <th>Total Rate</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th>فی کارٹن کرایہ</th><th>ٹوٹل کرایہ</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}
+            <th>Total Rate</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Per CTN Kraya</th><th>Total Kraya</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -4967,7 +4976,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
         </div>` : `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;box-sizing:border-box;">
           <div class="n" data-kata-sum-kharch style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کرایہ</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Kraya</div>
         </div>`}
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div class="n" data-kata-sum-t style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
@@ -4987,11 +4996,11 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">${kataInstance === 'agency' ? 'Total Weight (kg)' : 'کل وزن (کلوگرام)'}</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div class="n" data-kata-sum-weight-mann style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">${kataInstance === 'agency' ? 'Total Weight (Maund)' : 'کل وزن (من)'}</div>
         </div>
       </div>`}
       <div class="edit-table" style="margin-top:8px;">
