@@ -4748,6 +4748,17 @@ function kataRenderEntryCard(entry, isLast, idx){
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
         </div>
       </div>
+      ${kataInstance === 'agency' ? `
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${entry.perCartonKraya||0}</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">فی کارٹن کرایہ</div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.perCartonKraya||0) * sumT}</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">ٹوٹل کرایہ</div>
+        </div>
+      </div>` : ''}
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>
@@ -4957,7 +4968,18 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <div class="n" data-kata-sum-t style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
         </div>
-      </div>${kataInstance !== 'agency' ? `
+      </div>
+      ${kataInstance === 'agency' ? `
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;box-sizing:border-box;">
+          <input type="number" inputmode="numeric" class="cell-input" data-kata-field="perCartonKraya" style="border:none;background:transparent;font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;width:100%;box-sizing:border-box;text-align:center;padding:0;" value="0">
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">فی کارٹن کرایہ</div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div class="n" data-kata-sum-total-kraya style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">ٹوٹل کرایہ</div>
+        </div>
+      </div>` : ''}${kataInstance !== 'agency' ? `
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div class="n" data-kata-sum-profit style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
@@ -5055,6 +5077,14 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
     });
     const sumTEl = document.querySelector('[data-kata-sum-t]');
     if(sumTEl) sumTEl.textContent = todayT;
+    // Agency کھاتہ — صارف کی درخواست پر (2026-08-27): فی کارٹن کرایہ ×
+    // Total CTN = ٹوٹل کرایہ، خودکار حساب، صرف Agency میں۔
+    if(kataInstance === 'agency'){
+      const perCartonKrayaInput = document.querySelector('[data-kata-field="perCartonKraya"]');
+      const perCartonKraya = Number((perCartonKrayaInput && perCartonKrayaInput.value) || 0) || 0;
+      const sumTotalKrayaEl = document.querySelector('[data-kata-sum-total-kraya]');
+      if(sumTotalKrayaEl) sumTotalKrayaEl.textContent = perCartonKraya * todayT;
+    }
     const sumWeightEl = document.querySelector('[data-kata-sum-weight]');
     if(sumWeightEl) sumWeightEl.textContent = (todayWeightGrams / 1000).toFixed(2);
     // کل وزن (من) — 1 من = 40 کلوگرام (صارف کا بتایا ہوا تبادلہ)۔
@@ -5165,7 +5195,7 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
   document.querySelectorAll('[data-jamah]').forEach(input=>{
     input.addEventListener('input', recomputeTotalsBlock);
   });
-  ['kharch', 'less'].forEach(field=>{
+  ['kharch', 'less', 'perCartonKraya'].forEach(field=>{
     const input = document.querySelector(`[data-kata-field="${field}"]`);
     if(input) input.addEventListener('input', recomputeTotalsBlock);
   });
@@ -5337,6 +5367,10 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
   // سے منفی ہوتے ہیں (2026-08-22)۔ Agency میں پرانا انداز برقرار ہے۔
   const lessInput = document.querySelector('[data-kata-field="less"]');
   const less = Number((lessInput && lessInput.value) || 0) || 0;
+  // Agency کھاتہ — صارف کی درخواست پر (2026-08-27): فی کارٹن کرایہ محفوظ
+  // کریں، ٹوٹل کرایہ ہمیشہ اسی سے حساب ہو گا (perCartonKraya × Total CTN)۔
+  const perCartonKrayaInput = document.querySelector('[data-kata-field="perCartonKraya"]');
+  const perCartonKraya = Number((perCartonKrayaInput && perCartonKrayaInput.value) || 0) || 0;
   const isRibnawaz = kataInstance === 'ribnawaz';
   const todayPrice = isRibnawaz ? todayRate : (todayRate + kharch);
   if(isRibnawaz) todayProfit = todayProfit - kharch - less;
@@ -5380,7 +5414,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
     const entries = kataLocalGetEntries(kataOpenId);
     entries.push({
       id: 'e' + Date.now() + Math.random().toString(36).slice(2,7),
-      items, sabka, today, total, jamah, bqaya, salesman, kharch, less, cellColors, weightKg: Math.round((todayWeightGrams/1000)*100)/100,
+      items, sabka, today, total, jamah, bqaya, salesman, kharch, less, perCartonKraya, cellColors, weightKg: Math.round((todayWeightGrams/1000)*100)/100,
       createdAt: new Date().toISOString(),
     });
     kataLocalSaveEntries(kataOpenId, entries);
@@ -5392,7 +5426,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
 
   try{
     await kataCol().doc(kataOpenId).collection('entries').add({
-      items, sabka, today, total, jamah, bqaya, salesman, kharch, less, cellColors, weightKg: Math.round((todayWeightGrams/1000)*100)/100,
+      items, sabka, today, total, jamah, bqaya, salesman, kharch, less, perCartonKraya, cellColors, weightKg: Math.round((todayWeightGrams/1000)*100)/100,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
     kataShowSavedToast();
