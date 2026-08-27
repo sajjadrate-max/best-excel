@@ -301,10 +301,18 @@ window.loadAuthSDKs = async function(){
     opacity:.28;
     z-index:0;
   }
-  /* کھاتے (سیلزمین/ربنواز/Agency) کا background/watermark مکمل ختم — صارف کی درخواست پر */
-  #kataListView .card::before,
-  #kataDetailView .card::before{
-    content:none;
+  /* کھاتے (سیلزمین/ربنواز/Agency): صارف کی درخواست پر (2026-08-27) وہی
+     پرانا background/watermark دوبارہ لگایا گیا — سرف کے ماہانہ حساب کی طرح
+     ایک ہی مربوط card-level watermark (ہر ٹیبل پر الگ الگ نہیں، تاکہ لوگو
+     تین بار نہ دہرائے)۔ */
+  #kataListView .card:has(.edit-table)::before,
+  #kataDetailView .card:has(.edit-table)::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:var(--poster-img) center 30% / cover no-repeat;
+    opacity:.28;
+    z-index:0;
   }
   .card > *{
     position:relative;
@@ -516,6 +524,12 @@ window.loadAuthSDKs = async function(){
   .kata-print-tight .cell-input{
     line-height:1.5 !important;
     padding:1px 2px !important;
+  }
+  /* صارف کی درخواست (2026-08-27): پرنٹ میں "سیلزمین:" کا لفظ نہ آئے، لیکن
+     خود نام (میاں ذیشان وغیرہ) ویسے ہی نظر آتا رہے — صرف پرنٹ کے وقت،
+     ویب سائٹ پر لیبل ویسے کا ویسا رہتا ہے۔ */
+  .kata-print-tight .kata-print-hide-label{
+    display:none;
   }
   .master-all-lock-btn{
     font-size:14px !important;
@@ -4686,7 +4700,7 @@ function kataRenderEntryCard(entry, isLast, idx){
     <div class="card kata-entry-card" id="${entryDomId}">
       ${isLast ? kataDotsMenuHtml([{cls:'kata-delete-entry-btn', label:'🗑 حذف کریں'}]) : ''}
       <div class="note" style="text-align:center;font-weight:400;">${kataFormatWhen(entry.createdAt)}</div>
-      ${entry.salesman ? `<div class="note" style="text-align:center;">سیلزمین: ${kataEscape(entry.salesman)}</div>` : ''}
+      ${entry.salesman ? `<div class="note" style="text-align:center;"><span class="kata-print-hide-label">سیلزمین: </span>${kataEscape(entry.salesman)}</div>` : ''}
       <div class="kata-ref-title">Best Excel Washing powder</div>
       <div class="edit-table wide-table kata-ref-style">
         <table dir="ltr">
