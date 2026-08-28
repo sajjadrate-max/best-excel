@@ -4585,7 +4585,7 @@ async function kataPrintEntry(btn){
     pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
     const blob = pdf.output('blob');
     if(!blob) throw new Error('no-blob');
-    await sharePdfDirectly(blob, 'kata-entry.pdf', 'کھاتہ انٹری');
+    await sharePdfDirectly(blob, 'Best Excel Washing powder.pdf', 'کھاتہ انٹری');
   } catch(err){
     alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
     console.warn(err);
@@ -4720,7 +4720,7 @@ function kataRenderEntryCard(entry, isLast, idx){
             : agencySimple
             ? '<col style="width:6%"><col style="width:20%"><col style="width:11%"><col style="width:11%"><col style="width:13%"><col style="width:14%"><col class="kata-krayarate-col" style="width:12%"><col style="width:13%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
-          <thead><tr><th>#</th><th>Items</th><th>Weight</th><th>${agencySimple ? 'CTN' : 'T CTN'}</th><th>${agencySimple ? 'Price' : 'Rate'}</th><th>Total Rate</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>Total Kraya</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
+          <thead><tr><th>#</th><th>Items</th><th>${agencySimple ? 'Weight.g' : 'Weight'}</th><th>${agencySimple ? 'CTN' : 'T CTN'}</th><th>${agencySimple ? 'Price' : 'Rate'}</th><th>Total Rate</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -4758,17 +4758,17 @@ function kataRenderEntryCard(entry, isLast, idx){
         </div>` : `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${entry.kharch||0}</div>
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">Rent</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total Rent</div>
         </div>`}
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${sumT}</div>
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">${kataInstance === 'agency' ? 'Total Rent' : 'Total CTN'}</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
         </div>
       </div>
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">${kataInstance === 'agency' ? 'Total Weight (kg)' : 'کل وزن (کلوگرام)'}</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">${kataInstance === 'agency' ? '<span dir="ltr" style="unicode-bidi:isolate;">Total Weight (kg)</span>' : 'کل وزن (کلوگرام)'}</div>
         </div>${kataInstance !== 'agency' ? `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${((Number(entry.weightKg)||0)/40).toFixed(2)}</div>
@@ -4830,7 +4830,7 @@ function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx){
             <tr><td style="text-align:right;padding-right:6px;">Total</td>${agencySimple ? '' : `<td>${total.t||0}</td>`}<td>${total.price}</td>${agencySimple ? '' : `<td>${total.profit||0}</td>`}${showDiscount ? `<td>${total.discount||0}</td>` : ''}</tr>
             ${jamahRow(0)}
             ${agencySimple ? '' : jamahRow(1)}
-            <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Remaining' : 'Bqaya'}</td>${agencySimple ? '' : bqayaTCell}${bqayaCell}${agencySimple ? '' : bqayaProfitCell}${showDiscount ? bqayaDiscountCell : ''}</tr>
+            <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Remaining Price' : 'Bqaya'}</td>${agencySimple ? '' : bqayaTCell}${bqayaCell}${agencySimple ? '' : bqayaProfitCell}${showDiscount ? bqayaDiscountCell : ''}</tr>
           </tbody>
         </table>
       </div>`;
@@ -4934,10 +4934,10 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <thead><tr>
             <th><button type="button" class="row-lock-btn" data-kata-lockbtn="all3"></button>#</th>
             <th>Items</th>
-            <th>Weight</th>
+            <th>${agencySimple ? 'Weight.g' : 'Weight'}</th>
             <th>${agencySimple ? 'CTN' : 'T CTN'}</th>
             <th>${agencySimple ? 'Price' : 'Rate'}</th>
-            <th>Total Rate</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>Total Kraya</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}
+            <th>Total Rate</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -4976,11 +4976,11 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
         </div>` : `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;box-sizing:border-box;">
           <div class="n" data-kata-sum-kharch style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Rent</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total Rent</div>
         </div>`}
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div class="n" data-kata-sum-t style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">${kataInstance === 'agency' ? 'Total Rent' : 'Total CTN'}</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
         </div>
       </div>${kataInstance !== 'agency' ? `
       <div style="display:flex;gap:10px;margin-top:8px;">
@@ -4996,7 +4996,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">${kataInstance === 'agency' ? 'Total Weight (kg)' : 'کل وزن (کلوگرام)'}</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">${kataInstance === 'agency' ? '<span dir="ltr" style="unicode-bidi:isolate;">Total Weight (kg)</span>' : 'کل وزن (کلوگرام)'}</div>
         </div>${kataInstance !== 'agency' ? `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div class="n" data-kata-sum-weight-mann style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
@@ -5013,7 +5013,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
             <tr><td style="text-align:right;padding-right:6px;">Total</td>${agencySimple ? '' : `<td data-kata-tot-t>${prevTotal.t||0}</td>`}<td data-kata-tot-price>${prevTotal.price}</td>${agencySimple ? '' : `<td data-kata-tot-profit>${prevTotal.profit||0}</td>`}${showDiscount ? `<td data-kata-tot-discount>${prevTotal.discount||0}</td>` : ''}</tr>
             <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Cash' : 'Jamah'}</td>${agencySimple ? '' : '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="t0" style="border:1px solid var(--line);" value="0"></td>'}<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price0" style="border:1px solid var(--line);" value="0"></td>${agencySimple ? '' : '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="profit0" style="border:1px solid var(--line);" value="0"></td>'}${showDiscount ? '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="discount0" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>
             ${agencySimple ? '' : `<tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="t1" style="border:1px solid var(--line);" value="0"></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price1" style="border:1px solid var(--line);" value="0"></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="profit1" style="border:1px solid var(--line);" value="0"></td>${showDiscount ? '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="discount1" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>`}
-            <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Remaining' : 'Bqaya'}</td>${agencySimple ? '' : `<td data-kata-bqaya-t>${prevTotal.t||0}</td>`}<td data-kata-bqaya-price>${prevTotal.price}</td>${agencySimple ? '' : `<td data-kata-bqaya-profit>${prevTotal.profit||0}</td>`}${showDiscount ? `<td data-kata-bqaya-discount>${prevTotal.discount||0}</td>` : ''}</tr>
+            <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Remaining Price' : 'Bqaya'}</td>${agencySimple ? '' : `<td data-kata-bqaya-t>${prevTotal.t||0}</td>`}<td data-kata-bqaya-price>${prevTotal.price}</td>${agencySimple ? '' : `<td data-kata-bqaya-profit>${prevTotal.profit||0}</td>`}${showDiscount ? `<td data-kata-bqaya-discount>${prevTotal.discount||0}</td>` : ''}</tr>
           </tbody>
         </table>
       </div>
