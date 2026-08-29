@@ -4604,10 +4604,11 @@ async function kataPrintEntry(btn){
     const availW = pageW - margin*2;
     const availH = pageH - margin*2;
     // صارف کی درخواست (2026-08-29): "کمپیوٹر پرنٹ" بٹن کے لیے صفحے کا صرف
-    // نصف (1/2) حصہ استعمال ہو (پرانی حالت جو پہلے کبھی لگائی گئی تھی) —
-    // "موبائل پرنٹ" بٹن پرانی مکمل-صفحہ-بھرنے والی حالت پر ہی قائم رہتا ہے۔
+    // ایک تہائی (1/3) حصہ استعمال ہو (پہلے 1/2 رکھا گیا تھا، بعد میں 1/3
+    // کر دیا گیا) — "موبائل پرنٹ" بٹن پرانی مکمل-صفحہ-بھرنے والی حالت پر
+    // ہی قائم رہتا ہے۔
     const isComputerPrint = btn.dataset.printMode === 'computer';
-    const printAvailH = isComputerPrint ? (availH / 2) : availH;
+    const printAvailH = isComputerPrint ? (availH / 3) : availH;
     const sizeBoost = 1.12; // صارف کی درخواست (2026-08-26): پورے صفحے کی چوڑائی بھرنے کے بعد بھی مجموعی سائز تھوڑا مزید بڑا کریں
     let safetyScale = (availW / drawW) * sizeBoost;
     if(drawH * safetyScale > printAvailH){
