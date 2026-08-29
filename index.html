@@ -2959,7 +2959,8 @@ function msRenderEntryCard(entry, isLast){
         </table>
       </div>
       <div class="ms-entry-actions kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
-        <button type="button" class="kata-print-entry-btn" style="padding:5px 14px;font-size:12px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 پرنٹ</button>
+        <button type="button" class="kata-print-entry-btn" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 موبائل پرنٹ</button>
+        <button type="button" class="kata-print-entry-btn" data-print-mode="computer" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 کمپیوٹر پرنٹ</button>
       </div>
     </div>`;
 }
@@ -4602,24 +4603,37 @@ async function kataPrintEntry(btn){
     // پورا صفحہ استعمال کرنے کی بنیاد بنایا ہے۔
     const availW = pageW - margin*2;
     const availH = pageH - margin*2;
+    // صارف کی درخواست (2026-08-29): "کمپیوٹر پرنٹ" بٹن کے لیے صفحے کا صرف
+    // نصف (1/2) حصہ استعمال ہو (پرانی حالت جو پہلے کبھی لگائی گئی تھی) —
+    // "موبائل پرنٹ" بٹن پرانی مکمل-صفحہ-بھرنے والی حالت پر ہی قائم رہتا ہے۔
+    const isComputerPrint = btn.dataset.printMode === 'computer';
+    const printAvailH = isComputerPrint ? (availH / 2) : availH;
     const sizeBoost = 1.12; // صارف کی درخواست (2026-08-26): پورے صفحے کی چوڑائی بھرنے کے بعد بھی مجموعی سائز تھوڑا مزید بڑا کریں
     let safetyScale = (availW / drawW) * sizeBoost;
-    if(drawH * safetyScale > availH){
+    if(drawH * safetyScale > printAvailH){
       // لمبی انٹریوں کے لیے حفاظتی حد — تاکہ صفحے کی لمبائی سے تجاوز نہ ہو اور نیچے کا حصہ کٹے نہیں
-      safetyScale = availH / drawH;
+      safetyScale = printAvailH / drawH;
     }
     drawW *= safetyScale;
     drawH *= safetyScale;
     // صارف کی درخواست (2026-08-26): چھوٹی انٹریوں میں نیچے خالی جگہ بچ
-    // جاتی تھی — اب لمبائی کو بھی صفحے کی پوری اونچائی تک کھینچ دیتے ہیں
-    // (چوڑائی وہی رہتی ہے) تاکہ خالی جگہ نہ رہے۔
-    if(drawH < availH){
-      drawH = availH;
+    // جاتی تھی — اب لمبائی کو بھی مطلوبہ اونچائی (مکمل یا نصف صفحہ) تک
+    // کھینچ دیتے ہیں (چوڑائی وہی رہتی ہے) تاکہ خالی جگہ نہ رہے۔
+    if(drawH < printAvailH){
+      drawH = printAvailH;
     }
     pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
     const blob = pdf.output('blob');
     if(!blob) throw new Error('no-blob');
-    await sharePdfDirectly(blob, 'Best Excel Washing powder.pdf', 'کھاتہ انٹری');
+    // دو الگ پرنٹ بٹن (2026-08-29): "کمپیوٹر پرنٹ" بٹن پر ہمیشہ سیدھا
+    // براؤزر کا پرنٹ ڈائیلاگ کھلے (چاہے فون سے ہی کیوں نہ کھولا جائے)،
+    // اور "موبائل پرنٹ" بٹن پرانی خودکار طرزِ عمل (ڈیوائس چیک کر کے فون پر
+    // Share شیٹ، کمپیوٹر پر پرنٹ ڈائیلاگ) پر قائم رہے۔
+    if(btn.dataset.printMode === 'computer'){
+      printPdfBlob(blob);
+    } else {
+      await sharePdfDirectly(blob, 'Best Excel Washing powder.pdf', 'کھاتہ انٹری');
+    }
   } catch(err){
     alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
     console.warn(err);
@@ -4837,7 +4851,8 @@ function kataRenderEntryCard(entry, isLast, idx){
       </div>`}
       ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya, idx)}
       <div class="kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
-        <button type="button" class="kata-print-entry-btn" style="padding:5px 14px;font-size:12px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 پرنٹ</button>
+        <button type="button" class="kata-print-entry-btn" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 موبائل پرنٹ</button>
+        <button type="button" class="kata-print-entry-btn" data-print-mode="computer" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 کمپیوٹر پرنٹ</button>
       </div>
     </div>`;
 }
