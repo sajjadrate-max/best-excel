@@ -4776,7 +4776,7 @@ function kataRenderEntryCard(entry, isLast, idx){
       <td style="${kataColorStyleFor(cc, item.key+'-idx')}"><span class="${thinClass.trim()}">${(v.idx != null && v.idx !== '') ? kataEscape(v.idx) : (idx+1)}</span></td>
       <td style="text-align:left;padding-left:6px;${nameColor}${kataColorStyleFor(cc, item.key+'-name')}"><span class="${thinClass.trim()}">${kataEscape(name)}</span></td>
       <td style="${kataColorStyleFor(cc, item.key+'-weight')}"><span class="${thinClass.trim()}">${kataEscape(weight)}</span>${v.sabkaNote ? `<span style="font-size:6px;color:#8a6d00;margin-right:2px;">(${kataEscape(v.sabkaNote)})</span>` : ''}</td>
-      <td style="${kataColorStyleFor(cc, item.key+'-t')}"><span class="cell-val${numClass}">${v.t}</span></td>
+      <td class="kata-t-cell" style="${kataColorStyleFor(cc, item.key+'-t') || 'background-color:#d9f2d9;'}"><span class="cell-val${numClass}">${v.t}</span></td>
       <td style="${kataColorStyleFor(cc, item.key+'-rate')}"><span class="cell-val${numClass}">${rate}</span></td>
       <td style="${kataColorStyleFor(cc, item.key+'-totalrate')}"><span class="cell-val${numClass}">${v.price}</span></td>${priftCells}${krayaCells}${discountCells}
     </tr>`;
@@ -4795,7 +4795,7 @@ function kataRenderEntryCard(entry, isLast, idx){
             : agencySimple
             ? '<col style="width:6%"><col style="width:20%"><col style="width:11%"><col style="width:11%"><col style="width:13%"><col style="width:14%"><col class="kata-krayarate-col" style="width:12%"><col style="width:13%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
-          <thead><tr><th>#</th><th>Items</th><th>${agencySimple ? 'Weight (gram)' : 'Weight'}</th><th>${agencySimple ? 'CTN' : 'T CTN'}</th><th>${agencySimple ? 'Price' : 'Rate'}</th><th>Total Rate</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
+          <thead><tr><th>#</th><th>Items</th><th>Weight (gram)</th><th>CTN</th><th>Price</th><th>Total Price</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -4806,12 +4806,12 @@ function kataRenderEntryCard(entry, isLast, idx){
           <div style="font-size:7px;color:#5b5346;margin-top:1px;">Total CTN</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
-          <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.price) || 0}</div>
-          <div style="font-size:7px;color:#5b5346;margin-top:1px;">Total Price</div>
-        </div>
-        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.profit) || 0}</div>
           <div style="font-size:7px;color:#5b5346;margin-top:1px;">Total Profit</div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
+          <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.price) || 0}</div>
+          <div style="font-size:7px;color:#5b5346;margin-top:1px;">Total Price</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>
@@ -4881,8 +4881,8 @@ function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx){
   const jamahProfit = jamah.profit || [0,0];
   const jamahT = jamah.t || [0,0];
   const jamahRow = (i)=> entryIdx != null
-    ? `<tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Cash' : 'Jamah'}</td>${agencySimple ? '' : `<td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah-t="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamahT[i]||0}"></td>`}<td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamah.price[i]||0}"></td>${agencySimple ? '' : `<td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah-profit="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamahProfit[i]||0}"></td>`}${showDiscount ? `<td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah-discount="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamahDiscount[i]||0}"></td>` : ''}</tr>`
-    : `<tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Cash' : 'Jamah'}</td>${agencySimple ? '' : `<td>${jamahT[i]||0}</td>`}<td>${jamah.price[i]||0}</td>${agencySimple ? '' : `<td>${jamahProfit[i]||0}</td>`}${showDiscount ? `<td>${jamahDiscount[i]||0}</td>` : ''}</tr>`;
+    ? `<tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Cash' : 'Jamah'}</td>${agencySimple ? '' : `<td></td>`}<td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamah.price[i]||0}"></td>${agencySimple ? '' : `<td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah-profit="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamahProfit[i]||0}"></td>`}${showDiscount ? `<td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah-discount="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamahDiscount[i]||0}"></td>` : ''}</tr>`
+    : `<tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Cash' : 'Jamah'}</td>${agencySimple ? '' : `<td></td>`}<td>${jamah.price[i]||0}</td>${agencySimple ? '' : `<td>${jamahProfit[i]||0}</td>`}${showDiscount ? `<td>${jamahDiscount[i]||0}</td>` : ''}</tr>`;
   const bqayaTCell = entryIdx != null
     ? `<td data-kata-entry-bqaya-t="${entryIdx}">${bqaya.t||0}</td>`
     : `<td>${bqaya.t||0}</td>`;
@@ -5010,10 +5010,10 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <thead><tr>
             <th><button type="button" class="row-lock-btn" data-kata-lockbtn="all3"></button>#</th>
             <th>Items</th>
-            <th>${agencySimple ? 'Weight (gram)' : 'Weight'}</th>
-            <th>${agencySimple ? 'CTN' : 'T CTN'}</th>
-            <th>${agencySimple ? 'Price' : 'Rate'}</th>
-            <th>Total Rate</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}
+            <th>Weight (gram)</th>
+            <th>CTN</th>
+            <th>Price</th>
+            <th>Total Price</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -5025,12 +5025,12 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Total CTN</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
-          <div class="n" data-kata-sum-price style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
-          <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Total Price</div>
-        </div>
-        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           <div class="n" data-kata-sum-profit style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Total Profit</div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
+          <div class="n" data-kata-sum-price style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
+          <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Total Price</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
@@ -5087,9 +5087,9 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
             ${sabkaRow}
             <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'New Bill' : 'Today'}</td>${agencySimple ? '' : '<td data-kata-today-t>0</td>'}<td data-kata-today-price>0</td>${agencySimple ? '' : '<td data-kata-today-profit>0</td>'}${showDiscount ? '<td data-kata-today-discount>0</td>' : ''}</tr>
             <tr><td style="text-align:right;padding-right:6px;">Total</td>${agencySimple ? '' : `<td data-kata-tot-t>${prevTotal.t||0}</td>`}<td data-kata-tot-price>${prevTotal.price}</td>${agencySimple ? '' : `<td data-kata-tot-profit>${prevTotal.profit||0}</td>`}${showDiscount ? `<td data-kata-tot-discount>${prevTotal.discount||0}</td>` : ''}</tr>
-            <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Cash' : 'Jamah'}</td>${agencySimple ? '' : '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="t0" style="border:1px solid var(--line);" value="0"></td>'}<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price0" style="border:1px solid var(--line);" value="0"></td>${agencySimple ? '' : '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="profit0" style="border:1px solid var(--line);" value="0"></td>'}${showDiscount ? '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="discount0" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>
-            ${agencySimple ? '' : `<tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="t1" style="border:1px solid var(--line);" value="0"></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price1" style="border:1px solid var(--line);" value="0"></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="profit1" style="border:1px solid var(--line);" value="0"></td>${showDiscount ? '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="discount1" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>`}
-            <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Remaining Price' : 'Bqaya'}</td>${agencySimple ? '' : `<td data-kata-bqaya-t>${prevTotal.t||0}</td>`}<td data-kata-bqaya-price>${prevTotal.price}</td>${agencySimple ? '' : `<td data-kata-bqaya-profit>${prevTotal.profit||0}</td>`}${showDiscount ? `<td data-kata-bqaya-discount>${prevTotal.discount||0}</td>` : ''}</tr>
+            <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Cash' : 'Jamah'}</td>${agencySimple ? '' : '<td></td>'}<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price0" style="border:1px solid var(--line);" value="0"></td>${agencySimple ? '' : '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="profit0" style="border:1px solid var(--line);" value="0"></td>'}${showDiscount ? '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="discount0" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>
+            ${agencySimple ? '' : `<tr><td style="text-align:right;padding-right:6px;">Jamah</td><td></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price1" style="border:1px solid var(--line);" value="0"></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="profit1" style="border:1px solid var(--line);" value="0"></td>${showDiscount ? '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="discount1" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>`}
+            <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Remaining Price' : 'Bqaya'}</td>${agencySimple ? '' : `<td></td>`}<td data-kata-bqaya-price>${prevTotal.price}</td>${agencySimple ? '' : `<td data-kata-bqaya-profit>${prevTotal.profit||0}</td>`}${showDiscount ? `<td data-kata-bqaya-discount>${prevTotal.discount||0}</td>` : ''}</tr>
           </tbody>
         </table>
       </div>
@@ -5220,8 +5220,6 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
       set('[data-kata-tot-discount]', totDiscount);
     }
     const j = (sel)=>{ const el = document.querySelector(sel); return el ? (Number(el.value)||0) : 0; };
-    const jamahT = j('[data-jamah="t0"]') + j('[data-jamah="t1"]');
-    set('[data-kata-bqaya-t]', totT - jamahT);
     const jamahPrice = j('[data-jamah="price0"]') + j('[data-jamah="price1"]');
     set('[data-kata-bqaya-price]', totPrice - jamahPrice);
     const jamahProfit = j('[data-jamah="profit0"]') + j('[data-jamah="profit1"]');
