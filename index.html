@@ -4786,7 +4786,7 @@ function kataRenderEntryCard(entry, isLast, idx){
     <div class="card kata-entry-card" id="${entryDomId}">
       ${isLast ? kataDotsMenuHtml([{cls:'kata-delete-entry-btn', label:'🗑 حذف کریں'}]) : ''}
       <div class="note" style="text-align:center;font-weight:400;">${kataFormatWhen(entry.createdAt)}</div>
-      ${entry.salesman ? `<div class="note" style="text-align:center;">${kataEscape(entry.salesman)}${(kataInstance === 'agency' && isLast) ? ` <button type="button" class="kata-rename-entry-name-btn" style="font-size:12px;background:none;border:1px solid var(--line);border-radius:4px;padding:1px 5px;cursor:pointer;">✏️</button>` : ''}</div>` : ''}
+      ${entry.salesman ? `<div class="note" style="text-align:center;direction:ltr;unicode-bidi:embed;">${kataEscape(entry.salesman)}${(kataInstance === 'agency' && isLast) ? ` <button type="button" class="kata-rename-entry-name-btn" style="font-size:12px;background:none;border:1px solid var(--line);border-radius:4px;padding:1px 5px;cursor:pointer;">✏️</button>` : ''}</div>` : ''}
       <div class="kata-ref-title">Best Excel Washing powder</div>
       <div class="edit-table wide-table kata-ref-style">
         <table dir="ltr">
