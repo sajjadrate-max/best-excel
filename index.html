@@ -1156,69 +1156,15 @@ function siteTextPrompt(label, callback){
 </script>
 
 
-<!-- ===================== AUTH GATE (sign up / verify / login) ===================== -->
-<div id="authGate">
-  <div class="auth-box" dir="ltr" style="text-align:left;">
-    <h2 style="text-align:center;" dir="ltr"><span class="brand-badge"><span class="b-best">BEST</span> <span class="b-excel">Excel</span></span></h2>
-
-    <div id="authStep-login">
-      <label>Email</label>
-      <input type="email" id="loginEmail" autocomplete="username">
-      <label>Password</label>
-      <input type="password" id="loginPassword" autocomplete="current-password">
-      <button type="button" id="loginBtn" class="lock-btn" style="width:100%;">Log In</button>
-      <div id="loginError" class="note" style="color:#B23; text-align:center;"></div>
-      <div class="note" style="text-align:center;"><a href="#" id="goToForgot">Forgot password?</a></div>
-      <div class="note" style="text-align:center;">Don't have an account? <a href="#" id="goToSignup">Sign up</a></div>
-    </div>
-
-    <div id="authStep-forgot" style="display:none;">
-      <div class="note" style="text-align:center;">Enter your account email — we'll send a password reset link to it.</div>
-      <label>Email</label>
-      <input type="email" id="forgotEmail" autocomplete="username">
-      <button type="button" id="forgotBtn" class="lock-btn" style="width:100%;">Send Reset Link</button>
-      <div id="forgotError" class="note" style="color:#B23; text-align:center;"></div>
-      <div id="forgotSuccess" class="note" style="color:#1a7a3c; text-align:center;"></div>
-      <div class="note" style="text-align:center;"><a href="#" id="backToLoginFromForgot">Back to login</a></div>
-    </div>
-
-    <div id="authStep-signup" style="display:none;">
-      <label>Full Name</label>
-      <input type="text" id="signupName">
-      <label>Email</label>
-      <input type="email" id="signupEmail" autocomplete="username">
-      <label>Password</label>
-      <input type="password" id="signupPassword" autocomplete="new-password">
-      <button type="button" id="signupBtn" class="lock-btn" style="width:100%;">Send Code</button>
-      <div id="signupError" class="note" style="color:#B23; text-align:center;"></div>
-      <div class="note" style="text-align:center;">Already have an account? <a href="#" id="goToLogin">Log in</a></div>
-    </div>
-
-    <div id="authStep-verify" style="display:none;">
-      <div class="note" style="text-align:center;">A verification code has been sent to the admin's email. Ask the admin for the code and enter it below.</div>
-      <label>Verification Code</label>
-      <input type="text" id="verifyCodeInput" style="text-align:center;letter-spacing:4px;">
-      <button type="button" id="verifyBtn" class="lock-btn" style="width:100%;">Verify</button>
-      <div id="verifyError" class="note" style="color:#B23; text-align:center;"></div>
-    </div>
-
-    <div id="authStep-enableFingerprint" style="display:none;">
-      <h2 style="text-align:center;font-size:20px;">🔒</h2>
-      <div class="note" style="text-align:center;">Would you like to unlock quickly with fingerprint/screen lock on this phone in the future?</div>
-      <button type="button" id="enableFingerprintBtn" class="lock-btn" style="width:100%;">Yes, enable it</button>
-      <button type="button" id="skipFingerprintBtn" style="width:100%;background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:4px;padding:8px 16px;font-family:'Noto Naskh Arabic',serif;font-size:12.5px;">Later</button>
-      <div id="fingerprintSetupError" class="note" style="color:#B23; text-align:center;"></div>
-    </div>
-
-    <div id="authStep-locked" style="display:none;">
-      <h2 style="text-align:center;">🔒 Locked</h2>
-      <div class="note" style="text-align:center;">Use this phone's fingerprint/screen lock to unlock.</div>
-      <button type="button" id="unlockFingerprintBtn" class="lock-btn" style="width:100%;">👆 Unlock with Fingerprint</button>
-      <div id="unlockError" class="note" style="color:#B23; text-align:center;"></div>
-      <div class="note" style="text-align:center;"><a href="#" id="logoutInsteadLink">Log out instead</a></div>
-    </div>
-  </div>
-</div>
+<!-- ===================== AUTH GATE — REMOVED PERMANENTLY (2026-08-30,
+     explicit repeated request: "ہمیشہ کیلئے ختم کریں"). Previously this was
+     just hidden via LOGIN_TEMPORARILY_DISABLED, but the login screen kept
+     reappearing (stale cached/undeployed copies), so per the user's request
+     the HTML itself is now deleted — there is no markup left for any login
+     screen to render, regardless of that flag's state or any caching issue.
+     The Firebase auth JS below (initAuthSystem, etc.) still exists but is
+     unreachable dead code since LOGIN_TEMPORARILY_DISABLED stays true and
+     its "else" branch (the only caller of initAuthSystem) never runs. ===================== -->
 
 <button type="button" id="logoutBtn" style="display:none;">لاگ آؤٹ</button>
 
