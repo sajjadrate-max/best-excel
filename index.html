@@ -3878,7 +3878,7 @@ function kataEntryDateOnly(ts){
   return d;
 }
 function kataRenderTotalRemainingBoxHtml(total, lastDateStr){
-  return `<div class="totals" style="margin:0 0 14px 0;"><div style="text-align:center;background:var(--paper-dark);border-radius:8px;padding:8px;"><div class="n" style="font-family:'Courier Prime',monospace;font-size:19px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${kataIndianNumberFormat(total)}</div><div class="l" style="font-size:12px;color:#5b5346;margin-top:2px;">کل باقی رقم (تمام کھاتے)</div>${lastDateStr ? `<div class="l" style="font-size:11px;color:#5b5346;margin-top:4px;">نئی انٹری کی آخری تاریخ: ${kataEscape(lastDateStr)}</div>` : ''}</div></div>`;
+  return `<div class="card" style="text-align:center;"><div class="n" style="font-family:'Courier Prime',monospace;font-size:19px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${kataIndianNumberFormat(total)}</div><div class="l" style="font-size:12px;color:#5b5346;margin-top:2px;">کل باقی رقم (تمام کھاتے)</div></div>`;
 }
 
 // انڈین نمبرنگ سسٹم (لاکھ/کروڑ گروپنگ — 7,47,574 / 6,78,75,464 طرز) —
@@ -3915,6 +3915,87 @@ function kataApplyIndianFormattingToReadonly(root){
     td.textContent = kataIndianNumberFormat(td.textContent.trim());
   });
 }
+
+// یک بارگی ڈیٹا اصلاح (2026-08-30، صارف کی واضح درخواست): Agency کی تمام
+// پرانی محفوظ شدہ انٹریوں میں کمیشن شامل کریں — فی کارٹن ریٹ آئٹم کے مطابق
+// (RS.10/RS.50/RS.100 = 40، RS.150/RS.400/RS.1000/Khula Special/Khula sada
+// = 60) — اور ہر کھاتے میں تاریخ وار سابقہ+آج=ٹوٹل کا حساب اسی طرح دوبارہ
+// بنائیں جیسے نئی انٹری محفوظ کرتے وقت اب خودکار بنتا ہے۔ ایک ہی گاہک کے
+// کئی مہینوں کے الگ الگ کھاتے (نام کے آخر میں " - YYYY-MM" لگا کر خودکار
+// نئے مہینے کا کھاتہ بنتا ہے) بنیادی نام سے پہچان کر تاریخ وار زنجیر میں
+// جوڑے جاتے ہیں تاکہ کمیشن کئی مہینوں میں درست طور پر آگے چلتا رہے۔ یہ
+// صرف ایک بار چلتا ہے (localStorage flag سے روکا جاتا ہے) تاکہ دوبارہ
+// چلنے پر رقم دوگنی نہ ہو۔
+const KATA_COMMISSION_RATE_MAP = {rs10:40, rs50:40, rs100:40, rs150:60, rs400:60, rs1000:60, special:60, sada:60};
+const KATA_COMMISSION_BACKFILL_FLAG = 'kataCommissionBackfillDone_v2'; // v1→v2 (2026-08-30): پہلی کوشش کسی ڈیوائس پر cloud sync سے پہلے ہی چل کر "ہو چکا" کا flag لکھ چکی تھی، جس سے درست شدہ کوڈ کبھی دوبارہ نہیں چلتا — نیا version نمبر اسے دوبارہ چلاتا ہے
+function kataCommissionBaseName(name){
+  return String(name||'').replace(/ - \d{4}-\d{2}$/, '');
+}
+function kataBackfillCommissionForAgency(){
+  try{
+    if(localStorage.getItem(KATA_COMMISSION_BACKFILL_FLAG)) return;
+    const booksKey = 'kataLocalBooks_agency';
+    const booksRaw = localStorage.getItem(booksKey);
+    const books = booksRaw ? (JSON.parse(booksRaw) || []) : [];
+    if(!books.length){ localStorage.setItem(KATA_COMMISSION_BACKFILL_FLAG, '1'); return; }
+    // ایک ہی گاہک کے کئی مہینوں کے کھاتے بنیادی نام سے گروپ کر کے تاریخ
+    // وار ترتیب دیں (چاہے اصل فہرست میں ترتیب کچھ بھی ہو)۔
+    const groups = {};
+    books.forEach(b=> {
+      const base = kataCommissionBaseName(b.name);
+      (groups[base] = groups[base] || []).push(b);
+    });
+    let booksChanged = false;
+    Object.values(groups).forEach(chain=>{
+      chain.sort((a,b)=> new Date(a.createdAt) - new Date(b.createdAt));
+      // پوری زنجیر میں ایک ہی مسلسل چلنے والا مجموعہ — پچھلے کھاتے کا آخری
+      // کمیشن اگلے کھاتے کے carryForward میں لکھ کر، اسی وقت اگلے کھاتے کی
+      // اپنی انٹریاں شروع کرنے سے پہلے، ورنہ اگلے کھاتے کا سابقہ ہمیشہ 0 سے
+      // شروع ہو جاتا (2026-08-30 کو ٹیسٹ کے دوران یہی خرابی پکڑی گئی)۔
+      let runningCommission = 0;
+      chain.forEach((book, i)=>{
+        if(i === 0){
+          runningCommission = (book.carryForward && book.carryForward.commission) || 0;
+        } else if(book.carryForward){
+          book.carryForward.commission = runningCommission;
+          booksChanged = true;
+        }
+        const entriesKey = 'kataLocalEntries_agency_' + book.id;
+        const entriesRaw = localStorage.getItem(entriesKey);
+        const entries = entriesRaw ? (JSON.parse(entriesRaw) || []) : [];
+        if(entries.length){
+          entries.forEach(entry=>{
+            let todayCommission = 0;
+            Object.keys(KATA_COMMISSION_RATE_MAP).forEach(key=>{
+              const it = entry.items && entry.items[key];
+              if(!it) return;
+              const rate = KATA_COMMISSION_RATE_MAP[key];
+              const cTotal = rate * (it.t||0);
+              it.commissionRate = rate;
+              it.commissionTotal = cTotal;
+              todayCommission += cTotal;
+            });
+            const sabkaCommission = runningCommission;
+            const totalCommission = sabkaCommission + todayCommission;
+            if(entry.sabka) entry.sabka.commission = sabkaCommission;
+            if(entry.today) entry.today.commission = todayCommission;
+            if(entry.total) entry.total.commission = totalCommission;
+            if(entry.bqaya) entry.bqaya.commission = totalCommission;
+            runningCommission = totalCommission;
+          });
+          localStorage.setItem(entriesKey, JSON.stringify(entries));
+          if(window.firebaseSyncSet) window.firebaseSyncSet(entriesKey, JSON.stringify(entries));
+        }
+      });
+    });
+    if(booksChanged){
+      localStorage.setItem(booksKey, JSON.stringify(books));
+      if(window.firebaseSyncSet) window.firebaseSyncSet(booksKey, JSON.stringify(books));
+    }
+    localStorage.setItem(KATA_COMMISSION_BACKFILL_FLAG, '1');
+  } catch(e){ console.warn('commission backfill failed', e); }
+}
+window.kataBackfillCommissionForAgency = kataBackfillCommissionForAgency;
 
 function kataLocalRenderList(){
   kataCheckMonthRolloverLocal();
@@ -4435,7 +4516,7 @@ function kataRenderDetail(name){
   const prevItemData = {};
   KATA_ITEMS.forEach(item=>{
     const v = lastEntry && lastEntry.items && lastEntry.items[item.key];
-    prevItemData[item.key] = {totalT: (v && v.totalT) || 0, discount: (v && v.discount) || 0, weight: (v && v.weight != null) ? v.weight : null, krayaRate: (v && v.krayaRate) || 0};
+    prevItemData[item.key] = {totalT: (v && v.totalT) || 0, discount: (v && v.discount) || 0, weight: (v && v.weight != null) ? v.weight : null, krayaRate: (v && v.krayaRate) || 0, commissionRate: (v && v.commissionRate) || 0};
   });
 
   let html = `<div class="card" style="text-align:center;">${kataDotsMenuHtml([{cls:'kata-book-delete-btn', label:'🗑 یہ کھاتہ حذف کریں'}])}<h2 style="border:none;margin:0;">${kataEscape(name)}${kataOpenClosed ? ' 🔒' : ''}</h2></div>`;
@@ -4621,6 +4702,16 @@ async function kataPrintEntry(btn){
         });
       });
     }
+  }
+  // Agency کھاتہ — "کمیشن" کے دونوں کالم (ریٹ + ٹوٹل) اور "کل کمیشن" باکس
+  // پرنٹ/PDF میں کبھی نظر نہ آئیں (صارف کی واضح درخواست، 2026-08-30) — یہ
+  // صرف اندرونی/ذاتی ریکارڈ کے لیے ہے، ویب سائٹ پر ہمیشہ کی طرح نظر آتے
+  // رہیں گے۔
+  if(kataInstance === 'agency'){
+    card.querySelectorAll('.kata-commission-col').forEach(el=>{
+      hiddenPrintCells.push({cell: el, prev: el.style.display});
+      el.style.display = 'none';
+    });
   }
   // پہلے یہاں ٹیبل کو مکمل چوڑا (max-content) کر کے کھینچا جاتا تھا کیونکہ
   // موبائل پر چوڑی ٹیبل دیکھنے کے لیے سائیڈ سکرول کرنی پڑتی تھی اور
@@ -4847,7 +4938,9 @@ function kataRenderEntryCard(entry, isLast, idx){
     // کارٹن کرایہ اور ٹوٹل کرایہ (Discount/D.Total کی طرح)۔
     const krayaCells = agencySimple ? `
       <td style="${kataColorStyleFor(cc, item.key+'-krayarate')}" class="kata-krayarate-col"><span class="cell-val${numClass}">${v.krayaRate||0}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-krayatotal')}"><span class="cell-val${numClass}">${v.krayaTotal||0}</span></td>` : '';
+      <td style="${kataColorStyleFor(cc, item.key+'-krayatotal')}"><span class="cell-val${numClass}">${v.krayaTotal||0}</span></td>
+      <td style="${kataColorStyleFor(cc, item.key+'-commissionrate')}" class="kata-commission-col"><span class="cell-val${numClass}">${v.commissionRate||0}</span></td>
+      <td style="${kataColorStyleFor(cc, item.key+'-commissiontotal')}" class="kata-commission-col"><span class="cell-val${numClass}">${v.commissionTotal||0}</span></td>` : '';
     rows += `<tr>
       <td style="${kataColorStyleFor(cc, item.key+'-idx')}"><span class="cell-val${numClass}${thinClass}">${(v.idx != null && v.idx !== '') ? kataEscape(v.idx) : (idx+1)}</span></td>
       <td style="text-align:left;padding-left:6px;${nameColor}${kataColorStyleFor(cc, item.key+'-name')}"><span class="cell-val${numClass}${thinClass}">${kataEscape(name)}</span></td>
@@ -4869,9 +4962,9 @@ function kataRenderEntryCard(entry, isLast, idx){
           <colgroup>${showDiscount
             ? '<col style="width:6%"><col style="width:11%"><col style="width:11%"><col style="width:8%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
             : agencySimple
-            ? '<col style="width:6%"><col style="width:20%"><col style="width:11%"><col style="width:11%"><col style="width:13%"><col style="width:14%"><col class="kata-krayarate-col" style="width:12%"><col style="width:13%">'
+            ? '<col style="width:6%"><col style="width:14%"><col style="width:9%"><col style="width:9%"><col style="width:11%"><col style="width:12%"><col class="kata-krayarate-col" style="width:9%"><col style="width:10%"><col class="kata-commission-col" style="width:9%"><col class="kata-commission-col" style="width:11%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
-          <thead><tr><th>#</th><th>Items</th><th>CTN</th><th>Weight (gram)</th><th>Price</th><th>Total Price</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
+          <thead><tr><th>#</th><th>Items</th><th>CTN</th><th>Weight (gram)</th><th>Price</th><th>Total Price</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th><th class="kata-commission-col">Commission Rate</th><th class="kata-commission-col">Commission</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -4914,7 +5007,11 @@ function kataRenderEntryCard(entry, isLast, idx){
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${sumT}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
-        </div>
+        </div>${kataInstance === 'agency' ? `
+        <div class="kata-commission-col" style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${kataIndianNumberFormat((entry.bqaya && entry.bqaya.commission) || (entry.total && entry.total.commission) || 0)}</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total Commission</div>
+        </div>` : ''}
       </div>
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
@@ -5040,9 +5137,12 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
     // کارٹن کرایہ (دستی) اور ٹوٹل کرایہ (خودکار = ریٹ × T CTN)۔ پچھلی
     // انٹری کی طرح "چپکنے والا" (Discount کی طرح)۔
     const stickyKrayaRate = isZNet ? 0 : ((prevItemData[item.key] && prevItemData[item.key].krayaRate) || 0);
+    const stickyCommissionRate = isZNet ? 0 : ((prevItemData[item.key] && prevItemData[item.key].commissionRate) || 0);
     const krayaCells = agencySimple ? `
       <td data-color-key="${item.key}-krayarate" class="kata-krayarate-col"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-field="krayaRate" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${stickyKrayaRate}"></td>
-      <td data-color-key="${item.key}-krayatotal"><span class="cell-val${numClass}" data-kata-krayatotal="${item.key}">0</span></td>` : '';
+      <td data-color-key="${item.key}-krayatotal"><span class="cell-val${numClass}" data-kata-krayatotal="${item.key}">0</span></td>
+      <td data-color-key="${item.key}-commissionrate" class="kata-commission-col"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-field="commissionRate" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${stickyCommissionRate}"></td>
+      <td data-color-key="${item.key}-commissiontotal" class="kata-commission-col"><span class="cell-val${numClass}" data-kata-commissiontotal="${item.key}">0</span></td>` : '';
     rows += `<tr>
       <td data-color-key="${item.key}-idx" class="cell-val${numClass}${thinClass}" style="${kataInstance === 'salesman' ? 'padding:2px;' : ''}">${
         kataInstance === 'salesman'
@@ -5081,7 +5181,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <colgroup>${showDiscount
             ? '<col style="width:6%"><col style="width:11%"><col style="width:11%"><col style="width:8%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
             : agencySimple
-            ? '<col style="width:6%"><col style="width:20%"><col style="width:11%"><col style="width:11%"><col style="width:13%"><col style="width:14%"><col class="kata-krayarate-col" style="width:12%"><col style="width:13%">'
+            ? '<col style="width:6%"><col style="width:14%"><col style="width:9%"><col style="width:9%"><col style="width:11%"><col style="width:12%"><col class="kata-krayarate-col" style="width:9%"><col style="width:10%"><col class="kata-commission-col" style="width:9%"><col class="kata-commission-col" style="width:11%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
           <thead><tr>
             <th><button type="button" class="row-lock-btn" data-kata-lockbtn="all3"></button>#</th>
@@ -5089,7 +5189,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
             <th>CTN</th>
             <th>Weight (gram)</th>
             <th>Price</th>
-            <th>Total Price</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}
+            <th>Total Price</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th><th class="kata-commission-col">Commission Rate</th><th class="kata-commission-col">Commission</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -5133,7 +5233,11 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div class="n" data-kata-sum-t style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
-        </div>
+        </div>${kataInstance === 'agency' ? `
+        <div class="kata-commission-col" style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div class="n" data-kata-sum-commission style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${kataIndianNumberFormat(prevTotal.commission||0)}</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total Commission</div>
+        </div>` : ''}
       </div>${kataInstance !== 'agency' ? `
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
@@ -5252,6 +5356,19 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
       });
       const sumKharchEl = document.querySelector('[data-kata-sum-kharch]');
       if(sumKharchEl) sumKharchEl.textContent = kataIndianNumberFormat(kharch);
+      // کمیشن — Price/کرایہ سے بالکل الگ اپنا مستقل چلنے والا مجموعہ (صارف
+      // کی درخواست پر 2026-08-30): کہیں بھی Price/Profit میں شامل نہیں
+      // ہوتا، صرف اپنا "کل کمیشن" باکس اپڈیٹ ہوتا رہتا ہے۔
+      let todayCommissionLive = 0;
+      KATA_ITEMS.forEach(item=>{
+        const cmI = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="commissionRate"]`);
+        const tI3 = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="t"]`);
+        const cm = Number((cmI && cmI.value) || 0) || 0;
+        const t3 = Number((tI3 && tI3.value) || 0) || 0;
+        todayCommissionLive += cm * t3;
+      });
+      const sumCommissionEl = document.querySelector('[data-kata-sum-commission]');
+      if(sumCommissionEl) sumCommissionEl.textContent = kataIndianNumberFormat((prevTotal.commission||0) + todayCommissionLive);
     } else {
       const kharchInput = document.querySelector('[data-kata-field="kharch"]');
       kharch = Number((kharchInput && kharchInput.value) || 0) || 0;
@@ -5317,10 +5434,12 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
     const weightInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="weight"]`);
     const discountInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="discount"]`);
     const krayaRateInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="krayaRate"]`);
+    const commissionRateInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="commissionRate"]`);
     const totalRateCell = document.querySelector(`[data-kata-totalrate="${item.key}"]`);
     const totalPriftCell = document.querySelector(`[data-kata-totalprift="${item.key}"]`);
     const discountTotalCell = document.querySelector(`[data-kata-discounttotal="${item.key}"]`);
     const krayaTotalCell = document.querySelector(`[data-kata-krayatotal="${item.key}"]`);
+    const commissionTotalCell = document.querySelector(`[data-kata-commissiontotal="${item.key}"]`);
     const totalCtnCell = document.querySelector(`[data-kata-totalctn="${item.key}"]`);
     const isZNetItem = item.key === 'znet1' || item.key === 'znet2';
     const sabkaCtnForItem = isZNetItem ? 0 : ((prevItemData[item.key] && prevItemData[item.key].totalT) || 0);
@@ -5337,6 +5456,10 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
         const kr = Number((krayaRateInput && krayaRateInput.value)||0)||0;
         krayaTotalCell.textContent = kataIndianNumberFormat(kr * getT());
       }
+      if(commissionTotalCell){
+        const cm = Number((commissionRateInput && commissionRateInput.value)||0)||0;
+        commissionTotalCell.textContent = kataIndianNumberFormat(cm * getT());
+      }
       if(totalCtnCell) totalCtnCell.textContent = kataIndianNumberFormat(isZNetItem ? 0 : (sabkaCtnForItem + getT()));
       recomputeTotalsBlock();
     };
@@ -5346,6 +5469,7 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
     if(tInput) tInput.addEventListener('input', refreshRow);
     if(discountInput) discountInput.addEventListener('input', refreshRow);
     if(krayaRateInput) krayaRateInput.addEventListener('input', refreshRow);
+    if(commissionRateInput) commissionRateInput.addEventListener('input', refreshRow);
     // Z Net Bill — Rate/Profit یہاں دستی ٹائپ کیے جا سکتے ہیں (باقی
     // آئٹمز کے برعکس)، اس لیے ان کی تبدیلی پر بھی قطار/کل خودکار تازہ ہو۔
     if(item.key === 'znet1' || item.key === 'znet2'){
@@ -5460,7 +5584,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
   const showDiscount = kataShowDiscount();
   const showKraya = kataShowKraya();
   const items = {};
-  let todayT = 0, todayRate = 0, todayDiscount = 0, todayProfit = 0, todayWeightGrams = 0, todayKrayaSum = 0;
+  let todayT = 0, todayRate = 0, todayDiscount = 0, todayProfit = 0, todayWeightGrams = 0, todayKrayaSum = 0, todayCommission = 0;
   KATA_ITEMS.forEach(item=>{
     const p = kataFindPack(item.key);
     const isZNet = item.key === 'znet1' || item.key === 'znet2';
@@ -5530,6 +5654,15 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
       items[item.key].krayaRate = krayaRate;
       items[item.key].krayaTotal = krayaTotal;
       todayKrayaSum += krayaTotal;
+      // کمیشن — کرایہ سے بالکل الگ، اپنا مستقل چلنے والا مجموعہ (صارف کی
+      // درخواست 2026-08-30): نہ Price میں شامل ہوتا ہے نہ Profit میں، صرف
+      // اپنا الگ ٹوٹل بناتا رہتا ہے (نیچے sabka/total/bqaya میں)۔
+      const cmInput = document.querySelector(`[data-kata-item="${item.key}"][data-kata-field="commissionRate"]`);
+      const commissionRate = Number((cmInput && cmInput.value) || 0) || 0;
+      const commissionTotal = commissionRate * t;
+      items[item.key].commissionRate = commissionRate;
+      items[item.key].commissionTotal = commissionTotal;
+      todayCommission += commissionTotal;
     }
     // Z Net Bill کی تعداد CTN کے مجموعے میں شامل نہیں ہوتی (دیکھیں
     // recomputeTotalsBlock کا نوٹ) — باقی سب (Total Rate/Profit/Discount) پر اثر رہتا ہے۔
@@ -5575,15 +5708,25 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
         discount: Number((document.querySelector('[data-kata-sabka="discount"]')||{}).value) || 0,
       }
     : {t: prevTotal.t||0, price: prevTotal.price||0, profit: prevTotal.profit||0, discount: prevTotal.discount||0};
+  if(showKraya) sabka.commission = prevTotal.commission||0;
   const today = {t: todayT, price: todayPrice, profit: todayProfit};
   const total = {t: sabka.t + today.t, price: sabka.price + today.price, profit: (sabka.profit||0) + todayProfit};
   if(showDiscount){
     today.discount = todayDiscount;
     total.discount = (sabka.discount||0) + todayDiscount;
   }
+  // کمیشن — Price/Profit سے مکمل الگ، اپنا مستقل چلنے والا مجموعہ (صارف کی
+  // درخواست 2026-08-30): Jamah/Bqaya کا تصور اس پر لاگو نہیں ہوتا (کوئی
+  // "ادائیگی" ٹریک نہیں ہوتی)، صرف سابقہ+آج = ٹوٹل ہمیشہ آگے چلتا رہتا ہے،
+  // مہینہ بند ہونے پر باقی سب کی طرح خودکار اگلے کھاتے میں carry ہو جاتا ہے۔
+  if(showKraya){
+    today.commission = todayCommission;
+    total.commission = (sabka.commission||0) + todayCommission;
+  }
 
   const bqaya = {t: total.t - (jamah.t[0]+jamah.t[1]), price: total.price - (jamah.price[0]+jamah.price[1]), profit: (total.profit||0) - (jamah.profit[0]+jamah.profit[1])};
   if(showDiscount) bqaya.discount = (total.discount||0) - (jamah.discount[0]+jamah.discount[1]);
+  if(showKraya) bqaya.commission = total.commission; // کمیشن کبھی جمع/منہا نہیں ہوتا، ہمیشہ ٹوٹل کے برابر آگے چلتا ہے
 
   const btn = document.getElementById('kataSaveEntryBtn');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ محفوظ ہو رہا ہے...'; }
@@ -5906,13 +6049,64 @@ document.addEventListener('click', (e)=>{
 // "localSync" کلیکشن پر بغیر لاگ ان کے (public) read/write کی اجازت ہو —
 // چونکہ سائٹ پر لاگ ان مستقل بند ہے، اس ڈیٹا کی حفاظت صرف اس بات پر منحصر
 // ہے کہ اس ویب سائٹ کا لنک نجی رکھا جائے۔
+//
+// آف لائن ہونے پر ناکام ہونے والی cloud sync لکھائیوں کی خودکار دوبارہ
+// کوشش (2026-08-30، صارف کی اصل رپورٹ پر: نیٹ نہ ہونے کے دوران کمپیوٹر پر
+// محفوظ کی گئی انٹری، نیٹ 1-2 گھنٹے بعد واپس آنے کے باوجود موبائل پر کبھی
+// نظر نہیں آئی)۔ اصل وجہ: Firestore کی offline persistence جان بوجھ کر
+// بند ہے (اوپر نوٹ ملاحظہ کریں)، اور پرانا کوڈ ناکام لکھائی پر صرف ایک بار
+// console.warn کر کے ہمیشہ کے لیے بھول جاتا تھا — نیٹ واپس آنے پر بھی
+// دوبارہ کوشش نہیں ہوتی تھی۔ اب: ناکام ہونے والی ہر لکھائی (key) ایک
+// "زیرالتوا" فہرست میں localStorage میں محفوظ رہتی ہے؛ جیسے ہی براؤزر
+// 'online' ایونٹ دے (یا صفحہ دوبارہ نظر آئے)، اس فہرست کی ہر key کی اس وقت
+// کی تازہ ترین قدر خودکار دوبارہ Firestore کو بھیجی جاتی ہے، جب تک کامیاب
+// نہ ہو۔ ڈیٹا خود ہمیشہ کی طرح localStorage میں فوراً محفوظ رہتا ہے —
+// یہ صرف کلاؤڈ کاپی (دوسری ڈیوائسز تک پہنچنے) کی ضمانت بہتر بناتا ہے۔
+const FIREBASE_SYNC_PENDING_KEY = 'firebaseSyncPendingKeys';
+function firebaseSyncGetPending(){
+  try{ return JSON.parse(localStorage.getItem(FIREBASE_SYNC_PENDING_KEY) || '[]'); }
+  catch(e){ return []; }
+}
+function firebaseSyncMarkPending(key){
+  try{
+    const pending = firebaseSyncGetPending();
+    if(!pending.includes(key)){ pending.push(key); localStorage.setItem(FIREBASE_SYNC_PENDING_KEY, JSON.stringify(pending)); }
+  } catch(e){ /* نظرانداز */ }
+}
+function firebaseSyncClearPending(key){
+  try{
+    const pending = firebaseSyncGetPending().filter(k=> k !== key);
+    localStorage.setItem(FIREBASE_SYNC_PENDING_KEY, JSON.stringify(pending));
+  } catch(e){ /* نظرانداز */ }
+}
+function firebaseSyncRetryPending(){
+  if(!window.db) return;
+  const pending = firebaseSyncGetPending();
+  pending.forEach(key=>{
+    const valueStr = localStorage.getItem(key);
+    if(valueStr == null){ firebaseSyncClearPending(key); return; } // اب موجود ہی نہیں، فہرست سے ہٹا دیں
+    window.db.collection('localSync').doc(key).set({
+      value: valueStr,
+      updatedAt: (typeof firebase !== 'undefined' && firebase.firestore) ? firebase.firestore.FieldValue.serverTimestamp() : Date.now()
+    }).then(()=> firebaseSyncClearPending(key))
+      .catch(err=> console.warn('cloud sync retry still failing for', key, err)); // اگلی کوشش تک زیرالتوا ہی رہے گی
+  });
+}
+window.addEventListener('online', firebaseSyncRetryPending);
+window.firebaseSyncRetryPending = firebaseSyncRetryPending;
 function firebaseSyncSet(key, valueStr){
   localStorage.setItem(key, valueStr);
   if(window.db){
     window.db.collection('localSync').doc(key).set({
       value: valueStr,
       updatedAt: (typeof firebase !== 'undefined' && firebase.firestore) ? firebase.firestore.FieldValue.serverTimestamp() : Date.now()
-    }).catch(err=> console.warn('cloud sync save failed for', key, err));
+    }).then(()=> firebaseSyncClearPending(key))
+      .catch(err=>{
+        console.warn('cloud sync save failed for', key, '— will retry automatically once online', err);
+        firebaseSyncMarkPending(key);
+      });
+  } else {
+    firebaseSyncMarkPending(key); // Firestore ابھی جڑا ہی نہیں (مثلاً SDK لوڈ نہیں ہوا) — بعد میں کوشش کے لیے نوٹ کر لیں
   }
   scheduleGmailBackup(); // ہر تبدیلی پر Gmail بیک اپ کا وقت مقرر کریں (2026-08-26)
 }
@@ -6126,20 +6320,48 @@ function firebaseSyncListenLive(){
 // ٹیب سے واپس اسی پر آنے پر) تو فوراً ایک بار خاموشی سے سب کچھ تازہ منگوا
 // لیا جاتا ہے — تاکہ اگر پس منظر میں realtime کنکشن کہیں رکا ہوا ہو تو
 // بھی صارف کو واپس آتے ہی صحیح ڈیٹا نظر آئے۔
+// صارف کی درخواست پر (2026-08-30): یہ خودکار ریفریش صرف اسی صورت میں ہو
+// جب ٹیب کم از کم 1 منٹ کے لیے پس منظر میں رہا ہو — ورنہ نئی انٹری میں جو
+// ابھی لکھا جا رہا تھا (محفوظ کیے بغیر) وہ ریفریش سے دوبارہ بن رہے فارم
+// کی وجہ سے کھو جاتا تھا۔ ایک منٹ سے کم دیر باہر جانے پر اب کچھ نہیں ہوتا
+// — جیسا چھوڑا تھا ویسا ہی رہتا ہے۔
+const KATA_AUTO_REFRESH_MIN_HIDDEN_MS = 60000; // 1 منٹ
+let kataHiddenAtTs = null;
 document.addEventListener('visibilitychange', ()=>{
-  if(document.visibilityState === 'visible' && window.db && typeof window.silentRefreshAll === 'function'){
+  if(document.visibilityState === 'hidden'){
+    kataHiddenAtTs = Date.now();
+    return;
+  }
+  if(document.visibilityState !== 'visible') return;
+  if(typeof window.firebaseSyncRetryPending === 'function') window.firebaseSyncRetryPending();
+  const wasHiddenLongEnough = kataHiddenAtTs != null && (Date.now() - kataHiddenAtTs) >= KATA_AUTO_REFRESH_MIN_HIDDEN_MS;
+  kataHiddenAtTs = null;
+  if(!wasHiddenLongEnough) return; // ایک منٹ سے کم — کچھ مت کریں، جوں کا توں رہنے دیں
+  if(window.db && typeof window.silentRefreshAll === 'function'){
     window.silentRefreshAll().catch(err=> console.warn('visibility refresh failed', err));
   }
 });
 
+// انٹرنیٹ/Firebase نہ ملنے کی صورت میں بھی کمیشن بیک فل چل جائے (اسی
+// ڈیوائس کے موجودہ localStorage ڈیٹا پر) — ورنہ آف لائن ڈیوائس پر یہ کبھی
+// نہیں چلتا۔ آن لائن ہونے پر یہ خودکار دوبارہ نہیں چلے گا (flag پہلے سے
+// سیٹ ہو چکا ہوگا)، مگر بعد میں انٹرنیٹ آنے پر معمول کا pull/merge اسے
+// درست کر دے گا۔
+function kataBackfillCommissionOfflineFallback(){
+  if(typeof window.kataBackfillCommissionForAgency === 'function'){
+    window.kataBackfillCommissionForAgency();
+    if(kataInstance === 'agency' && typeof kataLocalRenderList === 'function' && document.getElementById('kataListView') && document.getElementById('kataListView').style.display !== 'none') kataLocalRenderList();
+  }
+}
 async function firebaseSyncInit(){
   try{
     await window.loadAuthSDKs(); // firebase-app/firestore SDKs (login itself stays disabled)
   } catch(err){
     console.warn('cloud sync: SDK load failed — this device will keep working locally only', err);
+    kataBackfillCommissionOfflineFallback();
     return;
   }
-  if(typeof firebase === 'undefined') return;
+  if(typeof firebase === 'undefined'){ kataBackfillCommissionOfflineFallback(); return; }
   try{
     const firebaseConfig = {
       apiKey: "AIzaSyAW9tWG0o6bCBwPTkoymInLpvM5T7idvxg",
@@ -6160,12 +6382,19 @@ async function firebaseSyncInit(){
     // ہوتا ہے — اس لیے یہ کال ہٹانے سے کوئی فیچر متاثر نہیں ہوا۔
   } catch(err){
     console.warn('cloud sync: firebase init failed', err);
+    kataBackfillCommissionOfflineFallback();
     return;
   }
   await firebaseSyncPullAll();
   if(typeof window.initKataModuleLocal === 'function') window.initKataModuleLocal();
   if(typeof window.restoreSiteData === 'function') window.restoreSiteData(); // ریٹ لسٹ + Best Excel official بھی اسی طرح کلاؤڈ سے تازہ ہوں
   if(typeof window.msReloadRatesFromStorage === 'function') window.msReloadRatesFromStorage(); // سرف کا ماہانہ حساب کے Price/Profit ریٹس بھی کلاؤڈ سے تازہ
+  // Agency کمیشن کا یک بارگی بیک فل — کلاؤڈ سے تازہ ترین ڈیٹا آ جانے کے
+  // بعد ہی چلانا ضروری ہے، ورنہ خالی/پرانے localStorage پر چل جاتا (2026-08-30)۔
+  if(typeof window.kataBackfillCommissionForAgency === 'function'){
+    window.kataBackfillCommissionForAgency();
+    if(kataInstance === 'agency' && typeof kataLocalRenderList === 'function' && document.getElementById('kataListView').style.display !== 'none') kataLocalRenderList();
+  }
   firebaseSyncRefreshVisibleViews();
   firebaseSyncListenLive();
   // ---------- یک بارگی مصالحت (2026-08-16) ----------
