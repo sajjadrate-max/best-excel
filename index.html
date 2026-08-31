@@ -3877,8 +3877,28 @@ function kataEntryDateOnly(ts){
   if(!d || isNaN(d.getTime())) return null;
   return d;
 }
-function kataRenderTotalRemainingBoxHtml(total, lastDateStr){
-  return `<div class="card" style="text-align:center;"><div class="n" style="font-family:'Courier Prime',monospace;font-size:19px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${kataIndianNumberFormat(total)}</div><div class="l" style="font-size:12px;color:#5b5346;margin-top:2px;">کل باقی رقم (تمام کھاتے)</div></div>`;
+function kataEntriesMonthCommissionSum(entries, monthKeyStr){
+  let sum = 0;
+  (entries||[]).forEach(entry=>{
+    const d = kataEntryDateOnly(entry.createdAt);
+    if(!d) return;
+    if(kataMonthKey(d) !== monthKeyStr) return;
+    sum += (entry.today && entry.today.commission) || 0;
+  });
+  return sum;
+}
+function kataRenderTotalRemainingBoxHtml(total, monthCommission){
+  const showCommission = kataInstance === 'agency';
+  return `<div style="display:flex;gap:10px;margin-bottom:14px;">
+    <div class="card" style="flex:1;margin:0;text-align:center;">
+      <div class="n" style="font-family:'Courier Prime',monospace;font-size:19px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${kataIndianNumberFormat(total)}</div>
+      <div class="l" style="font-size:12px;color:#5b5346;margin-top:2px;">کل باقی رقم (تمام کھاتے)</div>
+    </div>${showCommission ? `
+    <div class="card" style="flex:1;margin:0;text-align:center;">
+      <div class="n" style="font-family:'Courier Prime',monospace;font-size:19px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${kataIndianNumberFormat(monthCommission||0)}</div>
+      <div class="l" style="font-size:12px;color:#5b5346;margin-top:2px;">اس ماہ کا کل کمیشن</div>
+    </div>` : ''}
+  </div>`;
 }
 
 // انڈین نمبرنگ سسٹم (لاکھ/کروڑ گروپنگ — 7,47,574 / 6,78,75,464 طرز) —
@@ -4010,17 +4030,15 @@ function kataLocalRenderList(){
   }
   if(totalBox){
     let totalRemaining = 0;
-    let latestDate = null;
+    let monthCommission = 0;
+    const curMonthKey = kataMonthKey();
     books.forEach(b=>{
       const entries = kataLocalGetEntries(b.id);
       const lastEntry = entries.length ? entries[entries.length-1] : null;
       totalRemaining += kataBookRemainingPrice(b, lastEntry);
-      if(lastEntry){
-        const d = kataEntryDateOnly(lastEntry.createdAt);
-        if(d && (!latestDate || d > latestDate)) latestDate = d;
-      }
+      if(kataInstance === 'agency') monthCommission += kataEntriesMonthCommissionSum(entries, curMonthKey);
     });
-    totalBox.innerHTML = kataRenderTotalRemainingBoxHtml(totalRemaining, latestDate ? latestDate.toLocaleDateString('en-GB') : '');
+    totalBox.innerHTML = kataRenderTotalRemainingBoxHtml(totalRemaining, monthCommission);
   }
   container.innerHTML = '';
   books.forEach(b=>{
@@ -4243,23 +4261,26 @@ window.initKataModule = function(uid){
     if(totalBox){
       const bookDocs = snap.docs;
       const thisListRunId = ++kataListTotalRunId;
+      const curMonthKey = kataMonthKey();
       Promise.all(bookDocs.map(docSnap =>
-        kataCol().doc(docSnap.id).collection('entries').orderBy('createdAt','desc').limit(1).get()
-          .then(entriesSnap => {
-            const lastEntry = entriesSnap.empty ? null : entriesSnap.docs[0].data();
-            return {id: docSnap.id, amount: kataBookRemainingPrice(docSnap.data(), lastEntry), date: lastEntry ? kataEntryDateOnly(lastEntry.createdAt) : null};
+        Promise.all([
+          kataCol().doc(docSnap.id).collection('entries').orderBy('createdAt','desc').limit(1).get(),
+          kataInstance === 'agency' ? kataCol().doc(docSnap.id).collection('entries').get() : Promise.resolve(null)
+        ]).then(([lastSnap, allSnap]) => {
+            const lastEntry = lastSnap.empty ? null : lastSnap.docs[0].data();
+            const monthCommission = allSnap ? kataEntriesMonthCommissionSum(allSnap.docs.map(d=>d.data()), curMonthKey) : 0;
+            return {id: docSnap.id, amount: kataBookRemainingPrice(docSnap.data(), lastEntry), date: lastEntry ? kataEntryDateOnly(lastEntry.createdAt) : null, monthCommission};
           })
-          .catch(()=> ({id: docSnap.id, amount: 0, date: null}))
+          .catch(()=> ({id: docSnap.id, amount: 0, date: null, monthCommission: 0}))
       )).then(results => {
         if(thisListRunId !== kataListTotalRunId) return; // فہرست اس دوران دوبارہ بدل چکی — پرانا نتیجہ نظرانداز
         const total = results.reduce((a,r)=>a+r.amount, 0);
-        let latestDate = null;
+        const monthCommissionTotal = results.reduce((a,r)=>a+(r.monthCommission||0), 0);
         results.forEach(r=>{
-          if(r.date && (!latestDate || r.date > latestDate)) latestDate = r.date;
           const card = container.querySelector(`[data-kata-book-card="${r.id}"] .kata-book-last-entry-date`);
           if(card) card.textContent = r.date ? `آخری انٹری: ${r.date.toLocaleDateString('en-GB')}` : '';
         });
-        totalBox.innerHTML = kataRenderTotalRemainingBoxHtml(total, latestDate ? latestDate.toLocaleDateString('en-GB') : '');
+        totalBox.innerHTML = kataRenderTotalRemainingBoxHtml(total, monthCommissionTotal);
       });
     }
   }, err=>{
