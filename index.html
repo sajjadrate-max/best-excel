@@ -1279,6 +1279,7 @@ function siteTextPrompt(label, callback){
       <div style="text-align:center;margin:14px 0;">
         <button type="button" class="share-btn" id="newKataBtn" style="margin:0;">+ نیا کھاتہ</button>
       </div>
+      <div id="kataListTotalBox"></div>
       <div id="kataListContainer"></div>
     </div>
     <div id="kataDetailView" style="display:none;">
@@ -2345,14 +2346,14 @@ function buildCombinedTable(){
       const shopperW = parseFloat(pRow.shopperWeight) || 0;
 
       pRow.totalShopperWeight = Math.round(shopperW * pieces * 100) / 100;
-      totalShopperWeight.span.textContent = pRow.totalShopperWeight;
+      totalShopperWeight.span.textContent = kataIndianNumberFormat(pRow.totalShopperWeight);
 
       const surfGrams = rate ? ((cRow.remainingSurf || 0) / rate) * 1000 : 0;
       pRow.totalWithShopper = Math.round((surfGrams + pRow.totalShopperWeight) * 100) / 100;
-      totalWithShopper.span.textContent = pRow.totalWithShopper;
+      totalWithShopper.span.textContent = kataIndianNumberFormat(pRow.totalWithShopper);
 
       pRow.perGram = pieces ? Math.round((pRow.totalWithShopper / pieces) * 100) / 100 : 0;
-      perGram.span.textContent = pRow.perGram;
+      perGram.span.textContent = kataIndianNumberFormat(pRow.perGram);
     };
 
     tr.appendChild(perGram.td);
@@ -2384,7 +2385,7 @@ function buildCombinedTable(){
       const raw = (parseFloat(cRow.totalRemaining) || 0) - (parseFloat(cRow.totalExpense) || 0);
       cRow.remainingSurf = Math.round(raw * 100) / 100; // cap at 2 decimal places
       if(remainingSurfInput) remainingSurfInput.value = cRow.remainingSurf;
-      if(remainingSurfSpan) remainingSurfSpan.textContent = cRow.remainingSurf;
+      if(remainingSurfSpan) remainingSurfSpan.textContent = kataIndianNumberFormat(cRow.remainingSurf);
       recalcPackagingChain();
     };
     tr.appendChild(remainingSurfTd);
@@ -2410,7 +2411,7 @@ function buildCombinedTable(){
         (parseFloat(cRow.bijli)        || 0) +
         (parseFloat(cRow.companyProfit)|| 0);
       cRow.totalExpense = Math.round(raw * 100) / 100; // cap at 2 decimal places
-      expense.span.textContent = cRow.totalExpense;
+      expense.span.textContent = kataIndianNumberFormat(cRow.totalExpense);
       recalcRemainingSurf();
     };
     tr.appendChild(expense.td);
@@ -2577,8 +2578,8 @@ function buildLedgerTable(){
   const recalcSurf = ()=>{
     const lossKg = parseFloat(weightLossKgInput.value) || 0;
     const remaining = Math.round((naamTotalKg - lossKg) * 100) / 100;
-    remainingAmt.textContent = remaining + '\u00A0kg';
-    finalAmt.textContent = remaining ? Math.round((baqayaTotal / remaining) * 100) / 100 : 0;
+    remainingAmt.textContent = kataIndianNumberFormat(remaining) + '\u00A0kg';
+    finalAmt.textContent = kataIndianNumberFormat(remaining ? Math.round((baqayaTotal / remaining) * 100) / 100 : 0);
   };
   weightLossKgInput.addEventListener('input', recalcSurf);
 
@@ -2589,8 +2590,8 @@ function buildLedgerTable(){
       baqayaTotal += parseFloat(row.baqaya) || 0;
     });
     naamTotalKg = Math.round(naamTotal * 100) / 100;
-    totalKgTd.textContent = naamTotalKg + '\u00A0kg';
-    totalRateTd.textContent = Math.round(baqayaTotal * 100) / 100;
+    totalKgTd.textContent = kataIndianNumberFormat(naamTotalKg) + '\u00A0kg';
+    totalRateTd.textContent = kataIndianNumberFormat(Math.round(baqayaTotal * 100) / 100);
     recalcSurf();
   }
 
@@ -2611,7 +2612,7 @@ function buildLedgerTable(){
       const rate = parseFloat(row.page) || 0;
       const weight = parseFloat(row.naam) || 0;
       row.baqaya = Math.round(rate * weight * 100) / 100;
-      baqayaCell.span.textContent = row.baqaya;
+      baqayaCell.span.textContent = kataIndianNumberFormat(row.baqaya);
       recalcLedgerTotals();
     };
     const pageInput = pageTd.querySelector('.cell-input');
@@ -2862,6 +2863,7 @@ function msRenderList(){
   if(!container) return;
   const books = msLocalGetBooks();
   container.innerHTML = msRenderStockCard();
+  kataApplyIndianFormattingToReadonly(container);
   if(!books.length){
     container.innerHTML += '<div class="note" style="text-align:center;">ابھی کوئی کھاتہ موجود نہیں — اوپر بٹن سے نیا کھاتہ بنائیں۔</div>';
     return;
@@ -2875,6 +2877,7 @@ function msRenderList(){
     card.addEventListener('click', ()=> msOpen(b.id, b.name || ''));
     container.appendChild(card);
   });
+  kataApplyIndianFormattingToReadonly(container);
 }
 
 function msCreateNew(){
@@ -3070,7 +3073,7 @@ function msWireLiveFormulas(prevTotal, prevItemData){
       const totalProfitItem = Math.round((prev.profit + profitToday) * 100) / 100;
       const totalPriceItem = Math.round((prev.price + priceToday) * 100) / 100;
 
-      const set = (sel, val)=>{ const el = document.querySelector(sel); if(el) el.textContent = val; };
+      const set = (sel, val)=>{ const el = document.querySelector(sel); if(el) el.textContent = kataIndianNumberFormat(val); };
       set(`[data-ms-totalctn="${item.key}"]`, totalCtnItem);
       set(`[data-ms-profittoday="${item.key}"]`, profitToday);
       set(`[data-ms-totalprofititem="${item.key}"]`, totalProfitItem);
@@ -3080,7 +3083,7 @@ function msWireLiveFormulas(prevTotal, prevItemData){
       sumCtn += totalCtnItem; sumProfit += totalProfitItem; sumPrice += totalPriceItem;
       todayN += n; todayProfit += profitToday;
     });
-    const setBox = (sel, val)=>{ const el = document.querySelector(sel); if(el) el.textContent = val; };
+    const setBox = (sel, val)=>{ const el = document.querySelector(sel); if(el) el.textContent = kataIndianNumberFormat(val); };
     setBox('[data-ms-sumctn]', Math.round(sumCtn * 100) / 100);
     setBox('[data-ms-sumprofit]', Math.round(sumProfit * 100) / 100);
     setBox('[data-ms-sumprice]', Math.round(sumPrice * 100) / 100);
@@ -3088,7 +3091,7 @@ function msWireLiveFormulas(prevTotal, prevItemData){
     todayProfit = Math.round(todayProfit * 100) / 100;
     const totN = Math.round((prevTotal.n + todayN) * 100) / 100;
     const totProfit = Math.round((prevTotal.totalProfit + todayProfit) * 100) / 100;
-    const set = (sel, val)=>{ const el = document.querySelector(sel); if(el) el.textContent = val; };
+    const set = (sel, val)=>{ const el = document.querySelector(sel); if(el) el.textContent = kataIndianNumberFormat(val); };
     set('[data-ms-today-n]', todayN);
     set('[data-ms-today-totalprofit]', todayProfit);
     set('[data-ms-tot-n]', totN);
@@ -3212,6 +3215,7 @@ function msRenderDetail(name){
     html += msRenderNewEntryForm(prevTotal, prevItemData);
   }
   container.innerHTML = html;
+  kataApplyIndianFormattingToReadonly(container);
 
   if(!msOpenClosed){
     const saveBtn = document.getElementById('msSaveEntryBtn');
@@ -3841,6 +3845,7 @@ let kataOpenEntries = [];   // cached entries of the currently-open ledger, olde
 let kataEntriesPendingRerender = false; // true if the entries listener skipped a rebuild because the user was typing in "+ نئی انٹری" — catches up on blur
 let kataLocalMode = false;  // true when login is off — uses localStorage on this device instead of Firestore
 let kataOpenCarryForward = null; // set from the opened book's .carryForward when it has no entries yet (after an automatic monthly rollover)
+let kataListTotalRunId = 0; // فہرست کے "کل باقی رقم" باکس کی async حساب کتاب کو بار بار بدلتی فہرست سے الجھنے سے بچانے کے لیے
 let kataOpenClosed = false; // true once this book has been auto-closed by a monthly rollover — view only, no new entries
 let kataInstance = 'salesman'; // which named ledger section is active — 'salesman' is the original/default (unprefixed storage keys, for backward compatibility with existing data), any other value (e.g. 'ribnawaz') gets its own separate namespace
 // Discount خانے صرف سیلزمین کھاتے میں دکھائے جاتے ہیں — ربنواز اور Agency
@@ -3910,14 +3915,85 @@ function kataCheckMonthRolloverLocal(){
   if(changed) kataLocalSaveBooks(books);
 }
 
+// ایک کھاتے کی سب سے تازہ باقی رقم (Remaining Price / Bqaya) — آخری محفوظ
+// شدہ انٹری کے bqaya.price سے، یا انٹری نہ ہو تو book.carryForward.price
+// سے، وہ بھی نہ ہو تو 0۔ لوکل اور Firestore دونوں موڈز میں استعمال ہوتا
+// ہے۔ (2026-08-30 — صارف کی درخواست پر: ہر کھاتہ قسم [سیلزمین/ربنواز/
+// Agency] کی فہرست کے اوپر خودکار "کل باقی رقم" باکس۔)
+function kataBookRemainingPrice(book, lastEntry){
+  if(lastEntry) return (lastEntry.bqaya && lastEntry.bqaya.price != null) ? lastEntry.bqaya.price : ((lastEntry.total && lastEntry.total.price) || 0);
+  return (book && book.carryForward && book.carryForward.price) || 0;
+}
+function kataEntryDateOnly(ts){
+  let d;
+  if(ts && typeof ts.toDate === 'function') d = ts.toDate();
+  else if(typeof ts === 'string') d = new Date(ts);
+  if(!d || isNaN(d.getTime())) return null;
+  return d;
+}
+function kataRenderTotalRemainingBoxHtml(total, lastDateStr){
+  return `<div class="totals" style="margin:0 0 14px 0;"><div style="text-align:center;background:var(--paper-dark);border-radius:8px;padding:8px;"><div class="n" style="font-family:'Courier Prime',monospace;font-size:19px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${kataIndianNumberFormat(total)}</div><div class="l" style="font-size:12px;color:#5b5346;margin-top:2px;">کل باقی رقم (تمام کھاتے)</div>${lastDateStr ? `<div class="l" style="font-size:11px;color:#5b5346;margin-top:4px;">نئی انٹری کی آخری تاریخ: ${kataEscape(lastDateStr)}</div>` : ''}</div></div>`;
+}
+
+// انڈین نمبرنگ سسٹم (لاکھ/کروڑ گروپنگ — 7,47,574 / 6,78,75,464 طرز) —
+// صارف کی درخواست پر (2026-08-30) کھاتہ (Best Excel Washing powder) کے
+// بڑے نمبروں پر لاگو۔ 1000 سے کم نمبر کوما کے بغیر ہی رہتے ہیں (ضرورت
+// نہیں)۔ صرف عدد کو فارمیٹ کرتا ہے — اصل حساب کتاب کہیں متاثر نہیں ہوتا۔
+function kataIndianNumberFormat(numVal){
+  if(numVal == null) return numVal;
+  const str = String(numVal).trim();
+  if(!/^-?\d+(\.\d+)?$/.test(str)) return numVal; // خالص عدد نہ ہو تو جوں کا توں
+  const neg = str.startsWith('-');
+  let s = neg ? str.slice(1) : str;
+  let dec = '';
+  const dotIdx = s.indexOf('.');
+  if(dotIdx !== -1){ dec = s.slice(dotIdx); s = s.slice(0, dotIdx); }
+  if(s.length <= 3) return (neg?'-':'') + s + dec;
+  const last3 = s.slice(-3);
+  let rest = s.slice(0, -3);
+  rest = rest.replace(/\B(?=(\d{2})+(?!\d)$)/g, ',');
+  return (neg?'-':'') + rest + ',' + last3 + dec;
+}
+// محفوظ شدہ (read-only) کھاتہ کارڈز کے اندر جتنے بھی خالص عدد والے
+// cell-val/n خانے ہیں انہیں انڈین گروپنگ میں بدل دیتا ہے — input فیلڈز کو
+// ہاتھ نہیں لگاتا (وہ حساب کتاب کے کوڈ میں Number()/parseFloat() سے پڑھے
+// جاتے ہیں، کوما لگنے سے وہ ٹوٹ جائیں گے)۔
+function kataApplyIndianFormattingToReadonly(root){
+  if(!root) return;
+  root.querySelectorAll('span.cell-val, .totals .n, div.n').forEach(el=>{
+    if(el.querySelector('input, select, textarea')) return;
+    el.textContent = kataIndianNumberFormat(el.textContent.trim());
+  });
+  root.querySelectorAll('td').forEach(td=>{
+    if(td.children.length) return;
+    td.textContent = kataIndianNumberFormat(td.textContent.trim());
+  });
+}
+
 function kataLocalRenderList(){
   kataCheckMonthRolloverLocal();
   const container = document.getElementById('kataListContainer');
   if(!container) return;
+  const totalBox = document.getElementById('kataListTotalBox');
   const books = kataLocalGetBooks();
   if(!books.length){
     container.innerHTML = '<div class="note" style="text-align:center;">ابھی کوئی کھاتہ موجود نہیں — اوپر بٹن سے نیا کھاتہ بنائیں۔</div>';
+    if(totalBox) totalBox.innerHTML = '';
     return;
+  }
+  if(totalBox){
+    let totalRemaining = 0;
+    let latestDate = null;
+    books.forEach(b=>{
+      const entries = kataLocalGetEntries(b.id);
+      const lastEntry = entries.length ? entries[entries.length-1] : null;
+      totalRemaining += kataBookRemainingPrice(b, lastEntry);
+      if(lastEntry){
+        const d = kataEntryDateOnly(lastEntry.createdAt);
+        if(d && (!latestDate || d > latestDate)) latestDate = d;
+      }
+    });
+    totalBox.innerHTML = kataRenderTotalRemainingBoxHtml(totalRemaining, latestDate ? latestDate.toLocaleDateString('en-GB') : '');
   }
   container.innerHTML = '';
   books.forEach(b=>{
@@ -3925,9 +4001,13 @@ function kataLocalRenderList(){
     card.className = 'card';
     card.style.cursor = 'pointer';
     card.style.textAlign = 'center';
+    const entries = kataLocalGetEntries(b.id);
+    const lastEntry = entries.length ? entries[entries.length-1] : null;
+    const lastEntryDate = lastEntry ? kataEntryDateOnly(lastEntry.createdAt) : null;
     // Agency کھاتہ — صارف کی درخواست پر (2026-08-28): نام میں غلطی درست
-    // کرنے کے لیے ✏️ بٹن (صرف Agency میں)۔
-    card.innerHTML = `<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(b.name || '(بلا نام)')}${b.closed ? ' 🔒' : ''}${kataInstance === 'agency' ? ` <button type="button" class="kata-rename-book-btn" data-kata-book-id="${b.id}" style="font-size:14px;background:none;border:1px solid var(--line);border-radius:4px;padding:2px 6px;cursor:pointer;">✏️</button>` : ''}</h2>`;
+    // کرنے کے لیے ✏️ بٹن (صرف Agency میں)۔ (2026-08-30 — ہر کھاتے کے اپنے
+    // ڈبے کے اوپر اسی کھاتے کی آخری انٹری کی تاریخ۔)
+    card.innerHTML = `${lastEntryDate ? `<div class="note" style="text-align:center;font-size:11px;margin-bottom:2px;">آخری انٹری: ${lastEntryDate.toLocaleDateString('en-GB')}</div>` : ''}<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(b.name || '(بلا نام)')}${b.closed ? ' 🔒' : ''}${kataInstance === 'agency' ? ` <button type="button" class="kata-rename-book-btn" data-kata-book-id="${b.id}" style="font-size:14px;background:none;border:1px solid var(--line);border-radius:4px;padding:2px 6px;cursor:pointer;">✏️</button>` : ''}</h2>`;
     card.addEventListener('click', (ev)=>{ if(ev.target.closest('.kata-rename-book-btn')) return; kataLocalOpen(b.id, b.name || ''); });
 
     container.appendChild(card);
@@ -4096,8 +4176,10 @@ window.initKataModule = function(uid){
   kataListUnsub = kataCol().orderBy('createdAt','asc').onSnapshot(snap=>{
     const container = document.getElementById('kataListContainer');
     if(!container) return;
+    const totalBox = document.getElementById('kataListTotalBox');
     if(snap.empty){
       container.innerHTML = '<div class="note" style="text-align:center;">ابھی کوئی کھاتہ موجود نہیں — اوپر بٹن سے نیا کھاتہ بنائیں۔</div>';
+      if(totalBox) totalBox.innerHTML = '';
       return;
     }
     container.innerHTML = '';
@@ -4107,7 +4189,8 @@ window.initKataModule = function(uid){
       card.className = 'card';
       card.style.cursor = 'pointer';
       card.style.textAlign = 'center';
-      card.innerHTML = `<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(data.name || '(بلا نام)')}${data.closed ? ' 🔒' : ''}${kataInstance === 'agency' ? ` <button type="button" class="kata-rename-book-btn" data-kata-book-id="${docSnap.id}" style="font-size:14px;background:none;border:1px solid var(--line);border-radius:4px;padding:2px 6px;cursor:pointer;">✏️</button>` : ''}</h2>`;
+      card.dataset.kataBookCard = docSnap.id;
+      card.innerHTML = `<div class="note kata-book-last-entry-date" style="text-align:center;font-size:11px;margin-bottom:2px;"></div><h2 style="border:none;margin:0;font-size:18px;">${kataEscape(data.name || '(بلا نام)')}${data.closed ? ' 🔒' : ''}${kataInstance === 'agency' ? ` <button type="button" class="kata-rename-book-btn" data-kata-book-id="${docSnap.id}" style="font-size:14px;background:none;border:1px solid var(--line);border-radius:4px;padding:2px 6px;cursor:pointer;">✏️</button>` : ''}</h2>`;
       card.addEventListener('click', (ev)=>{ if(ev.target.closest('.kata-rename-book-btn')) return; kataOpen(docSnap.id, data.name || ''); });
 
       container.appendChild(card);
@@ -4125,6 +4208,31 @@ window.initKataModule = function(uid){
             });
           });
         });
+      });
+    }
+    // ہر کھاتے کی آخری محفوظ شدہ انٹری کا Bqaya.price لا کر مجموعہ بناتے
+    // ہیں — الگ سے کوئی summary field محفوظ نہیں کیا جاتا، ہر بار فہرست
+    // بدلنے پر خودکار دوبارہ گنا جاتا ہے (2026-08-30، صارف کی درخواست)۔
+    if(totalBox){
+      const bookDocs = snap.docs;
+      const thisListRunId = ++kataListTotalRunId;
+      Promise.all(bookDocs.map(docSnap =>
+        kataCol().doc(docSnap.id).collection('entries').orderBy('createdAt','desc').limit(1).get()
+          .then(entriesSnap => {
+            const lastEntry = entriesSnap.empty ? null : entriesSnap.docs[0].data();
+            return {id: docSnap.id, amount: kataBookRemainingPrice(docSnap.data(), lastEntry), date: lastEntry ? kataEntryDateOnly(lastEntry.createdAt) : null};
+          })
+          .catch(()=> ({id: docSnap.id, amount: 0, date: null}))
+      )).then(results => {
+        if(thisListRunId !== kataListTotalRunId) return; // فہرست اس دوران دوبارہ بدل چکی — پرانا نتیجہ نظرانداز
+        const total = results.reduce((a,r)=>a+r.amount, 0);
+        let latestDate = null;
+        results.forEach(r=>{
+          if(r.date && (!latestDate || r.date > latestDate)) latestDate = r.date;
+          const card = container.querySelector(`[data-kata-book-card="${r.id}"] .kata-book-last-entry-date`);
+          if(card) card.textContent = r.date ? `آخری انٹری: ${r.date.toLocaleDateString('en-GB')}` : '';
+        });
+        totalBox.innerHTML = kataRenderTotalRemainingBoxHtml(total, latestDate ? latestDate.toLocaleDateString('en-GB') : '');
       });
     }
   }, err=>{
@@ -4398,6 +4506,7 @@ function kataRenderDetail(name){
   }
 
   container.innerHTML = html;
+  kataApplyIndianFormattingToReadonly(container);
 
   if(!kataOpenClosed){
     const saveBtn = document.getElementById('kataSaveEntryBtn');
@@ -5176,7 +5285,7 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
       }
     });
     const sumTEl = document.querySelector('[data-kata-sum-t]');
-    if(sumTEl) sumTEl.textContent = todayT;
+    if(sumTEl) sumTEl.textContent = kataIndianNumberFormat(todayT);
     const sumWeightEl = document.querySelector('[data-kata-sum-weight]');
     if(sumWeightEl) sumWeightEl.textContent = (todayWeightGrams / 1000).toFixed(2);
     // کل وزن (من) — 1 من = 40 کلوگرام (صارف کا بتایا ہوا تبادلہ)۔
@@ -5196,7 +5305,7 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
         kharch += kr * t2;
       });
       const sumKharchEl = document.querySelector('[data-kata-sum-kharch]');
-      if(sumKharchEl) sumKharchEl.textContent = kharch;
+      if(sumKharchEl) sumKharchEl.textContent = kataIndianNumberFormat(kharch);
     } else {
       const kharchInput = document.querySelector('[data-kata-field="kharch"]');
       kharch = Number((kharchInput && kharchInput.value) || 0) || 0;
@@ -5213,9 +5322,9 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
     // Total Profit/Total Price باکسز — سیلزمین/ربنواز کھاتہ (ms/ماہانہ ریکارڈ
     // کے 3 باکس والے انداز جیسے)، Agency میں یہ باکس سرے سے موجود ہی نہیں۔
     const sumProfitEl = document.querySelector('[data-kata-sum-profit]');
-    if(sumProfitEl) sumProfitEl.textContent = todayProfit;
+    if(sumProfitEl) sumProfitEl.textContent = kataIndianNumberFormat(todayProfit);
     const sumPriceEl = document.querySelector('[data-kata-sum-price]');
-    if(sumPriceEl) sumPriceEl.textContent = todayPrice;
+    if(sumPriceEl) sumPriceEl.textContent = kataIndianNumberFormat(todayPrice);
     // پہلی انٹری میں "سابقہ" خود لکھی جا سکتی ہے — تب اسی خانے سے پڑھیں،
     // ورنہ ہمیشہ کی طرح پچھلی انٹری کی قدر (prevTotal) استعمال ہو۔
     const sabkaTI = document.querySelector('[data-kata-sabka="t"]');
@@ -5228,7 +5337,7 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
     } : prevTotal;
     const totT = sabkaBase.t + todayT, totPrice = sabkaBase.price + todayPrice;
     const totProfit = (sabkaBase.profit||0) + todayProfit;
-    const set = (sel, val)=>{ const el = document.querySelector(sel); if(el) el.textContent = val; };
+    const set = (sel, val)=>{ const el = document.querySelector(sel); if(el) el.textContent = kataIndianNumberFormat(val); };
     set('[data-kata-today-t]', todayT);
     set('[data-kata-today-price]', todayPrice);
     set('[data-kata-tot-t]', totT);
@@ -5272,17 +5381,17 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
 
     const getT = ()=> Number((tInput && tInput.value)||0)||0;
     const refreshRow = ()=>{
-      if(totalRateCell) totalRateCell.textContent = item.rate * getT();
-      if(totalPriftCell) totalPriftCell.textContent = item.prift * getT();
+      if(totalRateCell) totalRateCell.textContent = kataIndianNumberFormat(item.rate * getT());
+      if(totalPriftCell) totalPriftCell.textContent = kataIndianNumberFormat(item.prift * getT());
       if(discountTotalCell){
         const d = Number((discountInput && discountInput.value)||0)||0;
-        discountTotalCell.textContent = d * getT();
+        discountTotalCell.textContent = kataIndianNumberFormat(d * getT());
       }
       if(krayaTotalCell){
         const kr = Number((krayaRateInput && krayaRateInput.value)||0)||0;
-        krayaTotalCell.textContent = kr * getT();
+        krayaTotalCell.textContent = kataIndianNumberFormat(kr * getT());
       }
-      if(totalCtnCell) totalCtnCell.textContent = isZNetItem ? 0 : (sabkaCtnForItem + getT());
+      if(totalCtnCell) totalCtnCell.textContent = kataIndianNumberFormat(isZNetItem ? 0 : (sabkaCtnForItem + getT()));
       recomputeTotalsBlock();
     };
 
