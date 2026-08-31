@@ -4185,9 +4185,13 @@ function kataEscape(s){
   return d.innerHTML;
 }
 
-// "26g"/"20kg"/"1000g" جیسی Weight قدروں سے صرف عددی حصہ نکال کر ہمیشہ
-// گرام میں واپس کرتا ہے — "کل وزن" باکس کے لیے (2026-08-23)۔ اکائی نہ ملے
-// تو 'g' فرض کر لیا جاتا ہے۔
+// پرانی محفوظ شدہ انٹریوں میں "Khula Special"/"Khula sada" کا وزن "20.000"
+// کی شکل میں محفوظ تھا (نئی انٹریوں میں اب "20kg" لکھا جاتا ہے) — صارف کی
+// درخواست پر (2026-08-30) صرف دکھانے کے وقت "20.kg" میں بدل دیا جاتا ہے،
+// خام ڈیٹا (Firestore) نہیں چھیڑا جاتا۔
+function kataDisplayWeight(w){
+  return (w === '20.000') ? '20.kg' : w;
+}
 function kataParseWeightGrams(str){
   if(str == null) return 0;
   const s = String(str).trim().toLowerCase();
@@ -4773,10 +4777,10 @@ function kataRenderEntryCard(entry, isLast, idx){
       <td style="${kataColorStyleFor(cc, item.key+'-krayarate')}" class="kata-krayarate-col"><span class="cell-val${numClass}">${v.krayaRate||0}</span></td>
       <td style="${kataColorStyleFor(cc, item.key+'-krayatotal')}"><span class="cell-val${numClass}">${v.krayaTotal||0}</span></td>` : '';
     rows += `<tr>
-      <td style="${kataColorStyleFor(cc, item.key+'-idx')}"><span class="${thinClass.trim()}">${(v.idx != null && v.idx !== '') ? kataEscape(v.idx) : (idx+1)}</span></td>
-      <td style="text-align:left;padding-left:6px;${nameColor}${kataColorStyleFor(cc, item.key+'-name')}"><span class="${thinClass.trim()}">${kataEscape(name)}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-weight')}"><span class="${thinClass.trim()}">${kataEscape(weight)}</span>${v.sabkaNote ? `<span style="font-size:6px;color:#8a6d00;margin-right:2px;">(${kataEscape(v.sabkaNote)})</span>` : ''}</td>
-      <td class="kata-t-cell" style="${kataColorStyleFor(cc, item.key+'-t') || 'background-color:#d9f2d9;'}"><span class="cell-val${numClass}">${v.t}</span></td>
+      <td style="${kataColorStyleFor(cc, item.key+'-idx')}"><span class="cell-val${numClass}${thinClass}">${(v.idx != null && v.idx !== '') ? kataEscape(v.idx) : (idx+1)}</span></td>
+      <td style="text-align:left;padding-left:6px;${nameColor}${kataColorStyleFor(cc, item.key+'-name')}"><span class="cell-val${numClass}${thinClass}">${kataEscape(name)}</span></td>
+      <td class="kata-t-cell" style="${kataColorStyleFor(cc, item.key+'-t') || 'background-color:#d9f2d9;'}"><span class="cell-val${numClass}">${v.t}</span>${v.sabkaNote ? `<span style="font-size:6px;color:#8a6d00;margin-right:2px;">(${kataEscape(v.sabkaNote)})</span>` : ''}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-weight')}"><span class="cell-val${numClass}">${kataEscape(kataDisplayWeight(weight))}</span></td>
       <td style="${kataColorStyleFor(cc, item.key+'-rate')}"><span class="cell-val${numClass}">${rate}</span></td>
       <td style="${kataColorStyleFor(cc, item.key+'-totalrate')}"><span class="cell-val${numClass}">${v.price}</span></td>${priftCells}${krayaCells}${discountCells}
     </tr>`;
@@ -4791,11 +4795,11 @@ function kataRenderEntryCard(entry, isLast, idx){
       <div class="edit-table wide-table kata-ref-style">
         <table dir="ltr">
           <colgroup>${showDiscount
-            ? '<col style="width:6%"><col style="width:11%"><col style="width:13%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
+            ? '<col style="width:6%"><col style="width:11%"><col style="width:11%"><col style="width:8%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
             : agencySimple
             ? '<col style="width:6%"><col style="width:20%"><col style="width:11%"><col style="width:11%"><col style="width:13%"><col style="width:14%"><col class="kata-krayarate-col" style="width:12%"><col style="width:13%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
-          <thead><tr><th>#</th><th>Items</th><th>Weight (gram)</th><th>CTN</th><th>Price</th><th>Total Price</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
+          <thead><tr><th>#</th><th>Items</th><th>CTN</th><th>Weight (gram)</th><th>Price</th><th>Total Price</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -4968,14 +4972,14 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <td data-color-key="${item.key}-krayarate" class="kata-krayarate-col"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-field="krayaRate" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${stickyKrayaRate}"></td>
       <td data-color-key="${item.key}-krayatotal"><span class="cell-val${numClass}" data-kata-krayatotal="${item.key}">0</span></td>` : '';
     rows += `<tr>
-      <td data-color-key="${item.key}-idx" class="kata-normal-size${thinClass}" style="${kataInstance === 'salesman' ? 'padding:2px;' : ''}">${
+      <td data-color-key="${item.key}-idx" class="cell-val${numClass}${thinClass}" style="${kataInstance === 'salesman' ? 'padding:2px;' : ''}">${
         kataInstance === 'salesman'
-          ? `<input type="text" inputmode="numeric" class="cell-input kata-normal-size${thinClass}" data-kata-field="idx" data-kata-item="${item.key}" style="border:1px solid var(--line);width:100%;box-sizing:border-box;" value="${idx+1}">`
+          ? `<input type="text" inputmode="numeric" class="cell-input${numClass}${thinClass}" data-kata-field="idx" data-kata-item="${item.key}" style="border:1px solid var(--line);width:100%;box-sizing:border-box;" value="${idx+1}">`
           : (idx+1)
       }</td>
-      <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(liveName)}"></td>
-      <td data-color-key="${item.key}-weight" style="display:flex;align-items:center;gap:1px;padding:1px;"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);flex:1;min-width:0;padding:0;" value="${kataEscape(liveWeight)}">${kataInstance === 'salesman' ? `<input type="text" inputmode="numeric" maxlength="2" title="سابقہ (پرانا حصہ) — صرف نوٹ کے لیے" data-kata-field="sabkaNote" data-kata-item="${item.key}" style="width:11px;height:12px;font-size:5px;padding:0;border:1px solid var(--line);text-align:center;box-sizing:border-box;flex-shrink:0;">` : ''}</td>
-      <td data-color-key="${item.key}-t" class="kata-t-cell"><input type="number" inputmode="numeric" class="cell-input${numClass}" data-kata-field="t" data-kata-item="${item.key}" data-kata-tctn-order="${idx}" style="border:1px solid var(--line);background-color:#d9f2d9;" value="0"></td>
+      <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input${numClass}${thinClass}" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(liveName)}"></td>
+      <td data-color-key="${item.key}-t" class="kata-t-cell" style="display:flex;align-items:center;gap:1px;padding:1px;"><input type="number" inputmode="numeric" class="cell-input${numClass}" data-kata-field="t" data-kata-item="${item.key}" data-kata-tctn-order="${idx}" style="border:1px solid var(--line);background-color:#d9f2d9;flex:1;min-width:0;" value="0">${kataInstance === 'salesman' ? `<input type="text" inputmode="numeric" maxlength="2" title="سابقہ (پرانا حصہ) — صرف نوٹ کے لیے" data-kata-field="sabkaNote" data-kata-item="${item.key}" style="width:11px;height:12px;font-size:5px;padding:0;border:1px solid var(--line);text-align:center;box-sizing:border-box;flex-shrink:0;">` : ''}</td>
+      <td data-color-key="${item.key}-weight"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);width:100%;box-sizing:border-box;" value="${kataEscape(kataDisplayWeight(liveWeight))}"></td>
       <td data-color-key="${item.key}-rate"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${liveRate}" ${isZNet ? '' : 'disabled'}></td>
       <td data-color-key="${item.key}-totalrate"><span class="cell-val${numClass}" data-kata-totalrate="${item.key}">0</span></td>${priftCells}${krayaCells}${discountCells}
     </tr>`;
@@ -5003,15 +5007,15 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <div class="edit-table wide-table kata-ref-style">
         <table dir="ltr">
           <colgroup>${showDiscount
-            ? '<col style="width:6%"><col style="width:11%"><col style="width:13%"><col style="width:6%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
+            ? '<col style="width:6%"><col style="width:11%"><col style="width:11%"><col style="width:8%"><col style="width:9%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:6%"><col style="width:8%"><col style="width:6%"><col style="width:6%">'
             : agencySimple
             ? '<col style="width:6%"><col style="width:20%"><col style="width:11%"><col style="width:11%"><col style="width:13%"><col style="width:14%"><col class="kata-krayarate-col" style="width:12%"><col style="width:13%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
           <thead><tr>
             <th><button type="button" class="row-lock-btn" data-kata-lockbtn="all3"></button>#</th>
             <th>Items</th>
-            <th>Weight (gram)</th>
             <th>CTN</th>
+            <th>Weight (gram)</th>
             <th>Price</th>
             <th>Total Price</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}
           </tr></thead>
