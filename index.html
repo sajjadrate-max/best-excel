@@ -3969,6 +3969,7 @@ function kataLocalOpen(id, name){
   document.getElementById('kataDetailView').style.display = '';
   kataOpenEntries = kataLocalGetEntries(id);
   kataRenderDetail(name);
+  kataScrollToNewEntryBoundary();
 }
 
 // ---------- کام کی حالت (نامحفوظ + نئی انٹری) — ایپ/ٹیب چھوڑ کر واپس آنے
@@ -4281,6 +4282,7 @@ function kataOpen(id, name){
     kataOpenCarryForward = data.carryForward || null;
     kataOpenClosed = !!data.closed;
     kataRenderDetail(name); // re-render once these are known — the entries listener below may have already rendered once with stale (false/null) values
+    kataScrollToNewEntryBoundary();
   }).catch(err=>console.warn('kata book fetch error', err));
   if(kataEntriesUnsub) kataEntriesUnsub();
   kataEntriesUnsub = kataCol().doc(id).collection('entries').orderBy('createdAt','asc').onSnapshot(snap=>{
@@ -4321,6 +4323,21 @@ function kataFormatWhen(ts){
   else if(typeof ts === 'string') d = new Date(ts);
   if(!d || isNaN(d.getTime())) return '...ابھی';
   return d.toLocaleDateString('en-GB') + '، ' + d.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
+}
+
+// کھاتہ کھلتے ہی خودکار اتنا نیچے سکرول کریں کہ پچھلی محفوظ شدہ انٹری کا
+// بقایا/پرنٹ بٹن بھی نظر آئیں اور نئی انٹری کا حصہ بھی ایک ساتھ نظر آ جائے
+// (2026-08-30، صارف کی درخواست پر) — صرف کھاتہ پہلی بار کھلتے وقت، ہر بار
+// ڈیٹا اپڈیٹ ہونے پر دوبارہ سکرول نہیں ہوتا (kataRenderDetail خود اس فنکشن
+// کو نہیں بلاتا، صرف kataOpen/kataLocalOpen بلاتے ہیں)۔
+function kataScrollToNewEntryBoundary(){
+  requestAnimationFrame(()=>{
+    const newEntryCard = document.getElementById('kataNewEntryCard');
+    if(!newEntryCard) return; // بند (closed) کھاتے میں نیا انٹری فارم نہیں ہوتا
+    const rect = newEntryCard.getBoundingClientRect();
+    const targetY = window.scrollY + rect.top - 90; // پچھلی انٹری کا آخری حصہ (Bqaya/پرنٹ بٹن) اوپر نظر آنے کے لیے تھوڑی جگہ چھوڑی
+    window.scrollTo({top: Math.max(targetY, 0), behavior:'auto'});
+  });
 }
 
 function kataRenderDetail(name){
