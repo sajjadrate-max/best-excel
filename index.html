@@ -2942,7 +2942,7 @@ function msRenderEntryCard(entry, isLast){
   return `
     <div class="card ms-entry-card kata-entry-card">
       ${isLast ? kataDotsMenuHtml([{cls:'ms-delete-entry-btn', label:'🗑 حذف کریں'}]) : ''}
-      <div class="note" style="text-align:center;font-weight:400;">${kataFormatWhen(entry.createdAt)}${entry.enteredBy ? ' — ' + kataEscape(entry.enteredBy) : ''}</div>
+      <div class="note" style="text-align:center;font-weight:400;">${kataFormatWhen(entry.createdAt)}${entry.enteredBy ? ' — ' + kataEscape(entry.enteredBy) : ''}${isLast ? ` <button type="button" class="ms-edit-entry-date-btn" style="font-size:11px;background:none;border:1px solid var(--line);border-radius:4px;padding:1px 5px;cursor:pointer;">✏️</button>` : ''}</div>
       <div class="edit-table wide-table">
         <table dir="ltr">
           <colgroup><col style="width:16%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"></colgroup>
@@ -3257,6 +3257,35 @@ function msDeleteEntry(){
   msRenderDetail(msOpenName);
 }
 
+// آخری انٹری کی تاریخ درست کریں — غلطی سے آج کی تاریخ پر محفوظ ہو گئی
+// انٹری کو صحیح (پرانی) تاریخ پر منتقل کرنے کے لیے، صرف آخری انٹری پر
+// دستیاب (✏️ بٹن، بالکل Agency کھاتے کے نام تبدیل کرنے والے ✏️ بٹن کی طرح)۔
+function msEditLastEntryDate(){
+  const last = msOpenEntries[msOpenEntries.length - 1];
+  if(!last) return;
+  siteTextPrompt('نئی تاریخ لکھیں (مثال: 2026-08-31)', function(val){
+    if(val === null) return;
+    const trimmed = (val || '').trim();
+    const m = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!m){
+      alert('تاریخ اس شکل میں لکھیں: سال-مہینہ-دن، مثلاً 2026-08-31۔');
+      return;
+    }
+    const d = new Date(trimmed + 'T12:00:00'); // دوپہر 12 بجے، تاکہ ٹائم زون کی وجہ سے دن آگے پیچھے نہ ہو
+    if(isNaN(d.getTime())){
+      alert('یہ تاریخ درست نہیں۔');
+      return;
+    }
+    const entries = msLocalGetEntries(msOpenId);
+    const lastEntry = entries[entries.length - 1];
+    if(!lastEntry) return;
+    lastEntry.createdAt = d.toISOString();
+    msLocalSaveEntries(msOpenId, entries);
+    msOpenEntries = entries;
+    msRenderDetail(msOpenName);
+  });
+}
+
 function msRenderDetail(name){
   const container = document.getElementById('msDetailContainer');
   if(!container) return;
@@ -3340,6 +3369,9 @@ function msRenderDetail(name){
 
   container.querySelectorAll('.ms-delete-entry-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> msDeleteEntry());
+  });
+  container.querySelectorAll('.ms-edit-entry-date-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> msEditLastEntryDate());
   });
   container.querySelectorAll('.kata-print-entry-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> kataPrintEntry(btn));
