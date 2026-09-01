@@ -3793,6 +3793,12 @@ let kataLocalMode = false;  // true when login is off — uses localStorage on t
 let kataOpenCarryForward = null; // set from the opened book's .carryForward when it has no entries yet (after an automatic monthly rollover)
 let kataListTotalRunId = 0; // فہرست کے "کل باقی رقم" باکس کی async حساب کتاب کو بار بار بدلتی فہرست سے الجھنے سے بچانے کے لیے
 let kataOpenClosed = false; // true once this book has been auto-closed by a monthly rollover — view only, no new entries
+// بند/تالے والے کھاتے میں نئی (پرانی تاریخ کی) انٹری شامل کرنا اب پاس ورڈ
+// سے محفوظ ہے (2026-09-01، صارف کی درخواست پر) — یہاں یاد رکھتے ہیں کہ
+// موجودہ سیشن میں کس کس بند کھاتے کا پاس ورڈ درست درج ہو چکا ہے، تاکہ
+// دوبارہ دوبارہ نہ مانگا جائے (صفحہ دوبارہ کھلنے پر خالی ہو جاتا ہے)۔
+let kataUnlockedClosedBookIds = new Set();
+const KATA_CLOSED_ENTRY_PASSWORD = 'Bestexcel';
 let kataInstance = 'salesman'; // which named ledger section is active — 'salesman' is the original/default (unprefixed storage keys, for backward compatibility with existing data), any other value (e.g. 'ribnawaz') gets its own separate namespace
 // Discount خانے صرف سیلزمین کھاتے میں دکھائے جاتے ہیں — ربنواز اور Agency
 // کھاتوں میں بالکل نہیں (2026-08-21، صریح صارف کی ہدایت پر)۔
@@ -4557,11 +4563,21 @@ function kataRenderDetail(name){
 
   // بند/تالے والا کھاتہ اب بھی نئی (پرانی تاریخ والی) انٹری قبول کرتا ہے —
   // اوپر تاریخ کے خانے سے۔ خودکار/دستی مہینہ بندش پر انحصار کیے بغیر صارف
-  // خود کنٹرول رکھ سکے (2026-09-01، صارف کی درخواست پر)۔
-  if(kataOpenClosed){
-    html += '<div class="card"><div class="note" style="text-align:center;">یہ کھاتہ بند ہو چکا ہے — نیچے تاریخ کا خانہ بھر کر پرانی تاریخ کی انٹری اب بھی شامل کی جا سکتی ہے۔</div></div>';
+  // خود کنٹرول رکھ سکے (2026-09-01، صارف کی درخواست پر)۔ اب یہ پاس ورڈ سے
+  // محفوظ ہے (اسی دن کی بعد کی درخواست پر) — پاس ورڈ کے بغیر نیا فارم نظر
+  // ہی نہیں آتا، غلطی سے پرانی مکمل شدہ انٹری چھیڑی نہ جا سکے۔
+  const kataClosedFormUnlocked = kataOpenClosed && kataUnlockedClosedBookIds.has(kataOpenId);
+  if(kataOpenClosed && !kataClosedFormUnlocked){
+    html += `<div class="card" style="text-align:center;">
+      <div class="note" style="margin-bottom:8px;">یہ کھاتہ بند ہو چکا ہے — نئی (پرانی تاریخ کی) انٹری شامل کرنے کے لیے پاس ورڈ درکار ہے۔</div>
+      <button type="button" id="kataClosedUnlockBtn" class="lock-btn">🔒 نئی انٹری کے لیے پاس ورڈ درج کریں</button>
+    </div>`;
+  } else {
+    if(kataOpenClosed){
+      html += '<div class="card"><div class="note" style="text-align:center;">یہ کھاتہ بند ہو چکا ہے — نیچے تاریخ کا خانہ بھر کر پرانی تاریخ کی انٹری اب بھی شامل کی جا سکتی ہے۔</div></div>';
+    }
+    html += kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, kataOpenEntries.length === 0, prevItemData);
   }
-  html += kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, kataOpenEntries.length === 0, prevItemData);
 
   // نئی انٹری کے بلکل نیچے: اگر اسی نام کے پرانے (بند شدہ، پچھلے مہینے کے)
   // کھاتے کا ڈبہ موجود ہو تو وہ یہاں بھی دکھائیں — بالکل اسی طرح جیسے
@@ -4587,9 +4603,25 @@ function kataRenderDetail(name){
   container.innerHTML = html;
   kataApplyIndianFormattingToReadonly(container);
 
-  const saveBtn = document.getElementById('kataSaveEntryBtn');
-  if(saveBtn) saveBtn.addEventListener('click', ()=> kataSaveEntry(prevTotal, prevSaleMahana, prevItemData));
-  kataWireLiveFormulas(prevTotal, prevItemData);
+  if(!kataOpenClosed || kataClosedFormUnlocked){
+    const saveBtn = document.getElementById('kataSaveEntryBtn');
+    if(saveBtn) saveBtn.addEventListener('click', ()=> kataSaveEntry(prevTotal, prevSaleMahana, prevItemData));
+    kataWireLiveFormulas(prevTotal, prevItemData);
+  }
+  const closedUnlockBtn = document.getElementById('kataClosedUnlockBtn');
+  if(closedUnlockBtn){
+    closedUnlockBtn.addEventListener('click', ()=>{
+      siteTextPrompt('پاس ورڈ درج کریں', function(pw){
+        if(pw === null) return;
+        if(pw === KATA_CLOSED_ENTRY_PASSWORD){
+          kataUnlockedClosedBookIds.add(kataOpenId);
+          kataRenderDetail(kataOpenName);
+        } else {
+          alert('غلط پاس ورڈ۔');
+        }
+      });
+    });
+  }
 
   const bookDelBtn = container.querySelector('.kata-book-delete-btn');
   if(bookDelBtn) bookDelBtn.addEventListener('click', ()=> kataDeleteWholeBook(name));
