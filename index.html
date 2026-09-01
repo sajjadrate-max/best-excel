@@ -3853,13 +3853,17 @@ function kataCheckMonthRolloverLocal(){
       changed = true;
       // نئے مہینے کا آغازی بیلنس بھی Bqaya (Jamah/ادائیگی منہا کرنے کے
       // بعد کی اصل باقی رقم) سے ہونا چاہیے، Total سے نہیں — اوپر والے اسی
-      // مسئلے کی طرح (2026-08-23)۔
+      // مسئلے کی طرح (2026-08-23)۔ CTN اور Profit نئے مہینے میں خودکار 0 سے
+      // شروع ہوتے ہیں — یہ صرف اسی مہینے کے اعداد و شمار ہیں، رقم کی طرح
+      // اگلے مہینے میں بطور "باقی" آگے نہیں چلتے (صرف Price/Discount اصل
+      // بقایا رقم ہیں، وہی آگے چلتے ہیں) (2026-09-01، صارف کی درخواست پر)۔
       const finalTotal = lastEntry ? (lastEntry.bqaya || lastEntry.total) : (b.carryForward || {t:0, price:0, profit:0, td:0});
+      const carryForward = Object.assign({}, finalTotal, {t: 0, profit: 0});
       newBooks.push({
         id: 'k' + Date.now() + Math.random().toString(36).slice(2,7),
         name: (b.name || 'کھاتہ') + ' - ' + curMonth,
         createdAt: new Date().toISOString(),
-        carryForward: finalTotal,
+        carryForward: carryForward,
       });
     }
   });
@@ -4356,6 +4360,15 @@ function kataEscape(s){
   return d.innerHTML;
 }
 
+// کھاتے کے نام کے آخر میں خودکار لگا " - YYYY-MM" حصہ ہٹا کر اصل نام دیتا
+// ہے — مثلاً "Shafiq Bhatti - 2026-09" سے "Shafiq Bhatti"۔ صرف دکھانے کے
+// لیے استعمال ہوتا ہے (نئی انٹری فارم میں سیلزمین/Agency کا نام)، کھاتے کا
+// اصل محفوظ شدہ نام (kataOpenName) نہیں بدلتا (2026-09-01، صارف کی درخواست
+// پر — تاریخ صرف کھاتے کے عنوان میں رہے، نام کے خانے میں نہ آئے)۔
+function kataBaseBookName(name){
+  return (name || '').replace(/ - \d{4}-\d{2}$/, '');
+}
+
 // پرانی محفوظ شدہ انٹریوں میں "Khula Special"/"Khula sada" کا وزن "20.000"
 // کی شکل میں محفوظ تھا (نئی انٹریوں میں اب "20kg" لکھا جاتا ہے) — صارف کی
 // درخواست پر (2026-08-30) صرف دکھانے کے وقت "20.kg" میں بدل دیا جاتا ہے،
@@ -4527,7 +4540,11 @@ function kataRenderDetail(name){
   // "Total" سے (جو Jamah/ادائیگی کو نظرانداز کر دیتا تھا) — اسی وجہ سے
   // نئی انٹری کا Sabka، پچھلی انٹری کے Bqaya سے مختلف/زیادہ نظر آ رہا تھا
   // (2026-08-23 صارف کی نشاندہی پر ٹھیک کیا گیا)۔
-  const prevTotal = lastEntry ? (lastEntry.bqaya || lastEntry.total) : (kataOpenCarryForward || {t:0, price:0, profit:0, td:0});
+  const prevTotal = lastEntry ? (lastEntry.bqaya || lastEntry.total) : Object.assign({}, (kataOpenCarryForward || {t:0, price:0, profit:0, td:0}), {t: 0, profit: 0});
+  // ↑ نئے مہینے کے کھاتے کی پہلی انٹری میں "سابقہ" کے CTN اور Profit ہمیشہ
+  // 0 سے شروع ہوں (چاہے carryForward میں کچھ بھی محفوظ ہو) — یہ صرف اسی
+  // مہینے کے اعداد و شمار ہیں، رقم/بقایا کی طرح اگلے مہینے آگے نہیں چلتے،
+  // صرف Price/Discount ہی اصل بقایا ہیں (2026-09-01، صارف کی درخواست پر)۔
   const prevSaleMahana = lastEntry ? lastEntry.saleMahana : null;
   const prevSalesman = lastEntry ? (lastEntry.salesman || '') : '';
   // ہر آئٹم کا اپنا Sabka CTN/Total CTN (سیلزمین/ربنواز only، Discount کالم
@@ -4973,12 +4990,16 @@ function kataManualCloseBook(name){
   const entries = kataLocalGetEntries(book.id);
   const lastEntry = entries.length ? entries[entries.length-1] : null;
   const finalTotal = lastEntry ? (lastEntry.bqaya || lastEntry.total) : (book.carryForward || {t:0, price:0, profit:0, td:0});
+  // CTN اور Profit نئے مہینے میں 0 سے شروع — صرف Price/Discount اصل بقایا
+  // رقم آگے چلتی ہے (اسی وجہ سے kataCheckMonthRolloverLocal میں بھی، دیکھیں
+  // وہاں کا نوٹ)۔
+  const carryForward = Object.assign({}, finalTotal, {t: 0, profit: 0});
   book.closed = true;
   const newBook = {
     id: 'k' + Date.now() + Math.random().toString(36).slice(2,7),
     name: (book.name || 'کھاتہ') + ' - ' + kataMonthKey(),
     createdAt: new Date().toISOString(),
-    carryForward: finalTotal,
+    carryForward: carryForward,
   };
   books.push(newBook);
   kataLocalSaveBooks(books);
@@ -5292,7 +5313,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       </div>
       <div class="note" style="text-align:center;">
         <div style="margin-bottom:4px;">${nameLabel}</div>
-        <input type="text" class="cell-input" data-kata-field="salesman" style="border:1px solid var(--line);text-align:center;" value="${kataEscape(kataOpenName||'')}" disabled>
+        <input type="text" class="cell-input" data-kata-field="salesman" style="border:1px solid var(--line);text-align:center;" value="${kataEscape(kataBaseBookName(kataOpenName)||'')}" disabled>
       </div>
       <div class="note" style="text-align:center;margin-top:6px;">
         <div style="margin-bottom:4px;">تاریخ (اختیاری — خالی چھوڑیں تو آج کی تاریخ استعمال ہوگی؛ بند/تالے والے کھاتے میں پرانی تاریخ لکھی جا سکتی ہے)</div>
@@ -5879,10 +5900,12 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
     if(kataOpenClosed){
       const newLastEntry = entries[entries.length - 1];
       const newFinalTotal = newLastEntry.bqaya || newLastEntry.total;
+      // یہاں بھی CTN/Profit صفر — باقی سب جگہ کی طرح (اوپر kataCheckMonthRolloverLocal کا نوٹ دیکھیں)۔
+      const newCarryForward = Object.assign({}, newFinalTotal, {t: 0, profit: 0});
       const siblingBooks = kataLocalGetBooks();
       const sibling = siblingBooks.find(b => !b.closed && b.name.indexOf(kataOpenName + ' - ') === 0);
       if(sibling){
-        sibling.carryForward = newFinalTotal;
+        sibling.carryForward = newCarryForward;
         kataLocalSaveBooks(siblingBooks);
       }
     }
