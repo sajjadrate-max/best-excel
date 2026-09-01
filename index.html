@@ -318,6 +318,13 @@ window.loadAuthSDKs = async function(){
     position:relative;
     z-index:1;
   }
+  /* "کمپیوٹر پرنٹ" کیپچر کے وقت صرف عارضی طور پر یہ کلاس لگتی ہے (JS میں
+     kataPrintEntry سے) تاکہ اوپر والا "BEST" واٹر مارک صرف کمپیوٹر پرنٹ سے
+     غائب ہو — ویب سائٹ پر، موبائل پرنٹ میں، یا کہیں اور کوئی اثر نہیں
+     (2026-09-01، صارف کی درخواست پر)۔ */
+  .kata-print-no-watermark::before{
+    content:none !important;
+  }
   /* سرف کا ماہانہ حساب: کھاتا کے تمام کارڈز (عنوان، ہر انٹری، نئی انٹری فارم)
      کو ساتھ جوڑ کر ایک ہی چپکی ہوئی شیٹ کی طرح دکھائیں — ہر کارڈ کے درمیان
      خالی جگہ اور دوہری باڈر ہٹا دیں۔ */
@@ -1040,6 +1047,15 @@ window.loadAuthSDKs = async function(){
     break-before:page;
     page-break-before:always;
   }
+}
+/* موبائل/کمپیوٹر پرنٹ بٹن — صرف اسی ڈیوائس کے سائز پر نظر آئے (2026-09-01،
+   صارف کی درخواست پر): چھوٹی سکرین (فون) پر صرف "موبائل پرنٹ" بٹن، بڑی
+   سکرین (کمپیوٹر) پر صرف "کمپیوٹر پرنٹ" بٹن — 768px کی حد سے طے ہوتا ہے۔ */
+@media (max-width: 768px){
+  .kata-print-computer-btn{ display:none !important; }
+}
+@media (min-width: 769px){
+  .kata-print-mobile-btn{ display:none !important; }
 }
 </style>
 </head>
@@ -2943,8 +2959,8 @@ function msRenderEntryCard(entry, isLast){
         </table>
       </div>
       <div class="ms-entry-actions kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
-        <button type="button" class="kata-print-entry-btn" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 موبائل پرنٹ</button>
-        <button type="button" class="kata-print-entry-btn" data-print-mode="computer" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 کمپیوٹر پرنٹ</button>
+        <button type="button" class="kata-print-entry-btn kata-print-mobile-btn" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 موبائل پرنٹ</button>
+        <button type="button" class="kata-print-entry-btn kata-print-computer-btn" data-print-mode="computer" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 کمپیوٹر پرنٹ</button>
       </div>
     </div>`;
 }
@@ -4835,6 +4851,12 @@ async function kataPrintEntry(btn){
   const actions = card.querySelector('.kata-entry-actions');
   const prevDisplay = actions ? actions.style.display : '';
   if(actions) actions.style.display = 'none'; // don't capture the print/delete buttons themselves
+  // نام کے ساتھ Agency کا ✏️ (نام درست کرنے کا) بٹن بھی پرنٹ/PDF میں کبھی
+  // نظر نہ آئے — موبائل اور کمپیوٹر دونوں پرنٹ میں (2026-09-01، صارف کی
+  // درخواست پر)۔
+  const renameBtn = card.querySelector('.kata-rename-entry-name-btn');
+  const renameBtnPrevDisplay = renameBtn ? renameBtn.style.display : '';
+  if(renameBtn) renameBtn.style.display = 'none';
   let inputSwaps = [];
   let hiddenPrintCells = [];
   // سیلزمین اور ربنواز دونوں کھاتوں — پرنٹ سے وہی 5 کالمز (Rate، Profit،
@@ -4884,6 +4906,10 @@ async function kataPrintEntry(btn){
   // حالت میں کھینچنا اب زیادہ درست ہے، ورنہ پرنٹ ویب سائٹ سے مختلف نظر آتا۔
   try{
     card.classList.add('kata-print-tight'); // صرف پرنٹ کے وقت — کیپچر کے بعد نیچے finally میں ہٹا دیا جاتا ہے، ویب سائٹ پر کبھی نظر نہیں آتا
+    // صرف "کمپیوٹر پرنٹ" کیپچر کے وقت "BEST" واٹر مارک بھی عارضی طور پر
+    // چھپا دیتے ہیں (html2canvas سے پہلے، ورنہ تصویر میں آ جاتا) — موبائل
+    // پرنٹ اور ویب سائٹ متاثر نہیں ہوتے (2026-09-01، صارف کی درخواست پر)۔
+    if(btn.dataset.printMode === 'computer') card.classList.add('kata-print-no-watermark');
     try{ await document.fonts.ready; } catch(e){ /* proceed anyway */ }
     if(typeof window.measureAndSizeInput === 'function'){
       card.querySelectorAll('.cell-input').forEach(window.measureAndSizeInput);
@@ -4971,9 +4997,11 @@ async function kataPrintEntry(btn){
     console.warn(err);
   } finally {
     card.classList.remove('kata-print-tight');
+    card.classList.remove('kata-print-no-watermark');
     inputSwaps.forEach(({inp, span})=>{ span.remove(); inp.style.display = ''; }); // اگر html2canvas سے پہلے ہی کوئی خرابی آئی ہو تو بھی inputs واپس آ جائیں
     hiddenPrintCells.forEach(({cell, prev})=>{ cell.style.display = prev; }); // چھپائے گئے کالمز ویب سائٹ پر واپس دکھا دیں
     if(actions) actions.style.display = prevDisplay;
+    if(renameBtn) renameBtn.style.display = renameBtnPrevDisplay;
     btn.textContent = originalLabel; btn.disabled = false;
   }
 }
@@ -5156,7 +5184,7 @@ function kataRenderEntryCard(entry, isLast, idx){
     <div class="card kata-entry-card" id="${entryDomId}">
       ${isLast ? kataDotsMenuHtml([{cls:'kata-delete-entry-btn', label:'🗑 حذف کریں'}]) : ''}
       <div class="note" style="text-align:center;font-weight:400;">${kataFormatWhen(entry.createdAt)}</div>
-      ${entry.salesman ? `<div class="note" style="text-align:center;direction:ltr;unicode-bidi:embed;">${kataEscape(entry.salesman)}${(kataInstance === 'agency' && isLast) ? ` <button type="button" class="kata-rename-entry-name-btn" style="font-size:12px;background:none;border:1px solid var(--line);border-radius:4px;padding:1px 5px;cursor:pointer;">✏️</button>` : ''}</div>` : ''}
+      ${entry.salesman ? `<div class="note kata-entry-name-line" style="text-align:center;direction:ltr;unicode-bidi:embed;font-size:20px;font-weight:400;color:var(--maroon-deep);">${kataEscape(entry.salesman)}${(kataInstance === 'agency' && isLast) ? ` <button type="button" class="kata-rename-entry-name-btn" style="font-size:12px;background:none;border:1px solid var(--line);border-radius:4px;padding:1px 5px;cursor:pointer;">✏️</button>` : ''}</div>` : ''}
       <div class="kata-ref-title">Best Excel Washing powder</div>
       <div class="edit-table wide-table kata-ref-style">
         <table dir="ltr">
@@ -5226,8 +5254,8 @@ function kataRenderEntryCard(entry, isLast, idx){
       </div>`}
       ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya, idx)}
       <div class="kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
-        <button type="button" class="kata-print-entry-btn" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 موبائل پرنٹ</button>
-        <button type="button" class="kata-print-entry-btn" data-print-mode="computer" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 کمپیوٹر پرنٹ</button>
+        <button type="button" class="kata-print-entry-btn kata-print-mobile-btn" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 موبائل پرنٹ</button>
+        <button type="button" class="kata-print-entry-btn kata-print-computer-btn" data-print-mode="computer" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 کمپیوٹر پرنٹ</button>
       </div>
     </div>`;
 }
