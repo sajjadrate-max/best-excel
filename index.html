@@ -1048,15 +1048,6 @@ window.loadAuthSDKs = async function(){
     page-break-before:always;
   }
 }
-/* موبائل/کمپیوٹر پرنٹ بٹن — صرف اسی ڈیوائس کے سائز پر نظر آئے (2026-09-01،
-   صارف کی درخواست پر): چھوٹی سکرین (فون) پر صرف "موبائل پرنٹ" بٹن، بڑی
-   سکرین (کمپیوٹر) پر صرف "کمپیوٹر پرنٹ" بٹن — 768px کی حد سے طے ہوتا ہے۔ */
-@media (max-width: 768px){
-  .kata-print-computer-btn{ display:none !important; }
-}
-@media (min-width: 769px){
-  .kata-print-mobile-btn{ display:none !important; }
-}
 </style>
 </head>
 <body>
@@ -2124,6 +2115,19 @@ function printPdfBlob(blob){
 // ڈائیلاگ ہی کھلے گا۔
 function isMobileDevice(){
   return /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+}
+// موبائل/کمپیوٹر پرنٹ بٹن — صرف اسی ڈیوائس کی قسم پر نظر آئے (سکرین کے
+// سائز/زوم پر نہیں — ایک کمپیوٹر پر تنگ/چھوٹی برائوزر ونڈو کو غلطی سے
+// "موبائل" نہ سمجھ لیا جائے، اسی لیے اوپر والا isMobileDevice ہی معیار ہے،
+// وہی جو پہلے سے شیئر/پرنٹ کے فیصلے میں استعمال ہوتا ہے) — 2026-09-01،
+// صارف کی نشاندہی پر: پہلے یہ سکرین کی چوڑائی (CSS media query) سے طے ہوتا
+// تھا، جو کمپیوٹر پر بھی چھوٹی/غیر میکسیمائزڈ ونڈو میں غلط بٹن دکھا رہا
+// تھا — اب اصل ڈیوائس چیک پر منتقل کر دیا۔
+function kataApplyPrintButtonVisibility(root){
+  if(!root) return;
+  const mobile = isMobileDevice();
+  root.querySelectorAll('.kata-print-mobile-btn').forEach(b=>{ b.style.display = mobile ? '' : 'none'; });
+  root.querySelectorAll('.kata-print-computer-btn').forEach(b=>{ b.style.display = mobile ? 'none' : ''; });
 }
 
 async function sharePdfDirectly(blob, fileName, title){
@@ -3213,6 +3217,7 @@ function msRenderDetail(name){
   }
   container.innerHTML = html;
   kataApplyIndianFormattingToReadonly(container);
+  kataApplyPrintButtonVisibility(container);
 
   if(!msOpenClosed){
     const saveBtn = document.getElementById('msSaveEntryBtn');
@@ -4687,6 +4692,7 @@ function kataRenderDetail(name){
 
   container.innerHTML = html;
   kataApplyIndianFormattingToReadonly(container);
+  kataApplyPrintButtonVisibility(container);
 
   if(!kataOpenClosed || kataClosedFormUnlocked){
     const saveBtn = document.getElementById('kataSaveEntryBtn');
