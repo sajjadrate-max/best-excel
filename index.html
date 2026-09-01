@@ -3248,6 +3248,27 @@ function msRenderDetail(name){
     }
     html += msRenderNewEntryForm(prevTotal, prevItemData);
   }
+
+  // نئی انٹری کے بلکل نیچے: اگر اسی نام کے پرانے (بند شدہ، پچھلے مہینے کے)
+  // ریکارڈ کا ڈبہ موجود ہو تو وہ یہاں بھی دکھائیں — بالکل کھاتوں کی طرح
+  // (آخری انٹری کی تاریخ + نام + 🔒) — تاکہ اسی ریکارڈ کے اندر سے پرانا/بند
+  // ریکارڈ کھولا جا سکے۔ صرف کھلے (غیر بند) ریکارڈ پر دکھتا ہے، چونکہ بند
+  // ریکارڈ میں خود کوئی "نئی انٹری" موجود نہیں۔
+  let msPrevClosedBook = null;
+  if(!msOpenClosed){
+    const baseName = name.replace(/ - \d{4}-\d{2}$/, '');
+    if(baseName !== name){
+      const siblingBooks = msLocalGetBooks();
+      msPrevClosedBook = siblingBooks.find(b => b.name === baseName && b.closed && b.id !== msOpenId) || null;
+    }
+  }
+  if(msPrevClosedBook){
+    const prevEntries = msLocalGetEntries(msPrevClosedBook.id);
+    const prevLastEntry = prevEntries.length ? prevEntries[prevEntries.length-1] : null;
+    const prevLastEntryDate = prevLastEntry ? kataEntryDateOnly(prevLastEntry.createdAt) : null;
+    html += `<div class="card" style="cursor:pointer;text-align:center;" data-ms-prev-closed-book-id="${msPrevClosedBook.id}" data-ms-prev-closed-book-name="${kataEscape(msPrevClosedBook.name)}">${prevLastEntryDate ? `<div class="note" style="text-align:center;font-size:11px;margin-bottom:2px;">آخری انٹری: ${prevLastEntryDate.toLocaleDateString('en-GB')}</div>` : ''}<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(msPrevClosedBook.name)} 🔒</h2></div>`;
+  }
+
   container.innerHTML = html;
   kataApplyIndianFormattingToReadonly(container);
   kataApplyPrintButtonVisibility(container);
@@ -3282,6 +3303,12 @@ function msRenderDetail(name){
   if(bookDelBtn) bookDelBtn.addEventListener('click', ()=> msDeleteWholeBook(name));
   const bookCloseBtn = container.querySelector('.ms-close-book-btn');
   if(bookCloseBtn) bookCloseBtn.addEventListener('click', ()=> msManualCloseBook(name));
+  const msPrevClosedBookCard = container.querySelector('[data-ms-prev-closed-book-id]');
+  if(msPrevClosedBookCard){
+    msPrevClosedBookCard.addEventListener('click', ()=>{
+      msOpen(msPrevClosedBookCard.dataset.msPrevClosedBookId, msPrevClosedBookCard.dataset.msPrevClosedBookName);
+    });
+  }
 }
 
 // موجودہ کھلا کھاتہ فوراً بند کر کے (پرانے مہینے کے ریکارڈ کے طور پر
