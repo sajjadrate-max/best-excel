@@ -4022,9 +4022,17 @@ function kataLocalRenderList(){
   const container = document.getElementById('kataListContainer');
   if(!container) return;
   const totalBox = document.getElementById('kataListTotalBox');
-  const books = kataLocalGetBooks();
+  const allBooks = kataLocalGetBooks();
+  // فہرست اور "کل باقی رقم" دونوں میں صرف جاری (غیر بند) کھاتے شامل ہوں —
+  // بند شدہ (پچھلے مہینے کے، auto-rollover والے) کھاتے یہاں نہیں دکھائے
+  // جاتے (وہ اب صرف اسی نام کے نئے کھاتے کے اندر، نئی انٹری کے نیچے، لنک
+  // کے ذریعے قابلِ رسائی ہیں) — اور نہ ہی ان کی رقم کل میں شامل کی جاتی ہے،
+  // چونکہ وہ رقم پہلے ہی نئے کھاتے کے carryForward میں شمار ہو چکی ہے،
+  // ورنہ دونوں جگہ گنے جانے سے رقم دگنی ہو جاتی (2026-09-01، صارف کی
+  // درخواست پر)۔
+  const books = allBooks.filter(b => !b.closed);
   if(!books.length){
-    container.innerHTML = '<div class="note" style="text-align:center;">ابھی کوئی کھاتہ موجود نہیں — اوپر بٹن سے نیا کھاتہ بنائیں۔</div>';
+    container.innerHTML = '<div class="note" style="text-align:center;">ابھی کوئی جاری کھاتہ موجود نہیں — اوپر بٹن سے نیا کھاتہ بنائیں۔</div>';
     if(totalBox) totalBox.innerHTML = '';
     return;
   }
@@ -4540,30 +4548,53 @@ function kataRenderDetail(name){
     prevItemData[item.key] = {totalT: (v && v.totalT) || 0, discount: (v && v.discount) || 0, weight: (v && v.weight != null) ? v.weight : null, krayaRate: (v && v.krayaRate) || 0, commissionRate: (v && v.commissionRate) || 0};
   });
 
-  let html = `<div class="card" style="text-align:center;">${kataDotsMenuHtml([{cls:'kata-book-delete-btn', label:'🗑 یہ کھاتہ حذف کریں'}])}<h2 style="border:none;margin:0;">${kataEscape(name)}${kataOpenClosed ? ' 🔒' : ''}</h2></div>`;
+  let html = `<div class="card" style="text-align:center;">${kataDotsMenuHtml([{cls:'kata-close-book-btn', label:'📅 یہ ریکارڈ محفوظ کر کے نیا مہینہ شروع کریں'}, {cls:'kata-book-delete-btn', label:'🗑 یہ کھاتہ حذف کریں'}])}<h2 style="border:none;margin:0;">${kataEscape(name)}${kataOpenClosed ? ' 🔒' : ''}</h2></div>`;
 
   kataOpenEntries.forEach((entry, i)=>{
     const isLast = i === kataOpenEntries.length - 1;
-    html += kataRenderEntryCard(entry, isLast && !kataOpenClosed, i);
+    html += kataRenderEntryCard(entry, isLast, i);
   });
 
+  // بند/تالے والا کھاتہ اب بھی نئی (پرانی تاریخ والی) انٹری قبول کرتا ہے —
+  // اوپر تاریخ کے خانے سے۔ خودکار/دستی مہینہ بندش پر انحصار کیے بغیر صارف
+  // خود کنٹرول رکھ سکے (2026-09-01، صارف کی درخواست پر)۔
   if(kataOpenClosed){
-    html += '<div class="card"><div class="note" style="text-align:center;">یہ کھاتہ بند ہو چکا ہے — نیا مہینہ شروع ہونے پر خودکار نیا کھاتہ بن گیا، اب یہاں صرف پرانا ریکارڈ دیکھا جا سکتا ہے۔</div></div>';
-  } else {
-    html += kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, kataOpenEntries.length === 0, prevItemData);
+    html += '<div class="card"><div class="note" style="text-align:center;">یہ کھاتہ بند ہو چکا ہے — نیچے تاریخ کا خانہ بھر کر پرانی تاریخ کی انٹری اب بھی شامل کی جا سکتی ہے۔</div></div>';
+  }
+  html += kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, kataOpenEntries.length === 0, prevItemData);
+
+  // نئی انٹری کے بلکل نیچے: اگر اسی نام کے پرانے (بند شدہ، پچھلے مہینے کے)
+  // کھاتے کا ڈبہ موجود ہو تو وہ یہاں بھی دکھائیں — بالکل اسی طرح جیسے
+  // کھاتوں کی فہرست میں دکھتا ہے (آخری انٹری کی تاریخ + نام + 🔒) — تاکہ
+  // اسی کھاتے کے اندر سے پرانا/بند کھاتہ کھولا جا سکے (2026-09-01، صارف کی
+  // درخواست پر)۔ صرف کھلے (غیر بند) کھاتے پر دکھتا ہے، چونکہ بند کھاتے میں
+  // خود کوئی "نئی انٹری" موجود نہیں۔
+  let prevClosedBook = null;
+  if(!kataOpenClosed){
+    const baseName = name.replace(/ - \d{4}-\d{2}$/, '');
+    if(baseName !== name){
+      const siblingBooks = kataLocalGetBooks();
+      prevClosedBook = siblingBooks.find(b => b.name === baseName && b.closed && b.id !== kataOpenId) || null;
+    }
+  }
+  if(prevClosedBook){
+    const prevEntries = kataLocalGetEntries(prevClosedBook.id);
+    const prevLastEntry = prevEntries.length ? prevEntries[prevEntries.length-1] : null;
+    const prevLastEntryDate = prevLastEntry ? kataEntryDateOnly(prevLastEntry.createdAt) : null;
+    html += `<div class="card" style="cursor:pointer;text-align:center;" data-kata-prev-closed-book-id="${prevClosedBook.id}" data-kata-prev-closed-book-name="${kataEscape(prevClosedBook.name)}">${prevLastEntryDate ? `<div class="note" style="text-align:center;font-size:11px;margin-bottom:2px;">آخری انٹری: ${prevLastEntryDate.toLocaleDateString('en-GB')}</div>` : ''}<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(prevClosedBook.name)} 🔒</h2></div>`;
   }
 
   container.innerHTML = html;
   kataApplyIndianFormattingToReadonly(container);
 
-  if(!kataOpenClosed){
-    const saveBtn = document.getElementById('kataSaveEntryBtn');
-    if(saveBtn) saveBtn.addEventListener('click', ()=> kataSaveEntry(prevTotal, prevSaleMahana, prevItemData));
-    kataWireLiveFormulas(prevTotal, prevItemData);
-  }
+  const saveBtn = document.getElementById('kataSaveEntryBtn');
+  if(saveBtn) saveBtn.addEventListener('click', ()=> kataSaveEntry(prevTotal, prevSaleMahana, prevItemData));
+  kataWireLiveFormulas(prevTotal, prevItemData);
 
   const bookDelBtn = container.querySelector('.kata-book-delete-btn');
   if(bookDelBtn) bookDelBtn.addEventListener('click', ()=> kataDeleteWholeBook(name));
+  const bookCloseBtn = container.querySelector('.kata-close-book-btn');
+  if(bookCloseBtn) bookCloseBtn.addEventListener('click', ()=> kataManualCloseBook(name));
 
   container.querySelectorAll('.kata-delete-entry-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> kataDeleteEntry());
@@ -4586,6 +4617,13 @@ function kataRenderDetail(name){
   container.querySelectorAll('[data-kata-entry-jamah-discount]').forEach(input=>{
     input.addEventListener('input', ()=> kataOnEntryJamahDiscountInput(input, container));
   });
+  const prevClosedBookCard = container.querySelector('[data-kata-prev-closed-book-id]');
+  if(prevClosedBookCard){
+    prevClosedBookCard.addEventListener('click', ()=>{
+      kataLocalOpen(prevClosedBookCard.dataset.kataPrevClosedBookId, prevClosedBookCard.dataset.kataPrevClosedBookName);
+      kataScrollToNewEntryBoundary();
+    });
+  }
 }
 
 // پرانی (پہلے سے محفوظ) انٹریوں کے Jamah خانوں میں تبدیلی — صرف اسی
@@ -4886,6 +4924,34 @@ async function kataDeleteEntry(){
       console.warn(err);
     }
   }
+}
+
+// موجودہ کھلا کھاتہ صارف کی اپنی مرضی سے فوراً بند کر کے (پرانے مہینے کے
+// ریکارڈ کے طور پر ہمیشہ کے لیے محفوظ، مزید پرانی تاریخ کی انٹریز بھی قبول
+// کرتا رہتا ہے) اس کا آخری Bqaya نئے کھاتے میں بطور Sabka منتقل کر کے نیا
+// مہینہ خود شروع کر دیتا ہے — بالکل وہی کام جو مہینہ خودکار بدلنے پر
+// kataCheckMonthRolloverLocal کرتا ہے، بس یہاں صارف کی مرضی سے، فوری طور
+// پر (سرف کا ماہانہ حساب کے msManualCloseBook جیسا، صارف کی درخواست
+// 2026-09-01 پر کھاتہ میں بھی شامل کیا گیا)۔ ڈیٹا کچھ بھی حذف نہیں ہوتا۔
+function kataManualCloseBook(name){
+  if(!confirm(`"${name || '(بلا نام)'}" کو اب بند کر کے نیا مہینہ شروع کیا جائے؟ موجودہ ریکارڈ محفوظ رہے گا (دیکھا جا سکے گا، اور چاہیں تو پرانی تاریخ کی مزید انٹری بھی شامل کی جا سکے گی)، اور اسی کا آخری Bqaya نئے کھاتے میں بطور Sabka چلا جائے گا۔`)) return;
+  const books = kataLocalGetBooks();
+  const book = books.find(b=>b.id===kataOpenId);
+  if(!book || book.closed) return;
+  const entries = kataLocalGetEntries(book.id);
+  const lastEntry = entries.length ? entries[entries.length-1] : null;
+  const finalTotal = lastEntry ? (lastEntry.bqaya || lastEntry.total) : (book.carryForward || {t:0, price:0, profit:0, td:0});
+  book.closed = true;
+  const newBook = {
+    id: 'k' + Date.now() + Math.random().toString(36).slice(2,7),
+    name: (book.name || 'کھاتہ') + ' - ' + kataMonthKey(),
+    createdAt: new Date().toISOString(),
+    carryForward: finalTotal,
+  };
+  books.push(newBook);
+  kataLocalSaveBooks(books);
+  kataShowList();
+  kataLocalRenderList();
 }
 
 // Deletes the WHOLE currently-open کھاتہ (book) and every entry in it — for
@@ -5196,6 +5262,10 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
         <div style="margin-bottom:4px;">${nameLabel}</div>
         <input type="text" class="cell-input" data-kata-field="salesman" style="border:1px solid var(--line);text-align:center;" value="${kataEscape(kataOpenName||'')}" disabled>
       </div>
+      <div class="note" style="text-align:center;margin-top:6px;">
+        <div style="margin-bottom:4px;">تاریخ (اختیاری — خالی چھوڑیں تو آج کی تاریخ استعمال ہوگی؛ بند/تالے والے کھاتے میں پرانی تاریخ لکھی جا سکتی ہے)</div>
+        <input type="date" id="kataEntryDateInput" class="cell-input" style="border:1px solid var(--line);text-align:center;">
+      </div>
       <div class="kata-ref-title">Best Excel Washing powder</div>
       <div class="edit-table wide-table kata-ref-style">
         <table dir="ltr">
@@ -5294,7 +5364,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           </tbody>
         </table>
       </div>
-      <button type="button" class="share-btn" id="kataSaveEntryBtn" style="width:100%;">انٹری محفوظ کریں</button>
+      <button type="button" class="share-btn" id="kataSaveEntryBtn" style="width:100%;">${kataOpenClosed ? 'محفوظ کر کے بند رکھیں' : 'انٹری محفوظ کریں'}</button>
     </div>`;
 }
 
@@ -5604,6 +5674,13 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
   prevItemData = prevItemData || {};
   const showDiscount = kataShowDiscount();
   const showKraya = kataShowKraya();
+  // تاریخ کا خانہ خالی ہو تو ہمیشہ کی طرح "ابھی" کا وقت — بھرا ہو تو وہی
+  // تاریخ استعمال ہوتی ہے (دوپہر 12 بجے، تاکہ ٹائم زون کی وجہ سے دن آگے
+  // پیچھے نہ ہو) — بند/تالے والے کھاتے میں پرانی تاریخ کی انٹری شامل کرنے
+  // کے لیے (2026-09-01، صارف کی درخواست پر)۔
+  const dateInputEl = document.getElementById('kataEntryDateInput');
+  const customDateStr = dateInputEl && dateInputEl.value ? dateInputEl.value : '';
+  const customDate = customDateStr ? new Date(customDateStr + 'T12:00:00') : null;
   const items = {};
   let todayT = 0, todayRate = 0, todayDiscount = 0, todayProfit = 0, todayWeightGrams = 0, todayKrayaSum = 0, todayCommission = 0;
   KATA_ITEMS.forEach(item=>{
@@ -5757,10 +5834,26 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
     entries.push({
       id: 'e' + Date.now() + Math.random().toString(36).slice(2,7),
       items, sabka, today, total, jamah, bqaya, salesman, kharch, less, cellColors, weightKg: Math.round((todayWeightGrams/1000)*100)/100,
-      createdAt: new Date().toISOString(),
+      createdAt: (customDate ? customDate : new Date()).toISOString(),
     });
     kataLocalSaveEntries(kataOpenId, entries);
     kataOpenEntries = entries;
+    // بند/تالے والے کھاتے میں (پرانی تاریخ کی) انٹری محفوظ ہونے پر، اسی نام
+    // کے کھلے (اگلے مہینے کے) کھاتے کا carryForward بھی اسی تازہ ترین Bqaya
+    // کے مطابق خودکار اپڈیٹ کر دیں — تاکہ نئے مہینے کی انٹری میں "سابقہ"
+    // ہمیشہ درست/تازہ ترین رقم دکھائے (2026-09-01، صارف کی درخواست پر)۔ صرف
+    // اسی وقت اثر کرتا ہے جب نئے کھاتے میں ابھی خود کوئی انٹری نہ ہوئی ہو —
+    // اس کے بعد اس کی اپنی پہلی انٹری کا Sabka خود مستقل ہو جاتا ہے۔
+    if(kataOpenClosed){
+      const newLastEntry = entries[entries.length - 1];
+      const newFinalTotal = newLastEntry.bqaya || newLastEntry.total;
+      const siblingBooks = kataLocalGetBooks();
+      const sibling = siblingBooks.find(b => !b.closed && b.name.indexOf(kataOpenName + ' - ') === 0);
+      if(sibling){
+        sibling.carryForward = newFinalTotal;
+        kataLocalSaveBooks(siblingBooks);
+      }
+    }
     kataRenderDetail(kataOpenName);
     kataShowSavedToast();
     return;
@@ -5769,7 +5862,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
   try{
     await kataCol().doc(kataOpenId).collection('entries').add({
       items, sabka, today, total, jamah, bqaya, salesman, kharch, less, cellColors, weightKg: Math.round((todayWeightGrams/1000)*100)/100,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt: customDate ? firebase.firestore.Timestamp.fromDate(customDate) : firebase.firestore.FieldValue.serverTimestamp(),
     });
     kataShowSavedToast();
   } catch(err){
