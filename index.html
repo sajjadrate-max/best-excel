@@ -2714,7 +2714,8 @@ function msReloadRatesFromStorage(){
 window.msReloadRatesFromStorage = msReloadRatesFromStorage;
 let msOpenId = null, msOpenName = '', msOpenEntries = [];
 let msOpenCarryForward = null; // set from the opened book's .carryForward when it has no entries yet (after an automatic monthly rollover)
-let msOpenClosed = false; // true once this book has been auto-closed by a monthly rollover — view only, no new entries
+let msOpenClosed = false; // true once this book has been auto-closed by a monthly rollover — new entries need the password below (کھاتہ کی طرح)
+let msUnlockedClosedBookIds = new Set(); // book ids where the پاس ورڈ has already been entered this session — mirrors kataUnlockedClosedBookIds
 
 // Shared "YYYY-MM" key used by the automatic monthly rollover in both this
 // module and کھاتہ below — same real-world month must always look the same
@@ -2992,6 +2993,10 @@ function msRenderNewEntryForm(prevTotal, prevItemData){
   return `
     <div class="card" id="msNewEntryCard">
       <h2 style="border:none;text-align:center;">+ نئی انٹری</h2>
+      <div class="note" style="text-align:center;margin-bottom:6px;">
+        <div style="margin-bottom:4px;">تاریخ (اختیاری — خالی چھوڑیں تو آج کی تاریخ استعمال ہوگی؛ بند/تالے والے کھاتے میں پرانی تاریخ لکھی جا سکتی ہے)</div>
+        <input type="date" id="msEntryDateInput" class="cell-input" style="border:1px solid var(--line);text-align:center;">
+      </div>
       <div class="edit-table wide-table">
         <table dir="ltr">
           <colgroup><col style="width:16%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"></colgroup>
@@ -3113,6 +3118,13 @@ function msWireLiveFormulas(prevTotal, prevItemData){
 
 function msSaveEntry(prevTotal, prevItemData){
   prevItemData = prevItemData || {};
+  // تاریخ کا خانہ خالی ہو تو ہمیشہ کی طرح "ابھی" کا وقت — بھرا ہو تو وہی
+  // تاریخ استعمال ہوتی ہے (دوپہر 12 بجے، تاکہ ٹائم زون کی وجہ سے دن آگے
+  // پیچھے نہ ہو) — کھاتے کی طرح بند/تالے والے کھاتے میں پرانی تاریخ کی
+  // انٹری شامل کرنے کے لیے۔
+  const msDateInputEl = document.getElementById('msEntryDateInput');
+  const msCustomDateStr = msDateInputEl && msDateInputEl.value ? msDateInputEl.value : '';
+  const msCustomDate = msCustomDateStr ? new Date(msCustomDateStr + 'T12:00:00') : null;
   const items = {};
   let todayN = 0, todayProfit = 0;
   MS_ITEMS.forEach(item=>{
@@ -3173,7 +3185,7 @@ function msSaveEntry(prevTotal, prevItemData){
   entries.push({
     id: 'e' + Date.now() + Math.random().toString(36).slice(2,7),
     items, sabka, today, total, expenses, originalProfit, cellColors,
-    createdAt: new Date().toISOString(),
+    createdAt: (msCustomDate ? msCustomDate : new Date()).toISOString(),
   });
   msLocalSaveEntries(msOpenId, entries);
   msOpenEntries = entries;
@@ -3208,21 +3220,46 @@ function msRenderDetail(name){
   let html = `<div class="card" style="text-align:center;">${kataDotsMenuHtml([{cls:'ms-close-book-btn', label:'📅 یہ ریکارڈ محفوظ کر کے نیا مہینہ شروع کریں'}, {cls:'ms-delete-book-btn', label:'🗑 یہ کھاتہ حذف کریں'}])}<h2 style="border:none;margin:0;">${kataEscape(name)}${msOpenClosed ? ' 🔒' : ''}</h2></div>`;
   msOpenEntries.forEach((entry, i)=>{
     const isLast = i === msOpenEntries.length - 1;
-    html += msRenderEntryCard(entry, isLast && !msOpenClosed);
+    html += msRenderEntryCard(entry, isLast);
   });
-  if(msOpenClosed){
-    html += '<div class="card"><div class="note" style="text-align:center;">یہ کھاتہ بند ہو چکا ہے — نیا مہینہ شروع ہونے پر خودکار نیا کھاتہ بن گیا، اب یہاں صرف پرانا ریکارڈ دیکھا جا سکتا ہے۔</div></div>';
+  // بند/تالے والا کھاتہ اب بھی نئی (پرانی تاریخ والی) انٹری قبول کرتا ہے —
+  // اوپر تاریخ کے خانے سے، بالکل سیلزمین/ربنواز/Agency کھاتوں کی طرح — پاس
+  // ورڈ کے بغیر نیا فارم نظر ہی نہیں آتا، غلطی سے پرانی مکمل شدہ انٹری
+  // چھیڑی نہ جا سکے۔
+  const msClosedFormUnlocked = msOpenClosed && msUnlockedClosedBookIds.has(msOpenId);
+  if(msOpenClosed && !msClosedFormUnlocked){
+    html += `<div class="card" style="text-align:center;">
+      <div class="note" style="margin-bottom:8px;">یہ کھاتہ بند ہو چکا ہے — نئی (پرانی تاریخ کی) انٹری شامل کرنے کے لیے پاس ورڈ درکار ہے۔</div>
+      <button type="button" id="msClosedUnlockBtn" class="lock-btn">🔒 نئی انٹری کے لیے پاس ورڈ درج کریں</button>
+    </div>`;
   } else {
+    if(msOpenClosed){
+      html += '<div class="card"><div class="note" style="text-align:center;">یہ کھاتہ بند ہو چکا ہے — نیچے تاریخ کا خانہ بھر کر پرانی تاریخ کی انٹری اب بھی شامل کی جا سکتی ہے۔</div></div>';
+    }
     html += msRenderNewEntryForm(prevTotal, prevItemData);
   }
   container.innerHTML = html;
   kataApplyIndianFormattingToReadonly(container);
   kataApplyPrintButtonVisibility(container);
 
-  if(!msOpenClosed){
+  if(!msOpenClosed || msClosedFormUnlocked){
     const saveBtn = document.getElementById('msSaveEntryBtn');
     if(saveBtn) saveBtn.addEventListener('click', ()=> msSaveEntry(prevTotal, prevItemData));
     msWireLiveFormulas(prevTotal, prevItemData);
+  }
+  const msClosedUnlockBtn = document.getElementById('msClosedUnlockBtn');
+  if(msClosedUnlockBtn){
+    msClosedUnlockBtn.addEventListener('click', ()=>{
+      siteTextPrompt('پاس ورڈ درج کریں', function(pw){
+        if(pw === null) return;
+        if(pw === KATA_CLOSED_ENTRY_PASSWORD){
+          msUnlockedClosedBookIds.add(msOpenId);
+          msRenderDetail(msOpenName);
+        } else {
+          alert('غلط پاس ورڈ۔');
+        }
+      });
+    });
   }
 
   container.querySelectorAll('.ms-delete-entry-btn').forEach(btn=>{
