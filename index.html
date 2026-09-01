@@ -2713,6 +2713,8 @@ function msReloadRatesFromStorage(){
   } catch(e){}
 }
 window.msReloadRatesFromStorage = msReloadRatesFromStorage;
+let msUndoStack = []; // {input, oldValue} — mirrors kataUndoStack, one entry per finished edit (on blur/change)
+let msUndoRestoring = false; // guards against the programmatic restore itself being tracked as a new undo-able change
 let msOpenId = null, msOpenName = '', msOpenEntries = [];
 let msOpenCarryForward = null; // set from the opened book's .carryForward when it has no entries yet (after an automatic monthly rollover)
 let msOpenClosed = false; // true once this book has been auto-closed by a monthly rollover — new entries need the password below (کھاتہ کی طرح)
@@ -2994,6 +2996,9 @@ function msRenderNewEntryForm(prevTotal, prevItemData){
   return `
     <div class="card" id="msNewEntryCard">
       <h2 style="border:none;text-align:center;">+ نئی انٹری</h2>
+      <div style="text-align:center;margin-bottom:8px;">
+        <button type="button" class="share-btn" id="msUndoBtn" style="width:auto;padding:4px 16px;font-size:13px;">↩ پچھلی تبدیلی واپس کریں</button>
+      </div>
       <div class="note" style="text-align:center;margin-bottom:6px;">
         <div style="margin-bottom:4px;">نام (اختیاری — یہ انٹری کس نے درج کی)</div>
         <input type="text" id="msEntryNameInput" class="cell-input" style="border:1px solid var(--line);text-align:center;" value="${kataEscape(localStorage.getItem(MS_LAST_NAME_KEY) || '')}">
@@ -3119,6 +3124,46 @@ function msWireLiveFormulas(prevTotal, prevItemData){
     inp.addEventListener('input', recalc);
   });
   recalc();
+
+  // ↩ پچھلی تبدیلی واپس کریں — بالکل کھاتوں کی طرح: ہر خانے کی آخری مکمل
+  // شدہ تبدیلی (blur/change پر) یاد رکھی جاتی ہے، تاکہ ایک بار Undo دبانے
+  // سے پوری تبدیلی واپس آئے، ایک ایک حرف نہیں۔
+  function msTrackUndo(input){
+    input.addEventListener('focus', ()=>{ input.dataset.msPrevValue = input.value; });
+    input.addEventListener('change', ()=>{
+      if(msUndoRestoring) return;
+      if(input.dataset.msPrevValue !== undefined && input.dataset.msPrevValue !== input.value){
+        msUndoStack.push({input, oldValue: input.dataset.msPrevValue});
+        if(msUndoStack.length > 50) msUndoStack.shift();
+      }
+      input.dataset.msPrevValue = input.value;
+    });
+  }
+  document.querySelectorAll('#msDetailView .cell-input').forEach(msTrackUndo);
+
+  function msUndo(){
+    let entry = msUndoStack.pop();
+    while(entry && !document.body.contains(entry.input)) entry = msUndoStack.pop(); // DOM سے ہٹ چکی قطاروں کی اندراجات چھوڑ دیں (مثلاً محفوظ ہونے کے بعد دوبارہ رینڈر پر)
+    if(!entry) return;
+    msUndoRestoring = true;
+    entry.input.value = entry.oldValue;
+    entry.input.dataset.msPrevValue = entry.oldValue;
+    entry.input.dispatchEvent(new Event('input', {bubbles:true}));
+    msUndoRestoring = false;
+  }
+  window.msUndo = msUndo; // سائٹ کے مشترکہ ↩ فلوٹنگ بٹن سے بھی رسائی کے لیے (کھاتہ کی طرح)
+
+  const msUndoBtn = document.getElementById('msUndoBtn');
+  if(msUndoBtn) msUndoBtn.addEventListener('click', msUndo);
+  if(!window._msUndoKeyListenerAttached){
+    window._msUndoKeyListenerAttached = true;
+    document.addEventListener('keydown', (e)=>{
+      if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && document.getElementById('msDetailView')){
+        e.preventDefault();
+        msUndo();
+      }
+    });
+  }
 }
 
 function msSaveEntry(prevTotal, prevItemData){
@@ -6199,11 +6244,13 @@ window.siteUndo = function(){
   window._siteUndoRestoring = false;
 };
 document.getElementById('siteUndoFab').addEventListener('click', ()=>{
-  // اگر کھاتہ کا اپنا مخصوص undo کھلا ہوا ہے (اسی سیکشن میں ہیں) تو وہی
-  // چلائیں، تاکہ Sale/Jamah جیسے خاص خانے بھی صحیح واپس آئیں — ورنہ سائٹ
-  // کا مشترکہ undo استعمال ہو۔
+  // اگر کھاتہ یا سرف کے ماہانہ حساب کا اپنا مخصوص undo کھلا ہوا ہے (اسی
+  // سیکشن میں ہیں) تو وہی چلائیں، تاکہ Sale/Jamah جیسے خاص خانے بھی صحیح
+  // واپس آئیں — ورنہ سائٹ کا مشترکہ undo استعمال ہو۔
   if(document.getElementById('kataDetailView') && document.getElementById('kataDetailView').style.display !== 'none' && typeof window.kataUndo === 'function'){
     window.kataUndo();
+  } else if(document.getElementById('msDetailView') && document.getElementById('msDetailView').style.display !== 'none' && typeof window.msUndo === 'function'){
+    window.msUndo();
   } else {
     window.siteUndo();
   }
