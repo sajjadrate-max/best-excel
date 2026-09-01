@@ -2693,6 +2693,7 @@ const MS_TO_RATELIST_KEY = {rs10:'rs10', rs50:'rs50', rs100:'rs100', rs150:'rs15
 let msCtnProfits = {rs10:0, rs50:0, rs100:0, rs150:0, rs400:0, rs1000:0, rs20kg:0, sada20kg:0};
 let msPrices = {rs10:0, rs50:0, rs100:0, rs150:0, rs400:0, rs1000:0, rs20kg:0, sada20kg:0};
 const MS_RATES_KEY = 'msRates';
+const MS_LAST_NAME_KEY = 'msLastEntryName'; // نئی انٹری فارم کے "نام" خانے کی چپکنے والی (سابقہ) قدر
 (function msLoadRates(){
   try{
     const saved = JSON.parse(localStorage.getItem(MS_RATES_KEY));
@@ -2939,7 +2940,7 @@ function msRenderEntryCard(entry, isLast){
   return `
     <div class="card ms-entry-card kata-entry-card">
       ${isLast ? kataDotsMenuHtml([{cls:'ms-delete-entry-btn', label:'🗑 حذف کریں'}]) : ''}
-      <div class="note" style="text-align:center;font-weight:400;">${kataFormatWhen(entry.createdAt)}</div>
+      <div class="note" style="text-align:center;font-weight:400;">${kataFormatWhen(entry.createdAt)}${entry.enteredBy ? ' — ' + kataEscape(entry.enteredBy) : ''}</div>
       <div class="edit-table wide-table">
         <table dir="ltr">
           <colgroup><col style="width:16%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"></colgroup>
@@ -2993,6 +2994,10 @@ function msRenderNewEntryForm(prevTotal, prevItemData){
   return `
     <div class="card" id="msNewEntryCard">
       <h2 style="border:none;text-align:center;">+ نئی انٹری</h2>
+      <div class="note" style="text-align:center;margin-bottom:6px;">
+        <div style="margin-bottom:4px;">نام (اختیاری — یہ انٹری کس نے درج کی)</div>
+        <input type="text" id="msEntryNameInput" class="cell-input" style="border:1px solid var(--line);text-align:center;" value="${kataEscape(localStorage.getItem(MS_LAST_NAME_KEY) || '')}">
+      </div>
       <div class="note" style="text-align:center;margin-bottom:6px;">
         <div style="margin-bottom:4px;">تاریخ (اختیاری — خالی چھوڑیں تو آج کی تاریخ استعمال ہوگی؛ بند/تالے والے کھاتے میں پرانی تاریخ لکھی جا سکتی ہے)</div>
         <input type="date" id="msEntryDateInput" class="cell-input" style="border:1px solid var(--line);text-align:center;">
@@ -3125,6 +3130,11 @@ function msSaveEntry(prevTotal, prevItemData){
   const msDateInputEl = document.getElementById('msEntryDateInput');
   const msCustomDateStr = msDateInputEl && msDateInputEl.value ? msDateInputEl.value : '';
   const msCustomDate = msCustomDateStr ? new Date(msCustomDateStr + 'T12:00:00') : null;
+  // نام کا خانہ — سیلزمین کھاتوں کی طرح، یہ انٹری کس نے درج کی۔ اگلی انٹری
+  // میں خودکار وہی نام پہلے سے بھرا آئے (چپکنے والا)، جب تک صارف خود بدلے۔
+  const msNameInputEl = document.getElementById('msEntryNameInput');
+  const enteredBy = msNameInputEl ? msNameInputEl.value.trim() : '';
+  (window.firebaseSyncSet || ((k,v)=>localStorage.setItem(k,v)))(MS_LAST_NAME_KEY, enteredBy);
   const items = {};
   let todayN = 0, todayProfit = 0;
   MS_ITEMS.forEach(item=>{
@@ -3184,7 +3194,7 @@ function msSaveEntry(prevTotal, prevItemData){
   const entries = msLocalGetEntries(msOpenId);
   entries.push({
     id: 'e' + Date.now() + Math.random().toString(36).slice(2,7),
-    items, sabka, today, total, expenses, originalProfit, cellColors,
+    items, sabka, today, total, expenses, originalProfit, cellColors, enteredBy,
     createdAt: (msCustomDate ? msCustomDate : new Date()).toISOString(),
   });
   msLocalSaveEntries(msOpenId, entries);
