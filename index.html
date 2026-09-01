@@ -2606,6 +2606,41 @@ function kataEscape(s){
 function kataColorStyleFor(cellColors, key){
   return (cellColors && cellColors[key]) ? `background-color:${cellColors[key]};` : '';
 }
+// Same early-definition reason as kataEscape above — msRenderList/
+// msRenderStockCard etc. call these for Indian-style (lakh/crore) number
+// grouping, but the کھاتہ module's script (where these are the real,
+// authoritative definitions) only runs AFTER this one — so without a local
+// copy here, msShowList()/msRenderList() at the bottom of this same script
+// would throw "kataIndianNumberFormat is not defined" on every page load
+// (2026-09-01، صارف کی نشاندہی — ہر بار سائٹ کھلتے ہی یہ خرابی آ رہی تھی)۔
+// Harmlessly redefined to the exact same function once the کھاتہ module's
+// script runs afterward.
+function kataIndianNumberFormat(numVal){
+  if(numVal == null) return numVal;
+  const str = String(numVal).trim();
+  if(!/^-?\d+(\.\d+)?$/.test(str)) return numVal;
+  const neg = str.startsWith('-');
+  let s = neg ? str.slice(1) : str;
+  let dec = '';
+  const dotIdx = s.indexOf('.');
+  if(dotIdx !== -1){ dec = s.slice(dotIdx); s = s.slice(0, dotIdx); }
+  if(s.length <= 3) return (neg?'-':'') + s + dec;
+  const last3 = s.slice(-3);
+  let rest = s.slice(0, -3);
+  rest = rest.replace(/\B(?=(\d{2})+(?!\d)$)/g, ',');
+  return (neg?'-':'') + rest + ',' + last3 + dec;
+}
+function kataApplyIndianFormattingToReadonly(root){
+  if(!root) return;
+  root.querySelectorAll('span.cell-val, .totals .n, div.n').forEach(el=>{
+    if(el.querySelector('input, select, textarea')) return;
+    el.textContent = kataIndianNumberFormat(el.textContent.trim());
+  });
+  root.querySelectorAll('td').forEach(td=>{
+    if(td.children.length) return;
+    td.textContent = kataIndianNumberFormat(td.textContent.trim());
+  });
+}
 
 const MS_ITEMS = [
   {key:'rs10',   name:'Surf Rs.10'},
@@ -3930,6 +3965,23 @@ function kataIndianNumberFormat(numVal){
   rest = rest.replace(/\B(?=(\d{2})+(?!\d)$)/g, ',');
   return (neg?'-':'') + rest + ',' + last3 + dec;
 }
+// انڈین گروپنگ والے (کوما لگے) عدد کو واپس خالص نمبر میں بدلتا ہے — Jamah
+// جیسے قابلِ ترمیم خانوں کے لیے، جہاں کوما لگنے کے بعد بھی حساب درست چلنا
+// چاہیے (2026-09-01، صارف کی درخواست پر — Jamah بھی باقی خانوں جیسی
+// فارمیٹنگ میں)۔
+function kataParseNum(str){
+  if(str == null) return 0;
+  const n = Number(String(str).replace(/,/g, '').trim());
+  return isNaN(n) ? 0 : n;
+}
+// Jamah جیسے قابلِ ترمیم عدد والے خانے پر لگاتے ہیں — لکھتے وقت (focus)
+// سادہ عدد نظر آئے (آسانی سے ترمیم کے لیے)، لکھنا ختم کرنے پر (blur) انڈین
+// گروپنگ (کوما) کے ساتھ نظر آئے، باقی سائٹ کی طرح۔
+function kataWireJamahFormatting(input){
+  if(!input) return;
+  input.addEventListener('focus', ()=>{ const n = kataParseNum(input.value); input.value = String(n); });
+  input.addEventListener('blur', ()=>{ const n = kataParseNum(input.value); input.value = kataIndianNumberFormat(n); });
+}
 // محفوظ شدہ (read-only) کھاتہ کارڈز کے اندر جتنے بھی خالص عدد والے
 // cell-val/n خانے ہیں انہیں انڈین گروپنگ میں بدل دیتا ہے — input فیلڈز کو
 // ہاتھ نہیں لگاتا (وہ حساب کتاب کے کوڈ میں Number()/parseFloat() سے پڑھے
@@ -4656,15 +4708,19 @@ function kataRenderDetail(name){
   });
   container.querySelectorAll('[data-kata-entry-jamah]').forEach(input=>{
     input.addEventListener('input', ()=> kataOnEntryJamahInput(input, container));
+    kataWireJamahFormatting(input);
   });
   container.querySelectorAll('[data-kata-entry-jamah-t]').forEach(input=>{
     input.addEventListener('input', ()=> kataOnEntryJamahTInput(input, container));
+    kataWireJamahFormatting(input);
   });
   container.querySelectorAll('[data-kata-entry-jamah-profit]').forEach(input=>{
     input.addEventListener('input', ()=> kataOnEntryJamahProfitInput(input, container));
+    kataWireJamahFormatting(input);
   });
   container.querySelectorAll('[data-kata-entry-jamah-discount]').forEach(input=>{
     input.addEventListener('input', ()=> kataOnEntryJamahDiscountInput(input, container));
+    kataWireJamahFormatting(input);
   });
   const prevClosedBookCard = container.querySelector('[data-kata-prev-closed-book-id]');
   if(prevClosedBookCard){
@@ -4686,7 +4742,7 @@ function kataOnEntryJamahInput(input, container){
   const entry = kataOpenEntries[idx];
   if(!entry) return;
   entry.jamah = entry.jamah || {price:[0,0]};
-  entry.jamah.price[which] = Number(input.value) || 0;
+  entry.jamah.price[which] = kataParseNum(input.value);
   const totPrice = (entry.total && entry.total.price) || 0;
   entry.bqaya = entry.bqaya || {};
   entry.bqaya.price = totPrice - ((entry.jamah.price[0]||0) + (entry.jamah.price[1]||0));
@@ -4703,7 +4759,7 @@ function kataOnEntryJamahTInput(input, container){
   if(!entry) return;
   entry.jamah = entry.jamah || {price:[0,0]};
   entry.jamah.t = entry.jamah.t || [0,0];
-  entry.jamah.t[which] = Number(input.value) || 0;
+  entry.jamah.t[which] = kataParseNum(input.value);
   const totT = (entry.total && entry.total.t) || 0;
   entry.bqaya = entry.bqaya || {};
   entry.bqaya.t = totT - ((entry.jamah.t[0]||0) + (entry.jamah.t[1]||0));
@@ -4732,7 +4788,7 @@ function kataOnEntryJamahProfitInput(input, container){
   if(!entry) return;
   entry.jamah = entry.jamah || {price:[0,0]};
   entry.jamah.profit = entry.jamah.profit || [0,0];
-  entry.jamah.profit[which] = Number(input.value) || 0;
+  entry.jamah.profit[which] = kataParseNum(input.value);
   const totProfit = (entry.total && entry.total.profit) || 0;
   entry.bqaya = entry.bqaya || {};
   entry.bqaya.profit = totProfit - ((entry.jamah.profit[0]||0) + (entry.jamah.profit[1]||0));
@@ -4751,7 +4807,7 @@ function kataOnEntryJamahDiscountInput(input, container){
   if(!entry) return;
   entry.jamah = entry.jamah || {price:[0,0]};
   entry.jamah.discount = entry.jamah.discount || [0,0];
-  entry.jamah.discount[which] = Number(input.value) || 0;
+  entry.jamah.discount[which] = kataParseNum(input.value);
   const totDiscount = (entry.total && entry.total.discount) || 0;
   entry.bqaya = entry.bqaya || {};
   entry.bqaya.discount = totDiscount - ((entry.jamah.discount[0]||0) + (entry.jamah.discount[1]||0));
@@ -5054,7 +5110,12 @@ function kataRenderEntryCard(entry, isLast, idx){
   KATA_ITEMS.forEach((item, idx)=>{
     const v = (entry.items && entry.items[item.key]) || {t:0, price:0};
     if(!v.t && !v.price) return; // skip untouched rows to keep past entries compact
-    sumT += Number(v.t) || 0;
+    // Z Net Bill کبھی "Total CTN" باکس میں شمار نہیں ہوتا — نئی انٹری فارم
+    // (kataWireLiveFormulas/kataSaveEntry) میں تو یہ پہلے ہی خارج تھا، لیکن
+    // یہاں محفوظ شدہ انٹری دکھانے والے sumT میں غلطی سے شامل ہو رہا تھا
+    // (2026-09-01، صارف کی نشاندہی پر ٹھیک کیا گیا)۔
+    const isZNetSum = item.key === 'znet1' || item.key === 'znet2';
+    if(!isZNetSum) sumT += Number(v.t) || 0;
     // Older entries (saved before reference fields became per-row snapshots)
     // won't have v.rate/v.name/v.weight — fall back to today's KATA_ITEMS
     // values for those so old cards still render.
@@ -5194,7 +5255,7 @@ function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx){
   const jamahProfit = jamah.profit || [0,0];
   const jamahT = jamah.t || [0,0];
   const jamahRow = (i)=> entryIdx != null
-    ? `<tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Cash' : 'Jamah'}</td>${agencySimple ? '' : `<td></td>`}<td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamah.price[i]||0}"></td>${agencySimple ? '' : `<td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah-profit="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamahProfit[i]||0}"></td>`}${showDiscount ? `<td><input type="number" inputmode="numeric" class="cell-input" data-kata-entry-jamah-discount="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${jamahDiscount[i]||0}"></td>` : ''}</tr>`
+    ? `<tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Cash' : 'Jamah'}</td>${agencySimple ? '' : `<td></td>`}<td><input type="text" inputmode="numeric" class="cell-input" data-kata-entry-jamah="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${kataIndianNumberFormat(jamah.price[i]||0)}"></td>${agencySimple ? '' : `<td><input type="text" inputmode="numeric" class="cell-input" data-kata-entry-jamah-profit="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${kataIndianNumberFormat(jamahProfit[i]||0)}"></td>`}${showDiscount ? `<td><input type="text" inputmode="numeric" class="cell-input" data-kata-entry-jamah-discount="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${kataIndianNumberFormat(jamahDiscount[i]||0)}"></td>` : ''}</tr>`
     : `<tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Cash' : 'Jamah'}</td>${agencySimple ? '' : `<td></td>`}<td>${jamah.price[i]||0}</td>${agencySimple ? '' : `<td>${jamahProfit[i]||0}</td>`}${showDiscount ? `<td>${jamahDiscount[i]||0}</td>` : ''}</tr>`;
   const bqayaTCell = entryIdx != null
     ? `<td data-kata-entry-bqaya-t="${entryIdx}">${bqaya.t||0}</td>`
@@ -5411,8 +5472,8 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
             ${sabkaRow}
             <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'New Bill' : 'Today'}</td>${agencySimple ? '' : '<td data-kata-today-t>0</td>'}<td data-kata-today-price>0</td>${agencySimple ? '' : '<td data-kata-today-profit>0</td>'}${showDiscount ? '<td data-kata-today-discount>0</td>' : ''}</tr>
             <tr><td style="text-align:right;padding-right:6px;">Total</td>${agencySimple ? '' : `<td data-kata-tot-t>${prevTotal.t||0}</td>`}<td data-kata-tot-price>${prevTotal.price}</td>${agencySimple ? '' : `<td data-kata-tot-profit>${prevTotal.profit||0}</td>`}${showDiscount ? `<td data-kata-tot-discount>${prevTotal.discount||0}</td>` : ''}</tr>
-            <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Cash' : 'Jamah'}</td>${agencySimple ? '' : '<td></td>'}<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price0" style="border:1px solid var(--line);" value="0"></td>${agencySimple ? '' : '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="profit0" style="border:1px solid var(--line);" value="0"></td>'}${showDiscount ? '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="discount0" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>
-            ${agencySimple ? '' : `<tr><td style="text-align:right;padding-right:6px;">Jamah</td><td></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="price1" style="border:1px solid var(--line);" value="0"></td><td><input type="number" inputmode="numeric" class="cell-input" data-jamah="profit1" style="border:1px solid var(--line);" value="0"></td>${showDiscount ? '<td><input type="number" inputmode="numeric" class="cell-input" data-jamah="discount1" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>`}
+            <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Cash' : 'Jamah'}</td>${agencySimple ? '' : '<td></td>'}<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="price0" style="border:1px solid var(--line);" value="0"></td>${agencySimple ? '' : '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="profit0" style="border:1px solid var(--line);" value="0"></td>'}${showDiscount ? '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="discount0" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>
+            ${agencySimple ? '' : `<tr><td style="text-align:right;padding-right:6px;">Jamah</td><td></td><td><input type="text" inputmode="numeric" class="cell-input" data-jamah="price1" style="border:1px solid var(--line);" value="0"></td><td><input type="text" inputmode="numeric" class="cell-input" data-jamah="profit1" style="border:1px solid var(--line);" value="0"></td>${showDiscount ? '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="discount1" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>`}
             <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Remaining Price' : 'Bqaya'}</td>${agencySimple ? '' : `<td></td>`}<td data-kata-bqaya-price>${prevTotal.price}</td>${agencySimple ? '' : `<td data-kata-bqaya-profit>${prevTotal.profit||0}</td>`}${showDiscount ? `<td data-kata-bqaya-discount>${prevTotal.discount||0}</td>` : ''}</tr>
           </tbody>
         </table>
@@ -5556,7 +5617,7 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
       set('[data-kata-today-discount]', todayDiscount);
       set('[data-kata-tot-discount]', totDiscount);
     }
-    const j = (sel)=>{ const el = document.querySelector(sel); return el ? (Number(el.value)||0) : 0; };
+    const j = (sel)=>{ const el = document.querySelector(sel); return el ? kataParseNum(el.value) : 0; };
     const jamahPrice = j('[data-jamah="price0"]') + j('[data-jamah="price1"]');
     set('[data-kata-bqaya-price]', totPrice - jamahPrice);
     const jamahProfit = j('[data-jamah="profit0"]') + j('[data-jamah="profit1"]');
@@ -5631,6 +5692,7 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
   });
   document.querySelectorAll('[data-jamah]').forEach(input=>{
     input.addEventListener('input', recomputeTotalsBlock);
+    kataWireJamahFormatting(input);
   });
   ['kharch', 'less'].forEach(field=>{
     const input = document.querySelector(`[data-kata-field="${field}"]`);
@@ -5839,7 +5901,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
   const salesmanInput = document.querySelector('[data-kata-field="salesman"]');
   const salesman = salesmanInput ? salesmanInput.value : '';
 
-  const jVal = (name)=>{ const el = document.querySelector(`[data-jamah="${name}"]`); return el ? (Number(el.value)||0) : 0; };
+  const jVal = (name)=>{ const el = document.querySelector(`[data-jamah="${name}"]`); return el ? kataParseNum(el.value) : 0; };
   const jamah = {t: [jVal('t0'), jVal('t1')], price: [jVal('price0'), jVal('price1')], profit: [jVal('profit0'), jVal('profit1')]};
   if(showDiscount) jamah.discount = [jVal('discount0'), jVal('discount1')];
   const jamahTotal = jamah.price[0] + jamah.price[1];
