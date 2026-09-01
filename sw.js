@@ -4,12 +4,14 @@
 // new index.html if the site ever seems to be showing an old/stale version
 // again in the future — that forces every visitor's browser to throw away
 // its old cached copy and fetch the new one.
-const CACHE_VERSION = 'best-excel-v2';
+const CACHE_VERSION = 'best-excel-v3';
 
 const STATIC_ASSETS = [
   './manifest.json',
-  './icon-192.png',
-  './icon-512.png',
+  './launchericon-192x192.png',
+  './launchericon-512x512.png',
+  './poster-bg.jpg',
+  './header-bg.jpg',
 ];
 
 self.addEventListener('install', (event) => {
@@ -67,7 +69,13 @@ self.addEventListener('fetch', (event) => {
 
   if (isHtmlRequest) {
     event.respondWith(
-      fetch(req, { cache: 'no-store' })
+      // 'no-cache' (not 'no-store'): the browser still revalidates with the
+      // server on every load, but a conditional GET can come back as a tiny
+      // 304 Not Modified when index.html hasn't changed, instead of always
+      // re-downloading the whole file. 'no-store' was forcing a full fresh
+      // download of index.html (hundreds of KB) on every single page view,
+      // which was the main cause of the site feeling slow to open.
+      fetch(req, { cache: 'no-cache' })
         .then((networkResponse) => {
           const copy = networkResponse.clone();
           caches.open(CACHE_VERSION).then((cache) => cache.put(req, copy));
