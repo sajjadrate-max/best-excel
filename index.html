@@ -5394,6 +5394,31 @@ function kataRenderEntryCard(entry, isLast, idx){
   // قابلِ ترمیم <input> کے طور پر بنتے ہیں (2026-09-02، صارف کی درخواست پر)۔
   const entryIdx = idx; // آئٹم forEach کے اندر "idx" دوبارہ استعمال ہوتا ہے (آئٹم نمبر کے لیے)، اس لیے یہاں الگ نام سے محفوظ کیا
   const editUnlocked = !!(entry.id && kataUnlockedEditEntryIds.has(entry.id));
+  // Sabka اب بھی خودکار فارمولا سے بنتا ہے — بالکل اسی طرح جیسے نئی انٹری
+  // فارم میں پہلے سے طے شدہ Sabka بنتا ہے (kataRenderDetail کا prevTotal):
+  // اسی کھاتے کی پچھلی محفوظ انٹری کا Bqaya (اگر یہ پہلی انٹری نہیں)، ورنہ
+  // مہینہ رول اوور کا carryForward (اگر یہ کھاتے کی پہلی انٹری ہے)۔ صارف
+  // خود کبھی Sabka نہیں لکھتا — Total کی طرح یہ بھی مکمل ذریعے (computed)
+  // ہے، تاکہ غلطی سے غلط عدد لکھے جانے سے حساب کبھی نہ بگڑے (2026-09-02،
+  // صارف کی نشاندہی پر — پہلے یہ صرف Total تک محدود تھا)۔
+  const prevEntryForSabka = entryIdx > 0 ? kataOpenEntries[entryIdx-1] : null;
+  const sabkaComputed = prevEntryForSabka
+    ? Object.assign({price:0, profit:0, discount:0}, prevEntryForSabka.bqaya || prevEntryForSabka.total || {})
+    : Object.assign({price:0, profit:0, discount:0, t:0}, (kataOpenCarryForward || {}), {t:0, profit:0});
+  entry.sabka = sabkaComputed; // میموری میں بھی درست کر دیا — پرنٹ/PDF اور بعد کے حسابات بھی اسی درست قدر سے چلیں
+  entry.total = entry.total || {};
+  entry.total.price = (sabkaComputed.price||0) + ((entry.today && entry.today.price)||0);
+  entry.total.profit = (sabkaComputed.profit||0) + ((entry.today && entry.today.profit)||0);
+  entry.total.discount = (sabkaComputed.discount||0) + ((entry.today && entry.today.discount)||0);
+  {
+    const jamah0 = entry.jamah || {price:[0,0]};
+    const jp0 = jamah0.profit || [0,0];
+    const jd0 = jamah0.discount || [0,0];
+    entry.bqaya = entry.bqaya || {};
+    entry.bqaya.price = entry.total.price - ((jamah0.price[0]||0)+(jamah0.price[1]||0));
+    entry.bqaya.profit = entry.total.profit - ((jp0[0]||0)+(jp0[1]||0));
+    entry.bqaya.discount = entry.total.discount - ((jd0[0]||0)+(jd0[1]||0));
+  }
   function editField(rawValue, fieldKey, itemKey, widthCh){
     if(!editUnlocked) return null;
     const val = (rawValue==null) ? '' : rawValue;
@@ -5580,24 +5605,24 @@ function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx, editUn
   const bqayaDiscountCell = entryIdx != null
     ? `<td data-kata-entry-bqaya-discount="${entryIdx}">${bqaya.discount||0}</td>`
     : `<td>${bqaya.discount||0}</td>`;
-  // Sabka/Today قطاریں — ترمیم موڈ میں (پرانی محفوظ انٹری، پاس ورڈ سے کھلی
-  // ہوئی) یہ Jamah جیسے ہی براہِ راست قابلِ ترمیم <input> بن جاتی ہیں۔
-  // Total اب ہمیشہ خودکار حساب (Sabka+Today) سے بنتا ہے — کبھی خود نہیں
-  // لکھا جاتا — تاکہ Sabka/Today بدلنے پر Total ازخود درست رہے (2026-09-02،
-  // صارف کی نشاندہی پر: پہلے Total الگ سے قابلِ ترمیم تھا، جس سے Sabka
-  // بدلنے پر Total پرانا ہی رہ جاتا اور جمع درست نہ ہوتا)۔
+  // Today قطار — ترمیم موڈ میں (پرانی محفوظ انٹری، پاس ورڈ سے کھلی ہوئی)
+  // یہ Jamah جیسے ہی براہِ راست قابلِ ترمیم <input> بن جاتی ہے۔ Sabka اور
+  // Total دونوں اب ہمیشہ خودکار حساب سے بنتے ہیں — کبھی خود نہیں لکھے
+  // جاتے — Sabka پچھلی انٹری کے Bqaya سے (اوپر entryIdx کے ساتھ حساب ہو
+  // چکا)، Total = Sabka+Today سے (2026-09-02، صارف کی نشاندہی پر: پہلے
+  // Sabka/Total الگ سے قابلِ ترمیم تھے، جس سے غلطی سے جمع درست نہ ہوتا)۔
   function sumRow(rowKey, obj, label){
-    const editable = entryIdx != null && editUnlocked && rowKey !== 'total';
-    const totalAttr = (idxPart)=> rowKey === 'total' && entryIdx != null ? ` data-kata-entry-total-${idxPart}="${entryIdx}"` : '';
+    const editable = entryIdx != null && editUnlocked && rowKey === 'today';
+    const staticAttr = (idxPart)=> (rowKey === 'total' || rowKey === 'sabka') && entryIdx != null ? ` data-kata-entry-${rowKey}-${idxPart}="${entryIdx}"` : '';
     const priceCell = editable
       ? `<td><input type="text" inputmode="decimal" class="cell-input" data-kata-edit-sumrow="${entryIdx}:${rowKey}:price" style="border:1px solid var(--line);" value="${obj.price||0}"></td>`
-      : `<td${totalAttr('price')}>${obj.price||0}</td>`;
+      : `<td${staticAttr('price')}>${obj.price||0}</td>`;
     const profitCell = agencySimple ? '' : (editable
       ? `<td><input type="text" inputmode="decimal" class="cell-input" data-kata-edit-sumrow="${entryIdx}:${rowKey}:profit" style="border:1px solid var(--line);" value="${obj.profit||0}"></td>`
-      : `<td${totalAttr('profit')}>${obj.profit||0}</td>`);
+      : `<td${staticAttr('profit')}>${obj.profit||0}</td>`);
     const discountCell = !showDiscount ? '' : (editable
       ? `<td><input type="text" inputmode="decimal" class="cell-input" data-kata-edit-sumrow="${entryIdx}:${rowKey}:discount" style="border:1px solid var(--line);" value="${obj.discount||0}"></td>`
-      : `<td${totalAttr('discount')}>${obj.discount||0}</td>`);
+      : `<td${staticAttr('discount')}>${obj.discount||0}</td>`);
     return `<tr><td style="text-align:right;padding-right:6px;">${label}</td>${priceCell}${profitCell}${discountCell}</tr>`;
   }
   return `
