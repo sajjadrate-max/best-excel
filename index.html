@@ -3983,6 +3983,14 @@ let kataOpenClosed = false; // true once this book has been auto-closed by a mon
 // دوبارہ دوبارہ نہ مانگا جائے (صفحہ دوبارہ کھلنے پر خالی ہو جاتا ہے)۔
 let kataUnlockedClosedBookIds = new Set();
 const KATA_CLOSED_ENTRY_PASSWORD = 'Bestexcel';
+// 2026-09-02: صارف کی درخواست پر — کسی بھی محفوظ شدہ (پہلے سے لکھی ہوئی)
+// انٹری کو دوبارہ ترمیم کرنے کا آپشن، پاس ورڈ سے محفوظ۔ تینوں کھاتوں
+// (سیلزمین/ربنواز/Agency) میں یکساں کام کرتا ہے کیونکہ یہ سب ایک ہی
+// kataRenderEntryCard/kataTotalsBlockHtml فنکشن استعمال کرتے ہیں۔ ہر انٹری
+// کا اپنا الگ اَن لاک — ایک انٹری کھولنے سے باقی نہیں کھلتیں۔ صفحہ ری لوڈ
+// پر دوبارہ بند ہو جاتا ہے (session-only unlock)۔
+let kataUnlockedEditEntryIds = new Set();
+const KATA_ENTRY_EDIT_PASSWORD = 'BestExcel';
 let kataInstance = 'salesman'; // which named ledger section is active — 'salesman' is the original/default (unprefixed storage keys, for backward compatibility with existing data), any other value (e.g. 'ribnawaz') gets its own separate namespace
 // Discount خانے صرف سیلزمین کھاتے میں دکھائے جاتے ہیں — ربنواز اور Agency
 // کھاتوں میں بالکل نہیں (2026-08-21، صریح صارف کی ہدایت پر)۔
@@ -4588,7 +4596,10 @@ function kataParseWeightGrams(str){
 // the last-entry delete (detail view) — keeps a rarely-used destructive
 // action tucked away instead of a big always-visible red button.
 function kataDotsMenuHtml(items){
-  const buttons = items.map(it => `<button type="button" class="${it.cls}">${it.label}</button>`).join('');
+  // it.attrs (اختیاری): اضافی HTML attributes کی خام سٹرنگ، مثلاً کسی مخصوص
+  // انٹری کا id بٹن پر لگانے کے لیے — پرانے کالز جو صرف cls/label دیتے ہیں
+  // ویسے ہی کام کرتے رہیں گے (attrs نہ ہونے پر خالی رہتا ہے)۔
+  const buttons = items.map(it => `<button type="button" class="${it.cls}"${it.attrs ? ' '+it.attrs : ''}>${it.label}</button>`).join('');
   return `<div class="kata-dots-wrap"><button type="button" class="kata-dots-btn">⋮</button><div class="kata-dots-menu">${buttons}</div></div>`;
 }
 if(!window._kataDotsMenuWired){
@@ -4842,6 +4853,29 @@ function kataRenderDetail(name){
     });
   }
 
+  // پہلے سے محفوظ انٹریوں میں سے کسی ایک کو ترمیم کے لیے پاس ورڈ سے کھولنا۔
+  container.querySelectorAll('.kata-edit-entry-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const entryId = btn.dataset.kataEditId;
+      if(!entryId) return;
+      if(kataUnlockedEditEntryIds.has(entryId)){
+        kataUnlockedEditEntryIds.delete(entryId); // دوبارہ دبانے پر واپس بند/محفوظ
+        kataRenderDetail(name);
+        return;
+      }
+      siteTextPrompt('پاس ورڈ درج کریں (پرانی انٹری ترمیم کے لیے)', function(pw){
+        if(pw === null) return;
+        if(pw === KATA_ENTRY_EDIT_PASSWORD){
+          kataUnlockedEditEntryIds.add(entryId);
+          kataRenderDetail(name);
+        } else {
+          alert('غلط پاس ورڈ۔');
+        }
+      });
+    });
+  });
+  kataWireEditableEntryFields(container);
+
   const bookDelBtn = container.querySelector('.kata-book-delete-btn');
   if(bookDelBtn) bookDelBtn.addEventListener('click', ()=> kataDeleteWholeBook(name));
   const bookCloseBtn = container.querySelector('.kata-close-book-btn');
@@ -4929,6 +4963,80 @@ function kataSaveEditedEntry(idx){
       bqaya: entry.bqaya,
     }).catch(err=> console.warn('kata entry jamah save failed', err));
   }
+}
+
+// پہلے سے محفوظ انٹری کے آئٹم/Sabka/Today/Total/کھرچہ/وزن جیسے خانے
+// (پاس ورڈ سے کھلے "ترمیم موڈ" میں) — ہر خانہ سیدھا اسی نمبر پر لکھی
+// قیمت کو اوور رائیٹ کرتا ہے (بالکل Jamah کی طرح، کوئی خودکار فارمولا
+// نہیں)، صرف Bqaya پہلے کی طرح Total-Jamah سے خودکار دوبارہ بنتا ہے۔
+// (2026-09-02، صارف کی درخواست پر — سیلزمین/ربنواز/Agency تینوں میں یکساں۔)
+function kataOnEntryEditItemInput(input){
+  const [idxStr, itemKey, field] = input.dataset.kataEditItem.split(':');
+  const idx = Number(idxStr);
+  const entry = kataOpenEntries[idx];
+  if(!entry) return;
+  entry.items = entry.items || {};
+  entry.items[itemKey] = entry.items[itemKey] || {};
+  const textFields = ['idx','name','weight'];
+  entry.items[itemKey][field] = textFields.includes(field) ? input.value : kataParseNum(input.value);
+  clearTimeout(kataEntryJamahSaveTimer);
+  kataEntryJamahSaveTimer = setTimeout(()=> kataSaveEditedEntry(idx), 500);
+}
+function kataOnEntryEditExtraInput(input){
+  const [idxStr, field] = input.dataset.kataEditExtra.split(':');
+  const idx = Number(idxStr);
+  const entry = kataOpenEntries[idx];
+  if(!entry) return;
+  const num = kataParseNum(input.value);
+  entry.today = entry.today || {};
+  entry.total = entry.total || {};
+  if(field === 'kharch') entry.kharch = num;
+  else if(field === 'less') entry.less = num;
+  else if(field === 'weightKg') entry.weightKg = num;
+  else if(field === 'weightGram') entry.weightKg = num / 1000;
+  else if(field === 'totalT') entry.total.t = num;
+  else if(field === 'todayT') entry.today.t = num;
+  else if(field === 'todayProfit') entry.today.profit = num;
+  else if(field === 'todayPrice') entry.today.price = num;
+  clearTimeout(kataEntryJamahSaveTimer);
+  kataEntryJamahSaveTimer = setTimeout(()=> kataSaveEditedEntry(idx), 500);
+}
+function kataOnEntryEditSumrowInput(input, container){
+  const [idxStr, rowKey, field] = input.dataset.kataEditSumrow.split(':');
+  const idx = Number(idxStr);
+  const entry = kataOpenEntries[idx];
+  if(!entry) return;
+  const num = kataParseNum(input.value);
+  entry[rowKey] = entry[rowKey] || {};
+  entry[rowKey][field] = num;
+  // Bqaya ہمیشہ کی طرح Total-Jamah سے خودکار — یہاں Total تبدیل ہونے پر
+  // بھی وہی موجودہ فارمولا دوبارہ چلا کر فوری نظر آنے والی Bqaya قدر تازہ کرتے ہیں۔
+  const jamah = entry.jamah || {price:[0,0]};
+  const jamahProfit = jamah.profit || [0,0];
+  const jamahDiscount = jamah.discount || [0,0];
+  entry.bqaya = entry.bqaya || {};
+  entry.bqaya.price = ((entry.total && entry.total.price) || 0) - ((jamah.price[0]||0) + (jamah.price[1]||0));
+  entry.bqaya.profit = ((entry.total && entry.total.profit) || 0) - ((jamahProfit[0]||0) + (jamahProfit[1]||0));
+  entry.bqaya.discount = ((entry.total && entry.total.discount) || 0) - ((jamahDiscount[0]||0) + (jamahDiscount[1]||0));
+  const bqayaEl = container.querySelector(`[data-kata-entry-bqaya="${idx}"]`);
+  if(bqayaEl) bqayaEl.textContent = entry.bqaya.price;
+  const bqayaProfitEl = container.querySelector(`[data-kata-entry-bqaya-profit="${idx}"]`);
+  if(bqayaProfitEl) bqayaProfitEl.textContent = entry.bqaya.profit;
+  const bqayaDiscountEl = container.querySelector(`[data-kata-entry-bqaya-discount="${idx}"]`);
+  if(bqayaDiscountEl) bqayaDiscountEl.textContent = entry.bqaya.discount;
+  clearTimeout(kataEntryJamahSaveTimer);
+  kataEntryJamahSaveTimer = setTimeout(()=> kataSaveEditedEntry(idx), 500);
+}
+function kataWireEditableEntryFields(container){
+  container.querySelectorAll('[data-kata-edit-item]').forEach(input=>{
+    input.addEventListener('input', ()=> kataOnEntryEditItemInput(input));
+  });
+  container.querySelectorAll('[data-kata-edit-extra]').forEach(input=>{
+    input.addEventListener('input', ()=> kataOnEntryEditExtraInput(input));
+  });
+  container.querySelectorAll('[data-kata-edit-sumrow]').forEach(input=>{
+    input.addEventListener('input', ()=> kataOnEntryEditSumrowInput(input, container));
+  });
 }
 // اسی طرح Profit والا Jamah بھی — بالکل Price والے Bqaya جیسا۔
 function kataOnEntryJamahProfitInput(input, container){
@@ -5266,12 +5374,22 @@ function kataRenderEntryCard(entry, isLast, idx){
   // T.Profit کالم بھی مکمل ہٹا دیے۔ صرف Agency میں، سیلزمین/ربنواز میں یہ
   // کالم ویسے ہی رہیں گے۔
   const agencySimple = kataInstance === 'agency';
+  // پہلے سے محفوظ اس مخصوص انٹری پر password سے کھلا "ترمیم موڈ" — نیچے
+  // آئٹم ٹیبل اور Sabka/Today/Total/Kharch/Weight جیسے خانے span کی بجائے
+  // قابلِ ترمیم <input> کے طور پر بنتے ہیں (2026-09-02، صارف کی درخواست پر)۔
+  const entryIdx = idx; // آئٹم forEach کے اندر "idx" دوبارہ استعمال ہوتا ہے (آئٹم نمبر کے لیے)، اس لیے یہاں الگ نام سے محفوظ کیا
+  const editUnlocked = !!(entry.id && kataUnlockedEditEntryIds.has(entry.id));
+  function editField(rawValue, fieldKey, itemKey, widthCh){
+    if(!editUnlocked) return null;
+    const val = (rawValue==null) ? '' : rawValue;
+    return `<input type="text" inputmode="decimal" class="cell-input kata-edit-field" data-kata-edit-item="${entryIdx}:${itemKey}:${fieldKey}" style="width:${widthCh||5}ch;text-align:center;border:1px solid var(--line);" value="${kataEscape(String(val))}">`;
+  }
   let rows = '';
   let sumT = 0;
   const cc = entry.cellColors || {};
   KATA_ITEMS.forEach((item, idx)=>{
     const v = (entry.items && entry.items[item.key]) || {t:0, price:0};
-    if(!v.t && !v.price) return; // skip untouched rows to keep past entries compact
+    if(!v.t && !v.price && !editUnlocked) return; // skip untouched rows to keep past entries compact (ترمیم موڈ میں تمام قطاریں دکھائیں تاکہ ضرورت پڑنے پر خالی آئٹم بھی بھرا جا سکے)
     // Z Net Bill کبھی "Total CTN" باکس میں شمار نہیں ہوتا — نئی انٹری فارم
     // (kataWireLiveFormulas/kataSaveEntry) میں تو یہ پہلے ہی خارج تھا، لیکن
     // یہاں محفوظ شدہ انٹری دکھانے والے sumT میں غلطی سے شامل ہو رہا تھا
@@ -5290,33 +5408,44 @@ function kataRenderEntryCard(entry, isLast, idx){
     const numClass = ' kata-num-readable'; // 2026-08-22: ربنواز/Agency میں بھی وہی چھوٹے 'ڈاٹ جیسے نظر آنے والے' نمبروں کی شکایت — اب تینوں کھاتوں میں لاگو
     const thinClass = ' kata-thin-text';
     const discountCells = showDiscount ? `
-      <td style="${kataColorStyleFor(cc, item.key+'-discount')}"><span class="cell-val${numClass}">${v.discount||0}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-discounttotal')}"><span class="cell-val${numClass}">${v.discountTotal||0}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-sabkactn')}"><span class="cell-val${numClass}">${v.sabkaCtn||0}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-totalctn')}"><span class="cell-val${numClass}">${v.totalT||0}</span></td>` : '';
+      <td style="${kataColorStyleFor(cc, item.key+'-discount')}">${editField(v.discount||0,'discount',item.key,4) || `<span class="cell-val${numClass}">${v.discount||0}</span>`}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-discounttotal')}">${editField(v.discountTotal||0,'discountTotal',item.key,5) || `<span class="cell-val${numClass}">${v.discountTotal||0}</span>`}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-sabkactn')}">${editField(v.sabkaCtn||0,'sabkaCtn',item.key,4) || `<span class="cell-val${numClass}">${v.sabkaCtn||0}</span>`}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-totalctn')}">${editField(v.totalT||0,'totalT',item.key,4) || `<span class="cell-val${numClass}">${v.totalT||0}</span>`}</td>` : '';
     const priftCells = agencySimple ? '' : `
-      <td style="${kataColorStyleFor(cc, item.key+'-prift')}"><span class="cell-val${numClass}">${prift}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-totalprift')}"><span class="cell-val${numClass}">${priftTotal}</span></td>`;
+      <td style="${kataColorStyleFor(cc, item.key+'-prift')}">${editField(prift,'prift',item.key,5) || `<span class="cell-val${numClass}">${prift}</span>`}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-totalprift')}">${editField(priftTotal,'priftTotal',item.key,6) || `<span class="cell-val${numClass}">${priftTotal}</span>`}</td>`;
     // Agency کھاتہ — صارف کی درخواست پر (2026-08-27): ہر آئٹم کی اپنی فی
     // کارٹن کرایہ اور ٹوٹل کرایہ (Discount/D.Total کی طرح)۔
     const krayaCells = agencySimple ? `
-      <td style="${kataColorStyleFor(cc, item.key+'-krayarate')}" class="kata-krayarate-col"><span class="cell-val${numClass}">${v.krayaRate||0}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-krayatotal')}"><span class="cell-val${numClass}">${v.krayaTotal||0}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-commissionrate')}" class="kata-commission-col"><span class="cell-val${numClass}">${v.commissionRate||0}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-commissiontotal')}" class="kata-commission-col"><span class="cell-val${numClass}">${v.commissionTotal||0}</span></td>` : '';
+      <td style="${kataColorStyleFor(cc, item.key+'-krayarate')}" class="kata-krayarate-col">${editField(v.krayaRate||0,'krayaRate',item.key,5) || `<span class="cell-val${numClass}">${v.krayaRate||0}</span>`}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-krayatotal')}">${editField(v.krayaTotal||0,'krayaTotal',item.key,6) || `<span class="cell-val${numClass}">${v.krayaTotal||0}</span>`}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-commissionrate')}" class="kata-commission-col">${editField(v.commissionRate||0,'commissionRate',item.key,5) || `<span class="cell-val${numClass}">${v.commissionRate||0}</span>`}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-commissiontotal')}" class="kata-commission-col">${editField(v.commissionTotal||0,'commissionTotal',item.key,6) || `<span class="cell-val${numClass}">${v.commissionTotal||0}</span>`}</td>` : '';
     rows += `<tr>
-      <td style="${kataColorStyleFor(cc, item.key+'-idx')}"><span class="cell-val${numClass}${thinClass}">${(v.idx != null && v.idx !== '') ? kataEscape(v.idx) : (idx+1)}</span></td>
-      <td style="text-align:left;padding-left:6px;${nameColor}${kataColorStyleFor(cc, item.key+'-name')}"><span class="cell-val${numClass}${thinClass}">${kataEscape(name)}</span></td>
-      <td class="kata-t-cell" style="${kataColorStyleFor(cc, item.key+'-t') || 'background-color:#d9f2d9;'}"><span class="cell-val${numClass}">${v.t}</span>${v.sabkaNote ? `<span style="font-size:6px;color:#8a6d00;margin-right:2px;">(${kataEscape(v.sabkaNote)})</span>` : ''}</td>
-      <td style="${kataColorStyleFor(cc, item.key+'-weight')}"><span class="cell-val${numClass}">${kataEscape(kataDisplayWeight(weight))}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-rate')}"><span class="cell-val${numClass}">${rate}</span></td>
-      <td style="${kataColorStyleFor(cc, item.key+'-totalrate')}"><span class="cell-val${numClass}">${v.price}</span></td>${priftCells}${krayaCells}${discountCells}
+      <td style="${kataColorStyleFor(cc, item.key+'-idx')}">${editField((v.idx != null && v.idx !== '') ? v.idx : (idx+1),'idx',item.key,3) || `<span class="cell-val${numClass}${thinClass}">${(v.idx != null && v.idx !== '') ? kataEscape(v.idx) : (idx+1)}</span>`}</td>
+      <td style="text-align:left;padding-left:6px;${nameColor}${kataColorStyleFor(cc, item.key+'-name')}">${editField(name,'name',item.key,10) || `<span class="cell-val${numClass}${thinClass}">${kataEscape(name)}</span>`}</td>
+      <td class="kata-t-cell" style="${kataColorStyleFor(cc, item.key+'-t') || 'background-color:#d9f2d9;'}">${editField(v.t,'t',item.key,4) || `<span class="cell-val${numClass}">${v.t}</span>`}${v.sabkaNote ? `<span style="font-size:6px;color:#8a6d00;margin-right:2px;">(${kataEscape(v.sabkaNote)})</span>` : ''}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-weight')}">${editField(kataDisplayWeight(weight),'weight',item.key,6) || `<span class="cell-val${numClass}">${kataEscape(kataDisplayWeight(weight))}</span>`}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-rate')}">${editField(rate,'rate',item.key,5) || `<span class="cell-val${numClass}">${rate}</span>`}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-totalrate')}">${editField(v.price,'price',item.key,6) || `<span class="cell-val${numClass}">${v.price}</span>`}</td>${priftCells}${krayaCells}${discountCells}
     </tr>`;
   });
+  // Sabka/Today/Total/Kharch/Less/Weight جیسے سادہ (آئٹم سے باہر کے) خانوں
+  // کے لیے علیحدہ ہیلپر — یہ entry-level fields ہیں (item key نہیں)۔
+  function editBox(rawValue, fieldKey, widthCh){
+    if(!editUnlocked) return null;
+    return `<input type="text" inputmode="decimal" class="cell-input kata-edit-extra" data-kata-edit-extra="${entryIdx}:${fieldKey}" style="width:${widthCh||6}ch;text-align:center;font-family:'Courier Prime',monospace;font-size:13px;border:1px solid var(--line);" value="${kataEscape(String(rawValue==null?'':rawValue))}">`;
+  }
+  const dotsMenuItems = [];
+  if(entry.id){
+    dotsMenuItems.push({cls:'kata-edit-entry-btn', attrs:`data-kata-edit-id="${entry.id}"`, label: editUnlocked ? '🔒 ترمیم بند کریں' : '✏️ ترمیم کریں (پاس ورڈ)'});
+  }
+  if(isLast) dotsMenuItems.push({cls:'kata-delete-entry-btn', label:'🗑 حذف کریں'});
   const entryDomId = `kataEntry_${entry.id || Math.random().toString(36).slice(2)}`;
   return `
     <div class="card kata-entry-card" id="${entryDomId}">
-      ${isLast ? kataDotsMenuHtml([{cls:'kata-delete-entry-btn', label:'🗑 حذف کریں'}]) : ''}
+      ${dotsMenuItems.length ? kataDotsMenuHtml(dotsMenuItems) : ''}
       <div class="note" style="text-align:center;font-weight:400;">${kataFormatWhen(entry.createdAt)}</div>
       ${entry.salesman ? `<div class="note kata-entry-name-line" style="text-align:center;direction:ltr;unicode-bidi:embed;font-size:20px;font-weight:400;color:var(--maroon-deep);">${kataEscape(entry.salesman)}${(kataInstance === 'agency' && isLast) ? ` <button type="button" class="kata-rename-entry-name-btn" style="font-size:12px;background:none;border:1px solid var(--line);border-radius:4px;padding:1px 5px;cursor:pointer;">✏️</button>` : ''}</div>` : ''}
       <div class="kata-ref-title">Best Excel Washing powder</div>
@@ -5334,45 +5463,45 @@ function kataRenderEntryCard(entry, isLast, idx){
       ${kataInstance === 'salesman' ? `
       <div style="display:flex;margin-top:8px;border:1px solid var(--line);border-radius:3px;overflow:hidden;">
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
-          <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.profit) || 0}</div>
+          ${editBox((entry.today && entry.today.profit) || 0,'todayProfit',5) || `<div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.profit) || 0}</div>`}
           <div style="font-size:7px;color:#5b5346;margin-top:1px;">Total Profit</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
-          <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.price) || 0}</div>
+          ${editBox((entry.today && entry.today.price) || 0,'todayPrice',6) || `<div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.price) || 0}</div>`}
           <div style="font-size:7px;color:#5b5346;margin-top:1px;">Total Price</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
-          <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${Math.round((Number(entry.weightKg)||0)*1000)}</div>
+          ${editBox(Math.round((Number(entry.weightKg)||0)*1000),'weightGram',6) || `<div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${Math.round((Number(entry.weightKg)||0)*1000)}</div>`}
           <div style="font-size:7px;color:#5b5346;margin-top:1px;">Weight (gram)</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
-          <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.total && entry.total.t) || 0}</div>
+          ${editBox((entry.total && entry.total.t) || 0,'totalT',5) || `<div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.total && entry.total.t) || 0}</div>`}
           <div style="font-size:7px;color:#5b5346;margin-top:1px;">Total CTN</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.t) || 0}</div>
+          ${editBox((entry.today && entry.today.t) || 0,'todayT',5) || `<div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.t) || 0}</div>`}
           <div style="font-size:7px;color:#5b5346;margin-top:1px;">Today CTN</div>
         </div>
       </div>` : `
       <div style="display:flex;gap:10px;margin-top:8px;">${kataInstance === 'ribnawaz' ? `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${entry.kharch||0}</div>
+          ${editBox(entry.kharch||0,'kharch',6) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${entry.kharch||0}</div>`}
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">خرچہ</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${entry.less||0}</div>
+          ${editBox(entry.less||0,'less',6) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${entry.less||0}</div>`}
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Less</div>
         </div>` : `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${entry.kharch||0}</div>
+          ${editBox(entry.kharch||0,'kharch',6) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${entry.kharch||0}</div>`}
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total Rent</div>
         </div>`}
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.total && entry.total.t) || 0}</div>
+          ${editBox((entry.total && entry.total.t) || 0,'totalT',5) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.total && entry.total.t) || 0}</div>`}
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.t) || 0}</div>
+          ${editBox((entry.today && entry.today.t) || 0,'todayT',5) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.t) || 0}</div>`}
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Today CTN</div>
         </div>${kataInstance === 'agency' ? `
         <div class="kata-commission-col" style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
@@ -5382,7 +5511,7 @@ function kataRenderEntryCard(entry, isLast, idx){
       </div>
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>
+          ${editBox((Number(entry.weightKg)||0).toFixed(2),'weightKg',6) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>`}
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">${kataInstance === 'agency' ? '<span dir="ltr" style="unicode-bidi:isolate;">Total Weight (kg)</span>' : 'کل وزن (کلوگرام)'}</div>
         </div>${kataInstance !== 'agency' ? `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
@@ -5390,7 +5519,7 @@ function kataRenderEntryCard(entry, isLast, idx){
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
         </div>` : ''}
       </div>`}
-      ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya, idx)}
+      ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya, idx, editUnlocked)}
       <div class="kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
         <button type="button" class="kata-print-entry-btn kata-print-mobile-btn" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 موبائل پرنٹ</button>
         <button type="button" class="kata-print-entry-btn kata-print-computer-btn" data-print-mode="computer" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 کمپیوٹر پرنٹ</button>
@@ -5409,7 +5538,7 @@ function kataRenderEntryCard(entry, isLast, idx){
 // Editing a past entry's Jamah only affects its own Bqaya (never other
 // entries' Sabka, which always carries from Total, not Jamah), so it's
 // always safe to edit, even on a closed کھاتہ.
-function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx){
+function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx, editUnlocked){
   jamah = jamah || {price:[0,0]};
   bqaya = bqaya || {price:0};
   const showDiscount = kataShowDiscount();
@@ -5436,15 +5565,30 @@ function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx){
   const bqayaDiscountCell = entryIdx != null
     ? `<td data-kata-entry-bqaya-discount="${entryIdx}">${bqaya.discount||0}</td>`
     : `<td>${bqaya.discount||0}</td>`;
+  // Sabka/Today/Total قطاریں — ترمیم موڈ میں (پرانی محفوظ انٹری، پاس ورڈ
+  // سے کھلی ہوئی) یہ بھی Jamah جیسے ہی براہِ راست قابلِ ترمیم <input> بن
+  // جاتی ہیں؛ ورنہ ہمیشہ کی طرح سادہ نمبر دکھاتی ہیں۔
+  function sumRow(rowKey, obj, label){
+    const priceCell = (entryIdx != null && editUnlocked)
+      ? `<td><input type="text" inputmode="decimal" class="cell-input" data-kata-edit-sumrow="${entryIdx}:${rowKey}:price" style="border:1px solid var(--line);" value="${obj.price||0}"></td>`
+      : `<td>${obj.price||0}</td>`;
+    const profitCell = agencySimple ? '' : ((entryIdx != null && editUnlocked)
+      ? `<td><input type="text" inputmode="decimal" class="cell-input" data-kata-edit-sumrow="${entryIdx}:${rowKey}:profit" style="border:1px solid var(--line);" value="${obj.profit||0}"></td>`
+      : `<td>${obj.profit||0}</td>`);
+    const discountCell = !showDiscount ? '' : ((entryIdx != null && editUnlocked)
+      ? `<td><input type="text" inputmode="decimal" class="cell-input" data-kata-edit-sumrow="${entryIdx}:${rowKey}:discount" style="border:1px solid var(--line);" value="${obj.discount||0}"></td>`
+      : `<td>${obj.discount||0}</td>`);
+    return `<tr><td style="text-align:right;padding-right:6px;">${label}</td>${priceCell}${profitCell}${discountCell}</tr>`;
+  }
   return `
       <div class="edit-table" style="margin-top:8px;">
         <table dir="ltr">
           ${agencySimple ? '<colgroup><col style="width:30%"><col style="width:70%"></colgroup>' : ''}
           <thead><tr><th></th><th>Price</th>${agencySimple ? '' : '<th>Profit</th>'}${showDiscount ? '<th>Discount</th>' : ''}</tr></thead>
           <tbody>
-            <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Previous Bill' : 'Sabka'}</td><td>${sabka.price}</td>${agencySimple ? '' : `<td>${sabka.profit||0}</td>`}${showDiscount ? `<td>${sabka.discount||0}</td>` : ''}</tr>
-            <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'New Bill' : 'Today'}</td><td>${today.price}</td>${agencySimple ? '' : `<td>${today.profit||0}</td>`}${showDiscount ? `<td>${today.discount||0}</td>` : ''}</tr>
-            <tr><td style="text-align:right;padding-right:6px;">Total</td><td>${total.price}</td>${agencySimple ? '' : `<td>${total.profit||0}</td>`}${showDiscount ? `<td>${total.discount||0}</td>` : ''}</tr>
+            ${sumRow('sabka', sabka, agencySimple ? 'Previous Bill' : 'Sabka')}
+            ${sumRow('today', today, agencySimple ? 'New Bill' : 'Today')}
+            ${sumRow('total', total, 'Total')}
             ${jamahRow(0)}
             ${agencySimple ? '' : jamahRow(1)}
             <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Remaining Price' : 'Bqaya'}</td>${bqayaCell}${agencySimple ? '' : bqayaProfitCell}${showDiscount ? bqayaDiscountCell : ''}</tr>
