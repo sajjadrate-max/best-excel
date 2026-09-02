@@ -4,7 +4,7 @@
 // new index.html if the site ever seems to be showing an old/stale version
 // again in the future — that forces every visitor's browser to throw away
 // its old cached copy and fetch the new one.
-const CACHE_VERSION = 'best-excel-v3';
+const CACHE_VERSION = 'best-excel-v4';
 
 const STATIC_ASSETS = [
   './manifest.json',
