@@ -1369,9 +1369,28 @@ let tierAgencyLocked = { agencyB:true, agencyC:true, salman:true }; // B/C/سی�
 function isMasterAllLocked(){
   return masterColLocked.name && masterColLocked.tpcs && masterColLocked.ctn && masterColLocked.mrp && masterColLocked.company;
 }
+// 2026-09-02: صارف کی درخواست پر — List A (ماسٹر ریٹ) کھولنے سے پہلے اب
+// password مانگا جاتا ہے، تاکہ کوئی بھی سرسری طور پر ریٹ تبدیل نہ کر سکے۔
+// یہ ریٹ کھاتہ (سیلزمین/ربنواز/Agency) کا اصل ذریعہ ہے، اس لیے یہاں کی
+// تبدیلی خودکار طور پر آگے تمام کھاتوں کی نئی انٹریوں میں لاگو ہوتی ہے
+// (موجودہ syncKataItemsFromRateList طریقہ کار — اس میں کوئی تبدیلی نہیں کی گئی)۔
+// لاک کرنا (واپس بند کرنا) password کے بغیر ہی چلتا ہے — صرف کھولنے پر تصدیق درکار ہے۔
+const RATE_LIST_LOCK_PASSWORD = 'BestExcel';
 function toggleMasterAllLock(){
-  const newState = !isMasterAllLocked();
-  masterColLocked.name = masterColLocked.tpcs = masterColLocked.ctn = masterColLocked.mrp = masterColLocked.company = newState;
+  const currentlyLocked = isMasterAllLocked();
+  if(currentlyLocked){
+    siteTextPrompt('پاس ورڈ درج کریں (ریٹ تبدیل کرنے کے لیے)', function(pw){
+      if(pw === null) return; // منسوخ
+      if(pw !== RATE_LIST_LOCK_PASSWORD){
+        alert('غلط پاس ورڈ');
+        return;
+      }
+      masterColLocked.name = masterColLocked.tpcs = masterColLocked.ctn = masterColLocked.mrp = masterColLocked.company = false;
+      buildAllTierTables();
+    });
+    return;
+  }
+  masterColLocked.name = masterColLocked.tpcs = masterColLocked.ctn = masterColLocked.mrp = masterColLocked.company = true;
   buildAllTierTables();
 }
 
