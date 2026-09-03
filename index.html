@@ -439,11 +439,12 @@ window.loadAuthSDKs = async function(){
     font-size:30px !important;
     text-align:center !important;
   }
-  /* لسٹ A/B/C/سیلزمین/دکاندار — صارف کی تازہ درخواست (2026-09-03) پر اب
-     "Iqbal chemical" کھاتے جیسا رنگ: اوپر لال (#D42430) ٹائٹل، نیچے نیلا
-     (#1a73e8) کالم ہیڈر — پرانا میرون تھیم (#7a2323) ہٹا دیا۔ */
+  /* لسٹ A/B/C/سیلزمین/دکاندار — صارف کی تازہ درخواست (2026-09-03) پر اصل
+     میرون حوالہ تصویر (#7a2323) پر واپس — درمیان میں مختصراً لال/نیلا
+     (Iqbal chemical کھاتے جیسا) آزمایا گیا تھا، صارف نے واپس اصل حوالہ
+     تصویر والا میرون تھیم منتخب کیا۔ */
   .list-a-ref-style .list-a-ref-title{
-    background:#D42430 !important;
+    background:#7a2323 !important;
     color:#fff !important;
     font-size:26px !important;
     font-weight:400 !important;
@@ -451,7 +452,7 @@ window.loadAuthSDKs = async function(){
     border-radius:6px 6px 0 0;
   }
   .list-a-ref-style thead tr:nth-child(2) th{
-    background:#1a73e8 !important;
+    background:#7a2323 !important;
     color:#fff !important;
     font-weight:400 !important;
     font-size:12.5px !important;
@@ -1650,13 +1651,6 @@ function buildAllTierTables(){
     h2.textContent = tier.title;
     card.appendChild(h2);
 
-    const shareBtn = document.createElement('button');
-    shareBtn.type = 'button';
-    shareBtn.className = 'share-btn';
-    shareBtn.textContent = '📤 پرنٹ کریں';
-    shareBtn.addEventListener('click', ()=> shareCardAsImage(tier, shareBtn));
-    card.appendChild(shareBtn);
-
     if(tier.master){
       // صارف کی طرف سے دی گئی حوالہ فہرست (تصویر) کو ایک ہی بار میں لسٹ A
       // میں بھر دینے کا بٹن — Weight/Pcs/Price/Agency چاروں سیٹ کرتا ہے،
@@ -1746,7 +1740,7 @@ function buildAllTierTables(){
       // اب سب ایک مشترکہ 🔒/🔓 تالے سے کنٹرول ہوتے ہیں (اوپر "Best" کے
       // ساتھ) — پہلے ہر کالم کا اپنا الگ تالا تھا۔
       headRow.appendChild(makeMasterHeaderCell('items'));
-      headRow.appendChild(makeMasterHeaderCell('weight'));
+      headRow.appendChild(makeMasterHeaderCell('Net weight'));
       headRow.appendChild(makeMasterHeaderCell('Pcs'));
       headRow.appendChild(makeMasterHeaderCell('price'));
       headRow.appendChild(makeMasterHeaderCell('Agency'));
@@ -1760,14 +1754,14 @@ function buildAllTierTables(){
       if(tier.slug === 'dukandar'){
         headRow.innerHTML = `
           <th>items</th>
-          <th>weight</th>
+          <th>Net weight</th>
           <th>Pcs</th>
           <th class="corner-tri">price</th>
         `;
       } else {
         headRow.innerHTML = `
           <th>items</th>
-          <th>weight</th>
+          <th>Net weight</th>
           <th>Pcs</th>
           <th>price</th>
           <th class="corner-tri">Profit</th>
@@ -1818,12 +1812,43 @@ function buildAllTierTables(){
       card.appendChild(addBtn);
     }
 
+    // صارف کی درخواست (2026-09-03، دوبارہ درست کیا گیا): پرنٹ بٹن بالکل
+    // کھاتے کی طرح — دو الگ بٹن (موبائل پرنٹ/کمپیوٹر پرنٹ)، چھوٹے/ساتھ ساتھ
+    // (pill سٹائل)، کارڈ کے سب سے نیچے (ٹیبل کے بعد) — پہلے یہ اوپر، پورے
+    // چوڑائی کے الگ الگ بٹن (share-btn سٹائل) کے طور پر تھے، جو ویب سائٹ کے
+    // باقی حصوں (کھاتہ/ms) سے مختلف نظر آتے تھے۔ ڈیوائس کی قسم کے مطابق صرف
+    // ایک ہی نظر آئے گا (kataApplyPrintButtonVisibility)۔
+    const printActions = document.createElement('div');
+    printActions.className = 'kata-entry-actions';
+    printActions.style.cssText = 'display:flex;gap:6px;margin-top:10px;justify-content:center;';
+
+    const mobilePrintBtn = document.createElement('button');
+    mobilePrintBtn.type = 'button';
+    mobilePrintBtn.className = 'kata-print-entry-btn kata-print-mobile-btn';
+    mobilePrintBtn.style.cssText = 'padding:2px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;';
+    mobilePrintBtn.textContent = '🖨 موبائل پرنٹ';
+    mobilePrintBtn.dataset.printMode = 'mobile';
+    mobilePrintBtn.addEventListener('click', ()=> shareCardAsImage(tier, mobilePrintBtn));
+    printActions.appendChild(mobilePrintBtn);
+
+    const computerPrintBtn = document.createElement('button');
+    computerPrintBtn.type = 'button';
+    computerPrintBtn.className = 'kata-print-entry-btn kata-print-computer-btn';
+    computerPrintBtn.style.cssText = 'padding:2px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;';
+    computerPrintBtn.textContent = '🖨 کمپیوٹر پرنٹ';
+    computerPrintBtn.dataset.printMode = 'computer';
+    computerPrintBtn.addEventListener('click', ()=> shareCardAsImage(tier, computerPrintBtn));
+    printActions.appendChild(computerPrintBtn);
+
+    card.appendChild(printActions);
+
     tierListsContainer.appendChild(card);
 
     tierBodies[tier.slug] = tbody;
     tierWraps[tier.slug] = wrap;
     fillTierTableBody(tbody, tier);
   });
+  kataApplyPrintButtonVisibility(tierListsContainer);
 }
 
 // Editable cells: the master card (A) has its own per-column lock state;
@@ -2058,7 +2083,13 @@ function loadPosterImage(){
 // direct capture rather than a hand-redrawn copy that can drift out of
 // sync with the live CSS.
 async function renderTierCanvas(btn){
-  const el = btn.closest('.card').querySelector('.edit-table');
+  const card = btn.closest('.card');
+  const el = card.querySelector('.edit-table');
+  // صارف کی حتمی درخواست (2026-09-03، سکرین شاٹ کے ساتھ): پرنٹ بالکل وہی
+  // ہو جو ویب سائٹ پر نظر آتا ہے — نہ سائز چھوٹا، نہ نمبر کوما فارمیٹ —
+  // پچھلے دونوں عارضی تبدیلی کے مراحل (list-a-print-tight چھوٹا فونٹ،
+  // اور kataIndianNumberFormat کوما) ختم کر دیے گئے، اب یہ سیدھا لائیو
+  // کارڈ کی direct html2canvas کاپی ہے، بغیر کسی رد و بدل کے۔
   // Make sure the site's webfonts are fully loaded before the screenshot,
   // otherwise html2canvas can capture a fallback font mid-swap.
   try{ await document.fonts.ready; } catch(e){ /* proceed anyway */ }
@@ -2178,6 +2209,13 @@ async function shareCardAsImage(tier, btn){
   btn.textContent = '⏳ تیار ہو رہا ہے...';
   btn.disabled = true;
   try{
+    // صارف کی درخواست (2026-09-03): Rate List کا پرنٹ اب کھاتے کے "موبائل
+    // پرنٹ" جیسا (compact، فون سکرین والا اصل سائز) ہو — پہلے یہاں تصویر
+    // کو جان بوجھ کر بہت تنگ (0.40 چوڑائی فیکٹر) اور آدھے صفحے تک کھینچا
+    // جاتا تھا، جو "کمپیوٹر پرنٹ" جیسا عجیب/چھوٹا نظر آتا تھا۔
+    const card = btn.closest('.card');
+    const el = card.querySelector('.edit-table');
+    const cardRect = el.getBoundingClientRect();
     const canvas = await renderTierCanvas(btn);
     const baseName = tier.title.replace(/\s+/g,'_');
 
@@ -2186,34 +2224,38 @@ async function shareCardAsImage(tier, btn){
     }
     const { jsPDF } = jspdf;
     const imgData = canvas.toDataURL('image/png');
-    // پرنٹر کا پرنٹ ڈائیلاگ ہمیشہ Portrait کاغذ فرض کرتا ہے — پہلے یہاں
-    // چوڑی ٹیبل کے مطابق صفحہ بھی چوڑا (landscape) بنایا جاتا تھا، جس کی
-    // وجہ سے کاغذ سیدھا نہیں بلکہ ترچھا/الٹی طرف (sideways) نکلتا تھا۔ اب
-    // ہمیشہ سیدھا (Portrait، A4) صفحہ رکھتے ہیں اور تصویر کو اسی کے اندر
-    // چوڑائی کے مطابق سکیل کر کے اوپر سے فٹ کرتے ہیں — یہی حل کھاتے کے
-    // پرنٹ (kataPrintEntry) میں پہلے کیا جا چکا تھا، یہاں ریٹ لسٹ کے لیے
-    // بھی وہی لگایا (2026-08-25، صارف کی نشاندہی پر — پرنٹ سیدھا/صحیح
-    // ترتیب سے آنا چاہیے)۔
     const pdf = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4' });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 20;
-    // صارف کی درخواست (2026-08-25): پہلے تصویر صرف چوڑائی کے مطابق سیدھی
-    // فٹ ہوتی تھی، جس سے وہ صفحے کے اوپری حصے میں ہی رک جاتی تھی اور نیچے
-    // کا بڑا حصہ خالی رہ جاتا تھا۔ اب لمبائی کو مکمل صفحے کے آخر تک
-    // پھیلاتے ہیں، اور چوڑائی کو جان بوجھ کر تناسب سے کم رکھتے ہیں (0.62
-    // فیکٹر) تاکہ صفحہ مکمل استعمال ہو اور تصویر پہلے سے پتلی/تنگ نظر
-    // آئے — یہ تناسب برقرار رکھنے والا (aspect-preserving) فٹ نہیں بلکہ
-    // جان بوجھ کر چوڑائی کو کم کیا گیا ہے۔
-    const drawH = (pageH - margin*2) / 2;
-    const widthNarrowFactor = 0.40;
-    const drawW = drawH * (canvas.width / canvas.height) * widthNarrowFactor;
+    const margin = 22;
+    const pxToPt = 0.75;
+    let drawW = cardRect.width * pxToPt;
+    let drawH = cardRect.height * pxToPt;
+    const availW = pageW - margin*2;
+    const availH = pageH - margin*2;
+    const sizeBoost = 1.12;
+    let safetyScale = (availW / drawW) * sizeBoost;
+    if(drawH * safetyScale > availH){
+      safetyScale = availH / drawH;
+    }
+    drawW *= safetyScale;
+    drawH *= safetyScale;
+    if(drawH < availH){
+      drawH = availH;
+    }
     pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
     const blob = pdf.output('blob');
     const fileName = baseName + '.pdf';
     if(!blob) throw new Error('no-blob');
 
-    await sharePdfDirectly(blob, fileName, tier.title);
+    // کھاتے کی طرح: "کمپیوٹر پرنٹ" بٹن ہمیشہ سیدھا براؤزر کا پرنٹ ڈائیلاگ
+    // کھولے (چاہے فون سے ہی کیوں نہ ہو)، "موبائل پرنٹ" بٹن ڈیوائس کے مطابق
+    // خودکار (فون پر Share شیٹ، کمپیوٹر پر پرنٹ ڈائیلاگ)۔
+    if(btn.dataset.printMode === 'computer'){
+      printPdfBlob(blob);
+    } else {
+      await sharePdfDirectly(blob, fileName, tier.title);
+    }
   } catch(err){
     alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
   } finally {
@@ -4049,8 +4091,11 @@ function kataCheckMonthRolloverLocal(){
       // شروع ہوتے ہیں — یہ صرف اسی مہینے کے اعداد و شمار ہیں، رقم کی طرح
       // اگلے مہینے میں بطور "باقی" آگے نہیں چلتے (صرف Price/Discount اصل
       // بقایا رقم ہیں، وہی آگے چلتے ہیں) (2026-09-01، صارف کی درخواست پر)۔
-      const finalTotal = lastEntry ? (lastEntry.bqaya || lastEntry.total) : (b.carryForward || {t:0, price:0, profit:0, td:0});
-      const carryForward = Object.assign({}, finalTotal, {t: 0, profit: 0});
+      const finalTotal = lastEntry ? (lastEntry.bqaya || lastEntry.total) : (b.carryForward || {t:0, price:0, profit:0, td:0, weightKg:0});
+      // Agency کھاتہ — وزن (weightKg) بھی CTN/Profit کی طرح ہر ماہ 0 سے
+      // شروع ہوتا ہے (صارف کی درخواست 2026-09-03: "Previous Weight" بھی
+      // ماہانہ حساب کی طرح چلے)۔
+      const carryForward = Object.assign({}, finalTotal, {t: 0, profit: 0, weightKg: 0});
       newBooks.push({
         id: 'k' + Date.now() + Math.random().toString(36).slice(2,7),
         name: (b.name || 'کھاتہ') + ' - ' + curMonth,
@@ -4752,7 +4797,7 @@ function kataRenderDetail(name){
   // "Total" سے (جو Jamah/ادائیگی کو نظرانداز کر دیتا تھا) — اسی وجہ سے
   // نئی انٹری کا Sabka، پچھلی انٹری کے Bqaya سے مختلف/زیادہ نظر آ رہا تھا
   // (2026-08-23 صارف کی نشاندہی پر ٹھیک کیا گیا)۔
-  const prevTotal = lastEntry ? (lastEntry.bqaya || lastEntry.total) : Object.assign({}, (kataOpenCarryForward || {t:0, price:0, profit:0, td:0}), {t: 0, profit: 0});
+  const prevTotal = lastEntry ? (lastEntry.bqaya || lastEntry.total) : Object.assign({}, (kataOpenCarryForward || {t:0, price:0, profit:0, td:0, weightKg:0}), {t: 0, profit: 0, weightKg: 0});
   // ↑ نئے مہینے کے کھاتے کی پہلی انٹری میں "سابقہ" کے CTN اور Profit ہمیشہ
   // 0 سے شروع ہوں (چاہے carryForward میں کچھ بھی محفوظ ہو) — یہ صرف اسی
   // مہینے کے اعداد و شمار ہیں، رقم/بقایا کی طرح اگلے مہینے آگے نہیں چلتے،
@@ -5049,6 +5094,7 @@ function kataOnEntryEditExtraInput(input){
   else if(field === 'less') entry.less = num;
   else if(field === 'weightKg') entry.weightKg = num;
   else if(field === 'weightGram') entry.weightKg = num / 1000;
+  else if(field === 'totalWeightKg') entry.total.weightKg = num;
   else if(field === 'totalT') entry.total.t = num;
   else if(field === 'todayT') entry.today.t = num;
   else if(field === 'todayProfit') entry.today.profit = num;
@@ -5407,11 +5453,11 @@ function kataManualCloseBook(name){
   if(!book || book.closed) return;
   const entries = kataLocalGetEntries(book.id);
   const lastEntry = entries.length ? entries[entries.length-1] : null;
-  const finalTotal = lastEntry ? (lastEntry.bqaya || lastEntry.total) : (book.carryForward || {t:0, price:0, profit:0, td:0});
-  // CTN اور Profit نئے مہینے میں 0 سے شروع — صرف Price/Discount اصل بقایا
-  // رقم آگے چلتی ہے (اسی وجہ سے kataCheckMonthRolloverLocal میں بھی، دیکھیں
-  // وہاں کا نوٹ)۔
-  const carryForward = Object.assign({}, finalTotal, {t: 0, profit: 0});
+  const finalTotal = lastEntry ? (lastEntry.bqaya || lastEntry.total) : (book.carryForward || {t:0, price:0, profit:0, td:0, weightKg:0});
+  // CTN، Profit اور وزن (weightKg) نئے مہینے میں 0 سے شروع — صرف
+  // Price/Discount اصل بقایا رقم آگے چلتی ہے (اسی وجہ سے
+  // kataCheckMonthRolloverLocal میں بھی، دیکھیں وہاں کا نوٹ)۔
+  const carryForward = Object.assign({}, finalTotal, {t: 0, profit: 0, weightKg: 0});
   book.closed = true;
   const newBook = {
     id: 'k' + Date.now() + Math.random().toString(36).slice(2,7),
@@ -5580,7 +5626,7 @@ function kataRenderEntryCard(entry, isLast, idx){
             : agencySimple
             ? '<col style="width:6%"><col style="width:14%"><col style="width:9%"><col style="width:9%"><col style="width:11%"><col style="width:12%"><col class="kata-krayarate-col" style="width:9%"><col style="width:10%"><col class="kata-commission-col" style="width:9%"><col class="kata-commission-col" style="width:11%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
-          <thead><tr><th>#</th><th>Items</th><th>CTN</th><th>Weight (gram)</th><th>Price</th><th>Total Price</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th><th class="kata-commission-col">Commission Rate</th><th class="kata-commission-col">Commission</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
+          <thead><tr><th>#</th><th>Items</th><th>CTN</th><th>Net Weight (gram)</th><th>Price</th><th>Total Price</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th><th class="kata-commission-col">Commission Rate</th><th class="kata-commission-col">Commission</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -5596,7 +5642,7 @@ function kataRenderEntryCard(entry, isLast, idx){
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           ${editBox(Math.round((Number(entry.weightKg)||0)*1000),'weightGram',6) || `<div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${Math.round((Number(entry.weightKg)||0)*1000)}</div>`}
-          <div style="font-size:7px;color:#5b5346;margin-top:1px;">Weight (gram)</div>
+          <div style="font-size:7px;color:#5b5346;margin-top:1px;">Net Weight (gram)</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           ${editBox((entry.total && entry.total.t) || 0,'totalT',5) || `<div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.total && entry.total.t) || 0}</div>`}
@@ -5623,7 +5669,11 @@ function kataRenderEntryCard(entry, isLast, idx){
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           ${editBox((entry.total && entry.total.t) || 0,'totalT',5) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.total && entry.total.t) || 0}</div>`}
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
-        </div>
+        </div>${kataInstance === 'agency' ? `
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${kataIndianNumberFormat((entry.sabka && entry.sabka.t) || 0)}</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">Previous CTN</div>
+        </div>` : ''}
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           ${editBox((entry.today && entry.today.t) || 0,'todayT',5) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.t) || 0}</div>`}
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Today CTN</div>
@@ -5632,17 +5682,31 @@ function kataRenderEntryCard(entry, isLast, idx){
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${kataIndianNumberFormat((entry.bqaya && entry.bqaya.commission) || (entry.total && entry.total.commission) || 0)}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total Commission</div>
         </div>` : ''}
-      </div>
+      </div>${kataInstance === 'agency' ? `
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          ${editBox((Number((entry.total && entry.total.weightKg)||0)).toFixed(2),'totalWeightKg',6) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number((entry.total && entry.total.weightKg)||0)).toFixed(2)}</div>`}
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Total Weight (kg)</span></div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number((entry.sabka && entry.sabka.weightKg)||0)).toFixed(2)}</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Previous Weight (kg)</span></div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          ${editBox((Number(entry.weightKg)||0).toFixed(2),'weightKg',6) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>`}
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Today Weight (kg)</span></div>
+        </div>
+      </div>` : `
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           ${editBox((Number(entry.weightKg)||0).toFixed(2),'weightKg',6) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>`}
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">${kataInstance === 'agency' ? '<span dir="ltr" style="unicode-bidi:isolate;">Total Weight (kg)</span>' : 'کل وزن (کلوگرام)'}</div>
-        </div>${kataInstance !== 'agency' ? `
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
+        </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${((Number(entry.weightKg)||0)/40).toFixed(2)}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
-        </div>` : ''}
-      </div>`}
+        </div>
+      </div>`}`}
       ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya, idx, editUnlocked)}
       ${editUnlocked ? `<div class="kata-edit-ui-only">
       <button type="button" data-kata-edit-save-btn="${entryIdx}" disabled style="opacity:.6;width:100%;margin-top:10px;padding:10px;border:none;border-radius:5px;background:#1a7a3c;color:#fff;font-size:15px;font-weight:600;">💾 تبدیلیاں محفوظ کریں</button>
@@ -5843,7 +5907,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
             <th><button type="button" class="row-lock-btn" data-kata-lockbtn="all3"></button>#</th>
             <th>Items</th>
             <th>CTN</th>
-            <th>Weight (gram)</th>
+            <th>Net Weight (gram)</th>
             <th>Price</th>
             <th>Total Price</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th><th class="kata-commission-col">Commission Rate</th><th class="kata-commission-col">Commission</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}
           </tr></thead>
@@ -5862,7 +5926,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           <div class="n" data-kata-sum-weight-grams style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
-          <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Weight (gram)</div>
+          <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Net Weight (gram)</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           <div class="n" data-kata-sum-t style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
@@ -5889,7 +5953,11 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div class="n" data-kata-sum-t style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total CTN</div>
-        </div>
+        </div>${kataInstance === 'agency' ? `
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div class="n" style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${kataIndianNumberFormat(prevTotal.t||0)}</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Previous CTN</div>
+        </div>` : ''}
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div class="n" data-kata-sum-today-t style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Today CTN</div>
@@ -5908,17 +5976,31 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <div class="n" data-kata-sum-price style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total Price</div>
         </div>
-      </div>` : ''}
+      </div>` : ''}${kataInstance === 'agency' ? `
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div class="n" data-kata-sum-weight-total style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(prevTotal.weightKg||0).toFixed(2)}</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Total Weight (kg)</span></div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div class="n" style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(prevTotal.weightKg||0).toFixed(2)}</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Previous Weight (kg)</span></div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Today Weight (kg)</span></div>
+        </div>
+      </div>` : `
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">${kataInstance === 'agency' ? '<span dir="ltr" style="unicode-bidi:isolate;">Total Weight (kg)</span>' : 'کل وزن (کلوگرام)'}</div>
-        </div>${kataInstance !== 'agency' ? `
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
+        </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div class="n" data-kata-sum-weight-mann style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
-        </div>` : ''}
-      </div>`}
+        </div>
+      </div>`}`}
       <div class="edit-table" style="margin-top:8px;">
         <table dir="ltr">
           ${agencySimple ? '<colgroup><col style="width:25%"><col style="width:37%"><col style="width:38%"></colgroup>' : ''}
@@ -6006,8 +6088,12 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
     if(sumTodayTEl) sumTodayTEl.textContent = kataIndianNumberFormat(todayT);
     const sumWeightEl = document.querySelector('[data-kata-sum-weight]');
     if(sumWeightEl) sumWeightEl.textContent = (todayWeightGrams / 1000).toFixed(2);
+    // Agency کھاتہ — "Total Weight (kg)" اب Previous+Today کا مجموعہ (ماہانہ
+    // حساب، صارف کی درخواست 2026-09-03، CTN کی طرح) — لائیو تازہ ہوتا رہے۔
+    const sumWeightTotalEl = document.querySelector('[data-kata-sum-weight-total]');
+    if(sumWeightTotalEl) sumWeightTotalEl.textContent = ((prevTotal.weightKg||0) + (todayWeightGrams / 1000)).toFixed(2);
     // سیلزمین کھاتے کی چار ڈبوں والی پٹی میں وزن گرام میں دکھایا جاتا ہے
-    // (آئٹم ٹیبل کے "Weight (gram)" کالم سے مطابقت رکھنے کے لیے) — کلوگرام
+    // (آئٹم ٹیبل کے "Net Weight (gram)" کالم سے مطابقت رکھنے کے لیے) — کلوگرام
     // والا خانہ (اوپر) دوسرے کھاتوں کے لیے الگ سے موجود ہے، اسے نہیں چھیڑا
     // (2026-09-02، صارف کی درخواست پر)۔
     const sumWeightGramsEl = document.querySelector('[data-kata-sum-weight-grams]');
@@ -6400,11 +6486,16 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
         price: Number((document.querySelector('[data-kata-sabka="price"]')||{}).value) || 0,
         profit: Number((document.querySelector('[data-kata-sabka="profit"]')||{}).value) || 0,
         discount: Number((document.querySelector('[data-kata-sabka="discount"]')||{}).value) || 0,
+        weightKg: prevTotal.weightKg||0,
       }
-    : {t: prevTotal.t||0, price: prevTotal.price||0, profit: prevTotal.profit||0, discount: prevTotal.discount||0};
+    : {t: prevTotal.t||0, price: prevTotal.price||0, profit: prevTotal.profit||0, discount: prevTotal.discount||0, weightKg: prevTotal.weightKg||0};
   if(showKraya) sabka.commission = prevTotal.commission||0;
   const today = {t: todayT, price: todayPrice, profit: todayProfit};
-  const total = {t: sabka.t + today.t, price: sabka.price + today.price, profit: (sabka.profit||0) + todayProfit};
+  // Agency کھاتہ — آج کا اپنا کل وزن (kg)، ہمیشہ کی طرح (نیچے entry.weightKg
+  // میں بھی یہی محفوظ ہوتا ہے) — "Previous/Today/Total Weight" کے تین
+  // خانوں کے لیے (صارف کی درخواست 2026-09-03، ماہانہ حساب CTN کی طرح)۔
+  const todayWeightKg = Math.round((todayWeightGrams/1000)*100)/100;
+  const total = {t: sabka.t + today.t, price: sabka.price + today.price, profit: (sabka.profit||0) + todayProfit, weightKg: (sabka.weightKg||0) + todayWeightKg};
   if(showDiscount){
     today.discount = todayDiscount;
     total.discount = (sabka.discount||0) + todayDiscount;
@@ -6418,9 +6509,11 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
     total.commission = (sabka.commission||0) + todayCommission;
   }
 
-  const bqaya = {t: total.t - (jamah.t[0]+jamah.t[1]), price: total.price - (jamah.price[0]+jamah.price[1]), profit: (total.profit||0) - (jamah.profit[0]+jamah.profit[1])};
+  const bqaya = {t: total.t - (jamah.t[0]+jamah.t[1]), price: total.price - (jamah.price[0]+jamah.price[1]), profit: (total.profit||0) - (jamah.profit[0]+jamah.profit[1]), weightKg: total.weightKg};
   if(showDiscount) bqaya.discount = (total.discount||0) - (jamah.discount[0]+jamah.discount[1]);
   if(showKraya) bqaya.commission = total.commission; // کمیشن کبھی جمع/منہا نہیں ہوتا، ہمیشہ ٹوٹل کے برابر آگے چلتا ہے
+  // وزن بھی کمیشن کی طرح — کوئی Jamah/ادائیگی کا تصور نہیں، ہمیشہ ٹوٹل کے
+  // برابر آگے چلتا ہے (اگلی انٹری کا "Previous Weight" اسی سے آتا ہے)۔
 
   const btn = document.getElementById('kataSaveEntryBtn');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ محفوظ ہو رہا ہے...'; }
@@ -6429,7 +6522,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
     const entries = kataLocalGetEntries(kataOpenId);
     entries.push({
       id: 'e' + Date.now() + Math.random().toString(36).slice(2,7),
-      items, sabka, today, total, jamah, bqaya, salesman, kharch, less, cellColors, weightKg: Math.round((todayWeightGrams/1000)*100)/100,
+      items, sabka, today, total, jamah, bqaya, salesman, kharch, less, cellColors, weightKg: todayWeightKg,
       createdAt: (customDate ? customDate : new Date()).toISOString(),
     });
     kataLocalSaveEntries(kataOpenId, entries);
@@ -6443,8 +6536,8 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
     if(kataOpenClosed){
       const newLastEntry = entries[entries.length - 1];
       const newFinalTotal = newLastEntry.bqaya || newLastEntry.total;
-      // یہاں بھی CTN/Profit صفر — باقی سب جگہ کی طرح (اوپر kataCheckMonthRolloverLocal کا نوٹ دیکھیں)۔
-      const newCarryForward = Object.assign({}, newFinalTotal, {t: 0, profit: 0});
+      // یہاں بھی CTN/Profit/وزن صفر — باقی سب جگہ کی طرح (اوپر kataCheckMonthRolloverLocal کا نوٹ دیکھیں)۔
+      const newCarryForward = Object.assign({}, newFinalTotal, {t: 0, profit: 0, weightKg: 0});
       const siblingBooks = kataLocalGetBooks();
       const sibling = siblingBooks.find(b => !b.closed && b.name.indexOf(kataOpenName + ' - ') === 0);
       if(sibling){
@@ -6459,7 +6552,7 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
 
   try{
     await kataCol().doc(kataOpenId).collection('entries').add({
-      items, sabka, today, total, jamah, bqaya, salesman, kharch, less, cellColors, weightKg: Math.round((todayWeightGrams/1000)*100)/100,
+      items, sabka, today, total, jamah, bqaya, salesman, kharch, less, cellColors, weightKg: todayWeightKg,
       createdAt: customDate ? firebase.firestore.Timestamp.fromDate(customDate) : firebase.firestore.FieldValue.serverTimestamp(),
     });
     kataShowSavedToast();
