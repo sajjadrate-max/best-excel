@@ -5151,12 +5151,12 @@ async function kataPrintEntry(btn){
   editUiEls.forEach(el=>{ editUiPrevDisplay.push(el.style.display); el.style.display = 'none'; });
   let inputSwaps = [];
   let hiddenPrintCells = [];
-  // سیلزمین اور ربنواز دونوں کھاتوں — پرنٹ سے وہی 5 کالمز (Rate، Profit،
-  // Discount، D.Total، Sabka CTN) اور ٹوٹلز باکس کے CTN/Discount کالمز
-  // ہمیشہ کی طرح غائب رہیں (2026-08-25 کو واپس بحال کیا گیا — صارف نے
-  // وضاحت کی کہ کالمز نہیں بدلنے تھے، صرف خانوں کا سائز چھوٹا/کمپیکٹ
-  // چاہیے تھا)۔ یہ صرف پرنٹ/PDF پر اثر انداز ہوتا ہے، خود ویب سائٹ پر یہ
-  // کالمز ویسے ہی نظر آتے رہیں گے۔
+  // سیلزمین اور ربنواز دونوں کھاتوں — آئٹم ٹیبل سے وہی 5 کالمز (Rate،
+  // Profit، Discount، D.Total، Sabka CTN) پرنٹ میں ہمیشہ کی طرح غائب رہیں
+  // (2026-08-25 کو واپس بحال کیا گیا)۔ یہ صرف پرنٹ/PDF پر اثر انداز ہوتا
+  // ہے، خود ویب سائٹ پر یہ کالمز ویسے ہی نظر آتے رہیں گے۔ (Sabka/Today/
+  // Total والی ٹوٹلز ٹیبل کی الگ چھپاؤ 2026-09-03 کو ہٹا دی گئی — نیچے
+  // دیکھیں۔)
   if(kataInstance === 'salesman' || kataInstance === 'ribnawaz'){
     const itemTable = card.querySelector('.wide-table table');
     if(itemTable){
@@ -5171,15 +5171,13 @@ async function kataPrintEntry(btn){
         });
       });
     }
-    const totalsTable = card.querySelector('.edit-table:not(.wide-table) table');
-    if(totalsTable){
-      [2,5].forEach(pos=>{
-        totalsTable.querySelectorAll(`tr > *:nth-child(${pos})`).forEach(cell=>{
-          hiddenPrintCells.push({cell, prev: cell.style.display});
-          cell.style.display = 'none';
-        });
-      });
-    }
+    // 2026-09-03 (صارف کی نئی، واضح ہدایت پر): پہلے یہاں ٹوٹلز (Sabka/
+    // Today/Total/Jamah/Bqaya) والی ٹیبل سے Price کالم بھی پرنٹ میں چھپایا
+    // جاتا تھا، صرف Profit/Discount نظر آتے تھے — جس سے پرنٹ کا نمبر ویب
+    // سائٹ سے بہت مختلف/غلط لگتا تھا (اصل میں مختلف کالم دیکھ رہے تھے)۔
+    // اب صارف نے واضح کہا: کھاتے میں جو حساب ہے وہی پرنٹ میں بھی نظر آئے —
+    // اس لیے یہ ٹوٹلز ٹیبل والی چھپاؤ مکمل ہٹا دی۔ آئٹم ٹیبل کی موجودہ
+    // چھپاؤ (اوپر) ویسی ہی رہتی ہے، وہاں کوئی تبدیلی کی درخواست نہیں آئی۔
   }
   // Agency کھاتہ — "کمیشن" کے دونوں کالم (ریٹ + ٹوٹل) اور "کل کمیشن" باکس
   // پرنٹ/PDF میں کبھی نظر نہ آئیں (صارف کی واضح درخواست، 2026-08-30) — یہ
