@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="manifest.json">
-<title>Best Excel واشنگ پاؤڈر — مکمل کمپنی ریٹ لسٹ اور فارمولیشن ترتیب</title>
+<title>Iqbal chemical — مکمل کمپنی ریٹ لسٹ اور فارمولیشن ترتیب</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400..700&family=Noto+Naskh+Arabic:wght@400..700&family=Courier+Prime:wght@400;700&family=Anton&family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
 <!-- Screenshots the real table DOM for the share button, so the exported
@@ -294,30 +294,30 @@ window.loadAuthSDKs = async function(){
      سرف کا ماہانہ حساب (#msDetailView) has the identical multi-table-per-card
      structure (items table + Sabka/Today/Total + Expensis), so it gets the
      same treatment — one shared background, not one per section. */
+  /* Rate List اور سرف کا ماہانہ حساب: صارف کی تازہ درخواست (2026-09-03) پر
+     ان دونوں سے بھی table-level background/watermark مکمل ہٹا دیا گیا،
+     کھاتوں (kataDetailView) کا پرانا rule بھی برقرار۔ */
   #kataDetailView .edit-table,
+  #rate .edit-table,
+  #msListView .edit-table,
   #msDetailView .edit-table{
     background-image:none;
   }
-  #msDetailView .card:has(.edit-table)::before{
-    content:"";
-    position:absolute;
-    inset:0;
-    background:var(--poster-img) center 30% / cover no-repeat;
-    opacity:.28;
-    z-index:0;
+  /* سرف کا ماہانہ حساب (#msDetailView, #msListView): صارف کی تازہ درخواست
+     (2026-09-03) پر ان کا card-level watermark بھی مکمل ہٹا دیا گیا — ہر
+     قسم کا card (ٹیبل والا یا بغیر ٹیبل، جیسے کھاتے کے نام والا سادہ کارڈ)۔ */
+  #msDetailView .card::before,
+  #msListView .card::before{
+    content:none;
   }
-  /* کھاتے (سیلزمین/ربنواز/Agency): صارف کی درخواست پر (2026-08-27) وہی
-     پرانا background/watermark دوبارہ لگایا گیا — سرف کے ماہانہ حساب کی طرح
-     ایک ہی مربوط card-level watermark (ہر ٹیبل پر الگ الگ نہیں، تاکہ لوگو
-     تین بار نہ دہرائے)۔ */
-  #kataListView .card:has(.edit-table)::before,
-  #kataDetailView .card:has(.edit-table)::before{
-    content:"";
-    position:absolute;
-    inset:0;
-    background:var(--poster-img) center 30% / cover no-repeat;
-    opacity:.28;
-    z-index:0;
+  /* کھاتے (سیلزمین/ربنواز/Agency): 2026-08-27 کو صارف کی درخواست پر watermark
+     دوبارہ لگایا گیا تھا، لیکن صارف کی تازہ درخواست (2026-09-03) پر اب
+     کھاتوں سے یہ background/watermark مکمل ہٹا دیا گیا ہے — ہر قسم کا کارڈ
+     (List+Detail)۔ سرف کے ماہانہ حساب اور Rate List کا watermark بھی اسی
+     تاریخ کو الگ سے ہٹایا گیا (اوپر دیکھیں)۔ */
+  #kataListView .card::before,
+  #kataDetailView .card::before{
+    content:none;
   }
   .card > *{
     position:relative;
@@ -1291,7 +1291,7 @@ function siteTextPrompt(label, callback){
 </main>
 
 <div class="perforation"></div>
-<footer>BEST EXCEL WASHING POWDER — INTERNAL RATE &amp; FORMULATION REGISTER</footer>
+<footer>IQBAL CHEMICAL — INTERNAL RATE &amp; FORMULATION REGISTER</footer>
 
 <script>
 // ---------- DATA ----------
@@ -4136,7 +4136,7 @@ function kataParseNum(str){
 // گروپنگ (کوما) کے ساتھ نظر آئے، باقی سائٹ کی طرح۔
 function kataWireJamahFormatting(input){
   if(!input) return;
-  input.addEventListener('focus', ()=>{ const n = kataParseNum(input.value); input.value = String(n); });
+  input.addEventListener('focus', ()=>{ const n = kataParseNum(input.value); input.value = String(n); input.select(); });
   input.addEventListener('blur', ()=>{ const n = kataParseNum(input.value); input.value = kataIndianNumberFormat(n); });
 }
 // محفوظ شدہ (read-only) کھاتہ کارڈز کے اندر جتنے بھی خالص عدد والے
@@ -5280,7 +5280,7 @@ async function kataPrintEntry(btn){
     if(btn.dataset.printMode === 'computer'){
       printPdfBlob(blob);
     } else {
-      await sharePdfDirectly(blob, 'Best Excel Washing powder.pdf', 'کھاتہ انٹری');
+      await sharePdfDirectly(blob, 'Iqbal chemical.pdf', 'کھاتہ انٹری');
     }
   } catch(err){
     alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
@@ -5529,7 +5529,7 @@ function kataRenderEntryCard(entry, isLast, idx){
       ${dotsMenuItems.length ? kataDotsMenuHtml(dotsMenuItems) : ''}
       <div class="note" style="text-align:center;font-weight:400;">${kataFormatWhen(entry.createdAt)}</div>
       ${entry.salesman ? `<div class="note kata-entry-name-line" style="text-align:center;direction:ltr;unicode-bidi:embed;font-size:20px;font-weight:400;color:var(--maroon-deep);">${kataEscape(entry.salesman)}${(kataInstance === 'agency' && isLast) ? ` <button type="button" class="kata-rename-entry-name-btn" style="font-size:12px;background:none;border:1px solid var(--line);border-radius:4px;padding:1px 5px;cursor:pointer;">✏️</button>` : ''}</div>` : ''}
-      <div class="kata-ref-title">Best Excel Washing powder</div>
+      <div class="kata-ref-title">Iqbal chemical</div>
       <div class="edit-table wide-table kata-ref-style">
         <table dir="ltr">
           <colgroup>${showDiscount
@@ -5781,7 +5781,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
         <div style="margin-bottom:4px;">تاریخ (اختیاری — خالی چھوڑیں تو آج کی تاریخ استعمال ہوگی؛ بند/تالے والے کھاتے میں پرانی تاریخ لکھی جا سکتی ہے)</div>
         <input type="date" id="kataEntryDateInput" class="cell-input" style="border:1px solid var(--line);text-align:center;">
       </div>
-      <div class="kata-ref-title">Best Excel Washing powder</div>
+      <div class="kata-ref-title">Iqbal chemical</div>
       <div class="edit-table wide-table kata-ref-style">
         <table dir="ltr">
           <colgroup>${showDiscount
