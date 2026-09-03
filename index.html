@@ -5179,6 +5179,13 @@ async function kataPrintEntry(btn){
   const renameBtn = card.querySelector('.kata-rename-entry-name-btn');
   const renameBtnPrevDisplay = renameBtn ? renameBtn.style.display : '';
   if(renameBtn) renameBtn.style.display = 'none';
+  // Jamah/Cash کے لفظ کا ✏️ بٹن بھی پرنٹ/PDF میں کبھی نظر نہ آئے — یہ صرف
+  // ویب سائٹ پر لفظ تبدیل کرنے کے لیے ہے (2026-09-03، صارف کی درخواست پر)۔
+  let hiddenPrintCells = [];
+  card.querySelectorAll('.kata-jamah-label-edit-btn').forEach(el=>{
+    hiddenPrintCells.push({cell: el, prev: el.style.display});
+    el.style.display = 'none';
+  });
   // "ترمیم موڈ" کا سبز "محفوظ کریں" بٹن اور اس کے نیچے کی ہدایتی سطر بھی
   // پرنٹ/PDF میں کبھی نظر نہ آئے — یہ صرف ویب سائٹ پر استعمال کے لیے ہیں،
   // چھپی ہوئی رسید کا حصہ نہیں (2026-09-03، صارف کی نشاندہی پر: پرنٹ میں
@@ -5187,7 +5194,6 @@ async function kataPrintEntry(btn){
   const editUiPrevDisplay = [];
   editUiEls.forEach(el=>{ editUiPrevDisplay.push(el.style.display); el.style.display = 'none'; });
   let inputSwaps = [];
-  let hiddenPrintCells = [];
   // سیلزمین اور ربنواز دونوں کھاتوں — آئٹم ٹیبل سے وہی 5 کالمز (Rate،
   // Profit، Discount، D.Total، Sabka CTN) پرنٹ میں ہمیشہ کی طرح غائب رہیں
   // (2026-08-25 کو واپس بحال کیا گیا)۔ یہ صرف پرنٹ/PDF پر اثر انداز ہوتا
