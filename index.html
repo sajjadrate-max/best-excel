@@ -4859,7 +4859,11 @@ function kataRenderDetail(name){
       const entryId = btn.dataset.kataEditId;
       if(!entryId) return;
       if(kataUnlockedEditEntryIds.has(entryId)){
-        kataUnlockedEditEntryIds.delete(entryId); // دوبارہ دبانے پر واپس بند/محفوظ
+        // "ترمیم بند کریں" — بند کرنے سے پہلے کوئی بھی ابھی تک نہ محفوظ
+        // ہوئی تبدیلی خودکار محفوظ کر دیتے ہیں، تاکہ کچھ ضائع نہ ہو۔
+        const idx = kataOpenEntries.findIndex(e=> e.id === entryId);
+        if(idx !== -1) kataSaveEditedEntry(idx);
+        kataUnlockedEditEntryIds.delete(entryId);
         kataRenderDetail(name);
         return;
       }
@@ -4872,6 +4876,17 @@ function kataRenderDetail(name){
           alert('غلط پاس ورڈ۔');
         }
       });
+    });
+  });
+  container.querySelectorAll('[data-kata-edit-save-btn]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = Number(btn.dataset.kataEditSaveBtn);
+      kataSaveEditedEntry(idx);
+      // پورا صفحہ دوبارہ بناتے ہیں تاکہ نیچے "نئی انٹری" فارم کا پہلے سے
+      // بھرا ہوا Sabka بھی ابھی ابھی محفوظ ہونے والے Bqaya سے تازہ ہو
+      // (2026-09-02، صارف کی نشاندہی پر: پہلے صرف بٹن خود بدلتا تھا،
+      // نیچے نئی انٹری کا Sabka پرانی قدر پر ہی رہ جاتا تھا)۔
+      kataRenderDetail(name);
     });
   });
   kataWireEditableEntryFields(container);
@@ -4968,8 +4983,12 @@ function kataSaveEditedEntry(idx){
 // پہلے سے محفوظ انٹری کے آئٹم/Sabka/Today/Total/کھرچہ/وزن جیسے خانے
 // (پاس ورڈ سے کھلے "ترمیم موڈ" میں) — ہر خانہ سیدھا اسی نمبر پر لکھی
 // قیمت کو اوور رائیٹ کرتا ہے (بالکل Jamah کی طرح، کوئی خودکار فارمولا
-// نہیں)، صرف Bqaya پہلے کی طرح Total-Jamah سے خودکار دوبارہ بنتا ہے۔
-// (2026-09-02، صارف کی درخواست پر — سیلزمین/ربنواز/Agency تینوں میں یکساں۔)
+// نہیں)، صرف Total/Bqaya پہلے کی طرح خودکار دوبارہ بنتے ہیں۔ 2026-09-02
+// (بعد کا فالو اپ): پہلے ہر ٹائپ کیے حرف پر 500ms بعد خودکار محفوظ ہو
+// جاتا تھا — صارف نے شکایت کی کہ سب کچھ لکھتے ہوئے ادھورے/غلط اعداد بھی
+// محفوظ ہو جاتے تھے۔ اب یہاں صرف اسکرین پر نمبر فوری تازہ ہوتا ہے، اصل
+// محفوظ کرنا نیچے دیے "💾 تبدیلیاں محفوظ کریں" بٹن سے، یا "🔒 ترمیم بند
+// کریں" دبانے پر ہوتا ہے (kataFinishEntryEdit) — نہ کہ ہر ٹائپ پر۔
 function kataOnEntryEditItemInput(input){
   const [idxStr, itemKey, field] = input.dataset.kataEditItem.split(':');
   const idx = Number(idxStr);
@@ -4979,8 +4998,7 @@ function kataOnEntryEditItemInput(input){
   entry.items[itemKey] = entry.items[itemKey] || {};
   const textFields = ['idx','name','weight'];
   entry.items[itemKey][field] = textFields.includes(field) ? input.value : kataParseNum(input.value);
-  clearTimeout(kataEntryJamahSaveTimer);
-  kataEntryJamahSaveTimer = setTimeout(()=> kataSaveEditedEntry(idx), 500);
+  kataMarkEntryEditDirty(idx);
 }
 function kataOnEntryEditExtraInput(input){
   const [idxStr, field] = input.dataset.kataEditExtra.split(':');
@@ -4998,8 +5016,7 @@ function kataOnEntryEditExtraInput(input){
   else if(field === 'todayT') entry.today.t = num;
   else if(field === 'todayProfit') entry.today.profit = num;
   else if(field === 'todayPrice') entry.today.price = num;
-  clearTimeout(kataEntryJamahSaveTimer);
-  kataEntryJamahSaveTimer = setTimeout(()=> kataSaveEditedEntry(idx), 500);
+  kataMarkEntryEditDirty(idx);
 }
 function kataOnEntryEditSumrowInput(input, container){
   const [idxStr, rowKey, field] = input.dataset.kataEditSumrow.split(':');
@@ -5011,7 +5028,7 @@ function kataOnEntryEditSumrowInput(input, container){
   entry[rowKey][field] = num;
   // Total اب ہمیشہ Sabka+Today سے خودکار بنتا ہے (2026-09-02، صارف کی
   // نشاندہی پر: پہلے Total الگ سے قابلِ ترمیم تھا، جس سے Sabka بدلنے پر
-  // Total اپڈیٹ نہیں ہوتا تھا اور جمع درست نہیں لگتی تھی)۔ Total خود کبھی
+  // Total اپڈیٹ نہیں ہوتا تھا اور جمع درست نہ ہوتی)۔ Total خود کبھی
   // براہِ راست نہیں لکھا جاتا (اوپر sumRow میں اس کا input ہٹا دیا گیا)،
   // اس لیے یہاں صرف sabka/today کے بدلنے پر یہ دوبارہ حساب ہوتا ہے۔
   entry.total = entry.total || {};
@@ -5039,8 +5056,14 @@ function kataOnEntryEditSumrowInput(input, container){
   if(bqayaProfitEl) bqayaProfitEl.textContent = entry.bqaya.profit;
   const bqayaDiscountEl = container.querySelector(`[data-kata-entry-bqaya-discount="${idx}"]`);
   if(bqayaDiscountEl) bqayaDiscountEl.textContent = entry.bqaya.discount;
-  clearTimeout(kataEntryJamahSaveTimer);
-  kataEntryJamahSaveTimer = setTimeout(()=> kataSaveEditedEntry(idx), 500);
+  kataMarkEntryEditDirty(idx);
+}
+// ٹائپ کرتے وقت خودکار محفوظ نہیں ہوتا — صرف اس انٹری کے "💾 محفوظ کریں"
+// بٹن کو نمایاں (فعال) کرتا ہے، تاکہ صارف خود دیکھ کر جب مکمل لکھ چکے تو
+// ایک ہی بار دبا کر محفوظ کرے۔
+function kataMarkEntryEditDirty(idx){
+  const btn = document.querySelector(`[data-kata-edit-save-btn="${idx}"]`);
+  if(btn){ btn.disabled = false; btn.textContent = '💾 تبدیلیاں محفوظ کریں'; btn.style.opacity = '1'; }
 }
 function kataWireEditableEntryFields(container){
   container.querySelectorAll('[data-kata-edit-item]').forEach(input=>{
@@ -5394,22 +5417,23 @@ function kataRenderEntryCard(entry, isLast, idx){
   // قابلِ ترمیم <input> کے طور پر بنتے ہیں (2026-09-02، صارف کی درخواست پر)۔
   const entryIdx = idx; // آئٹم forEach کے اندر "idx" دوبارہ استعمال ہوتا ہے (آئٹم نمبر کے لیے)، اس لیے یہاں الگ نام سے محفوظ کیا
   const editUnlocked = !!(entry.id && kataUnlockedEditEntryIds.has(entry.id));
-  // Sabka اب بھی خودکار فارمولا سے بنتا ہے — بالکل اسی طرح جیسے نئی انٹری
-  // فارم میں پہلے سے طے شدہ Sabka بنتا ہے (kataRenderDetail کا prevTotal):
-  // اسی کھاتے کی پچھلی محفوظ انٹری کا Bqaya (اگر یہ پہلی انٹری نہیں)، ورنہ
-  // مہینہ رول اوور کا carryForward (اگر یہ کھاتے کی پہلی انٹری ہے)۔ صارف
-  // خود کبھی Sabka نہیں لکھتا — Total کی طرح یہ بھی مکمل ذریعے (computed)
-  // ہے، تاکہ غلطی سے غلط عدد لکھے جانے سے حساب کبھی نہ بگڑے (2026-09-02،
-  // صارف کی نشاندہی پر — پہلے یہ صرف Total تک محدود تھا)۔
+  // Sabka اب بھی خود سیٹ کیا جا سکتا ہے (پہلے کی طرح) — خودکار فارمولا صرف
+  // اس وقت استعمال ہوتا ہے جب انٹری میں Sabka سرے سے محفوظ ہی نہ ہو (یعنی
+  // اس کی اپنی کوئی قدر کبھی نہیں لکھی گئی)۔ ایک بار صارف خود Sabka لکھ کر
+  // محفوظ کر دے تو وہی قدر رہتی ہے، ہر بار 0 پر واپس نہیں آتی
+  // (2026-09-02، صارف کی نشاندہی پر: پچھلی بار Sabka کو مکمل طور پر
+  // خودکار/غیر قابلِ ترمیم بنا دیا گیا تھا، جس سے صارف کا خود لکھا ہوا
+  // نمبر ہر بار 0 پر ری سیٹ ہو جاتا تھا)۔ Total ہمیشہ کی طرح Sabka+Today
+  // سے خودکار ہی رہتا ہے۔
   const prevEntryForSabka = entryIdx > 0 ? kataOpenEntries[entryIdx-1] : null;
-  const sabkaComputed = prevEntryForSabka
+  const sabkaDefault = prevEntryForSabka
     ? Object.assign({price:0, profit:0, discount:0}, prevEntryForSabka.bqaya || prevEntryForSabka.total || {})
     : Object.assign({price:0, profit:0, discount:0, t:0}, (kataOpenCarryForward || {}), {t:0, profit:0});
-  entry.sabka = sabkaComputed; // میموری میں بھی درست کر دیا — پرنٹ/PDF اور بعد کے حسابات بھی اسی درست قدر سے چلیں
+  if(entry.sabka == null) entry.sabka = sabkaDefault; // صرف اسی صورت میں ڈیفالٹ بھریں جب کبھی محفوظ ہی نہیں ہوا
   entry.total = entry.total || {};
-  entry.total.price = (sabkaComputed.price||0) + ((entry.today && entry.today.price)||0);
-  entry.total.profit = (sabkaComputed.profit||0) + ((entry.today && entry.today.profit)||0);
-  entry.total.discount = (sabkaComputed.discount||0) + ((entry.today && entry.today.discount)||0);
+  entry.total.price = ((entry.sabka && entry.sabka.price)||0) + ((entry.today && entry.today.price)||0);
+  entry.total.profit = ((entry.sabka && entry.sabka.profit)||0) + ((entry.today && entry.today.profit)||0);
+  entry.total.discount = ((entry.sabka && entry.sabka.discount)||0) + ((entry.today && entry.today.discount)||0);
   {
     const jamah0 = entry.jamah || {price:[0,0]};
     const jp0 = jamah0.profit || [0,0];
@@ -5560,6 +5584,8 @@ function kataRenderEntryCard(entry, isLast, idx){
         </div>` : ''}
       </div>`}
       ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya, idx, editUnlocked)}
+      ${editUnlocked ? `<button type="button" data-kata-edit-save-btn="${entryIdx}" disabled style="opacity:.6;width:100%;margin-top:10px;padding:10px;border:none;border-radius:5px;background:#1a7a3c;color:#fff;font-size:15px;font-weight:600;">💾 تبدیلیاں محفوظ کریں</button>
+      <div style="text-align:center;font-size:11px;color:#8a6d00;margin-top:4px;">جو خانے سفید/قابلِ ترمیم ہیں انہیں تبدیل کریں، پھر اوپر والا سبز بٹن دبا کر محفوظ کریں — ٹائپ کرتے ہی خودکار محفوظ نہیں ہوتا۔</div>` : ''}
       <div class="kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
         <button type="button" class="kata-print-entry-btn kata-print-mobile-btn" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 موبائل پرنٹ</button>
         <button type="button" class="kata-print-entry-btn kata-print-computer-btn" data-print-mode="computer" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 کمپیوٹر پرنٹ</button>
@@ -5605,15 +5631,15 @@ function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx, editUn
   const bqayaDiscountCell = entryIdx != null
     ? `<td data-kata-entry-bqaya-discount="${entryIdx}">${bqaya.discount||0}</td>`
     : `<td>${bqaya.discount||0}</td>`;
-  // Today قطار — ترمیم موڈ میں (پرانی محفوظ انٹری، پاس ورڈ سے کھلی ہوئی)
-  // یہ Jamah جیسے ہی براہِ راست قابلِ ترمیم <input> بن جاتی ہے۔ Sabka اور
-  // Total دونوں اب ہمیشہ خودکار حساب سے بنتے ہیں — کبھی خود نہیں لکھے
-  // جاتے — Sabka پچھلی انٹری کے Bqaya سے (اوپر entryIdx کے ساتھ حساب ہو
-  // چکا)، Total = Sabka+Today سے (2026-09-02، صارف کی نشاندہی پر: پہلے
-  // Sabka/Total الگ سے قابلِ ترمیم تھے، جس سے غلطی سے جمع درست نہ ہوتا)۔
+  // Sabka اور Today قطاریں — ترمیم موڈ میں (پرانی محفوظ انٹری، پاس ورڈ سے
+  // کھلی ہوئی) یہ Jamah جیسے ہی براہِ راست قابلِ ترمیم <input> بن جاتی ہیں۔
+  // Total ہمیشہ خودکار حساب (Sabka+Today) سے بنتا ہے — کبھی خود نہیں لکھا
+  // جاتا — تاکہ Sabka/Today بدلنے پر Total ازخود درست رہے (2026-09-02،
+  // صارف کی نشاندہی پر: پہلے Total الگ سے قابلِ ترمیم تھا، جس سے Sabka
+  // بدلنے پر Total پرانا ہی رہ جاتا)۔
   function sumRow(rowKey, obj, label){
-    const editable = entryIdx != null && editUnlocked && rowKey === 'today';
-    const staticAttr = (idxPart)=> (rowKey === 'total' || rowKey === 'sabka') && entryIdx != null ? ` data-kata-entry-${rowKey}-${idxPart}="${entryIdx}"` : '';
+    const editable = entryIdx != null && editUnlocked && rowKey !== 'total';
+    const staticAttr = (idxPart)=> rowKey === 'total' && entryIdx != null ? ` data-kata-entry-total-${idxPart}="${entryIdx}"` : '';
     const priceCell = editable
       ? `<td><input type="text" inputmode="decimal" class="cell-input" data-kata-edit-sumrow="${entryIdx}:${rowKey}:price" style="border:1px solid var(--line);" value="${obj.price||0}"></td>`
       : `<td${staticAttr('price')}>${obj.price||0}</td>`;
