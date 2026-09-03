@@ -4921,6 +4921,43 @@ function kataRenderDetail(name){
     input.addEventListener('input', ()=> kataOnEntryJamahDiscountInput(input, container));
     kataWireJamahFormatting(input);
   });
+  // Jamah/Cash کے لفظ (لیبل) کا ✏️ بٹن — نئی انٹری فارم اور پرانی محفوظ
+  // شدہ انٹریوں، دونوں میں (صارف کی درخواست 2026-09-03)۔ نئی انٹری کا
+  // لفظ صرف اسی وقت کے لیے DOM میں بدلتا ہے — محفوظ ہونے پر kataSaveEntry
+  // اسے entry.jamah.labels میں لکھتا ہے، اور اگلی نئی انٹری فارم ہمیشہ
+  // ڈیفالٹ ("Cash"/"Jamah") سے دوبارہ شروع ہوتی ہے۔ پرانی انٹری کا لفظ
+  // فوراً اسی انٹری میں entry.jamah.labels پر محفوظ ہو جاتا ہے۔
+  container.querySelectorAll('[data-jamah-label-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = btn.dataset.jamahLabelEdit;
+      siteTextPrompt('نام لکھیں (مثلاً Cash یا Jamah)', function(val){
+        if(val === null) return;
+        const trimmed = val.trim();
+        if(!trimmed) return;
+        const span = container.querySelector(`[data-jamah-label="${idx}"]`);
+        if(span) span.textContent = trimmed;
+      });
+    });
+  });
+  container.querySelectorAll('[data-kata-entry-jamah-label-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const [idxStr, whichStr] = btn.dataset.kataEntryJamahLabelEdit.split(':');
+      const idx = Number(idxStr), which = Number(whichStr);
+      const entry = kataOpenEntries[idx];
+      if(!entry) return;
+      siteTextPrompt('نام لکھیں (مثلاً Cash یا Jamah)', function(val){
+        if(val === null) return;
+        const trimmed = val.trim();
+        if(!trimmed) return;
+        entry.jamah = entry.jamah || {price:[0,0]};
+        entry.jamah.labels = entry.jamah.labels || [];
+        entry.jamah.labels[which] = trimmed;
+        const span = container.querySelector(`[data-kata-entry-jamah-label="${idx}:${which}"]`);
+        if(span) span.textContent = trimmed;
+        kataSaveEditedEntry(idx);
+      });
+    });
+  });
   const prevClosedBookCard = container.querySelector('[data-kata-prev-closed-book-id]');
   if(prevClosedBookCard){
     prevClosedBookCard.addEventListener('click', ()=>{
@@ -5638,9 +5675,16 @@ function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx, editUn
   // (2026-09-02، صارف کی درخواست پر)۔
   const jamahDiscount = jamah.discount || [0,0];
   const jamahProfit = jamah.profit || [0,0];
+  // Jamah/Cash کا لفظ (لیبل) خود صارف تبدیل کر سکے — ہر انٹری کا اپنا لفظ
+  // الگ محفوظ ہوتا ہے (jamah.labels[i])، نہ ملنے پر ہمیشہ کی طرح ڈیفالٹ
+  // "Cash"/"Jamah" دکھتا ہے — نئی انٹری میں یہ ہمیشہ ڈیفالٹ سے شروع ہوتی
+  // ہے (2026-09-03، صارف کی درخواست پر)۔
+  const jamahLabels = jamah.labels || [];
+  const jamahLabelDefault = agencySimple ? 'Cash' : 'Jamah';
+  const jamahLabelText = (i)=> jamahLabels[i] || jamahLabelDefault;
   const jamahRow = (i)=> entryIdx != null
-    ? `<tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Cash' : 'Jamah'}</td><td><input type="text" inputmode="numeric" class="cell-input" data-kata-entry-jamah="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${kataIndianNumberFormat(jamah.price[i]||0)}"></td>${agencySimple ? '' : `<td><input type="text" inputmode="numeric" class="cell-input" data-kata-entry-jamah-profit="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${kataIndianNumberFormat(jamahProfit[i]||0)}"></td>`}${showDiscount ? `<td><input type="text" inputmode="numeric" class="cell-input" data-kata-entry-jamah-discount="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${kataIndianNumberFormat(jamahDiscount[i]||0)}"></td>` : ''}</tr>`
-    : `<tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Cash' : 'Jamah'}</td><td>${jamah.price[i]||0}</td>${agencySimple ? '' : `<td>${jamahProfit[i]||0}</td>`}${showDiscount ? `<td>${jamahDiscount[i]||0}</td>` : ''}</tr>`;
+    ? `<tr><td style="text-align:right;padding-right:6px;"><span class="kata-jamah-label" data-kata-entry-jamah-label="${entryIdx}:${i}">${kataEscape(jamahLabelText(i))}</span> <button type="button" class="kata-jamah-label-edit-btn" data-kata-entry-jamah-label-edit="${entryIdx}:${i}" title="نام تبدیل کریں" style="font-size:10px;background:none;border:none;cursor:pointer;padding:0 1px;">✏️</button></td><td><input type="text" inputmode="numeric" class="cell-input" data-kata-entry-jamah="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${kataIndianNumberFormat(jamah.price[i]||0)}"></td>${agencySimple ? '' : `<td><input type="text" inputmode="numeric" class="cell-input" data-kata-entry-jamah-profit="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${kataIndianNumberFormat(jamahProfit[i]||0)}"></td>`}${showDiscount ? `<td><input type="text" inputmode="numeric" class="cell-input" data-kata-entry-jamah-discount="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${kataIndianNumberFormat(jamahDiscount[i]||0)}"></td>` : ''}</tr>`
+    : `<tr><td style="text-align:right;padding-right:6px;">${kataEscape(jamahLabelText(i))}</td><td>${jamah.price[i]||0}</td>${agencySimple ? '' : `<td>${jamahProfit[i]||0}</td>`}${showDiscount ? `<td>${jamahDiscount[i]||0}</td>` : ''}</tr>`;
   const bqayaCell = entryIdx != null
     ? `<td data-kata-entry-bqaya="${entryIdx}">${bqaya.price}</td>`
     : `<td>${bqaya.price}</td>`;
@@ -5877,8 +5921,8 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
             ${sabkaRow}
             <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'New Bill' : 'Today'}</td><td data-kata-today-price>0</td>${agencySimple ? '' : '<td data-kata-today-profit>0</td>'}${showDiscount ? '<td data-kata-today-discount>0</td>' : ''}</tr>
             <tr><td style="text-align:right;padding-right:6px;">Total</td><td data-kata-tot-price>${prevTotal.price}</td>${agencySimple ? '' : `<td data-kata-tot-profit>${prevTotal.profit||0}</td>`}${showDiscount ? `<td data-kata-tot-discount>${prevTotal.discount||0}</td>` : ''}</tr>
-            <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Cash' : 'Jamah'}</td><td><input type="text" inputmode="numeric" class="cell-input" data-jamah="price0" style="border:1px solid var(--line);" value="0"></td>${agencySimple ? '' : '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="profit0" style="border:1px solid var(--line);" value="0"></td>'}${showDiscount ? '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="discount0" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>
-            ${agencySimple ? '' : `<tr><td style="text-align:right;padding-right:6px;">Jamah</td><td><input type="text" inputmode="numeric" class="cell-input" data-jamah="price1" style="border:1px solid var(--line);" value="0"></td><td><input type="text" inputmode="numeric" class="cell-input" data-jamah="profit1" style="border:1px solid var(--line);" value="0"></td>${showDiscount ? '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="discount1" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>`}
+            <tr><td style="text-align:right;padding-right:6px;"><span class="kata-jamah-label" data-jamah-label="0">${agencySimple ? 'Cash' : 'Jamah'}</span> <button type="button" class="kata-jamah-label-edit-btn" data-jamah-label-edit="0" title="نام تبدیل کریں" style="font-size:10px;background:none;border:none;cursor:pointer;padding:0 1px;">✏️</button></td><td><input type="text" inputmode="numeric" class="cell-input" data-jamah="price0" style="border:1px solid var(--line);" value="0"></td>${agencySimple ? '' : '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="profit0" style="border:1px solid var(--line);" value="0"></td>'}${showDiscount ? '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="discount0" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>
+            ${agencySimple ? '' : `<tr><td style="text-align:right;padding-right:6px;"><span class="kata-jamah-label" data-jamah-label="1">Jamah</span> <button type="button" class="kata-jamah-label-edit-btn" data-jamah-label-edit="1" title="نام تبدیل کریں" style="font-size:10px;background:none;border:none;cursor:pointer;padding:0 1px;">✏️</button></td><td><input type="text" inputmode="numeric" class="cell-input" data-jamah="price1" style="border:1px solid var(--line);" value="0"></td><td><input type="text" inputmode="numeric" class="cell-input" data-jamah="profit1" style="border:1px solid var(--line);" value="0"></td>${showDiscount ? '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="discount1" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>`}
             <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Remaining Price' : 'Bqaya'}</td><td data-kata-bqaya-price>${prevTotal.price}</td>${agencySimple ? '' : `<td data-kata-bqaya-profit>${prevTotal.profit||0}</td>`}${showDiscount ? `<td data-kata-bqaya-discount>${prevTotal.discount||0}</td>` : ''}</tr>
           </tbody>
         </table>
@@ -6323,6 +6367,18 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
   const jVal = (name)=>{ const el = document.querySelector(`[data-jamah="${name}"]`); return el ? kataParseNum(el.value) : 0; };
   const jamah = {t: [jVal('t0'), jVal('t1')], price: [jVal('price0'), jVal('price1')], profit: [jVal('profit0'), jVal('profit1')]};
   if(showDiscount) jamah.discount = [jVal('discount0'), jVal('discount1')];
+  // اگر صارف نے نئی انٹری فارم میں Jamah/Cash کا لفظ (لیبل) ابھی تبدیل کیا
+  // ہو تو وہ اسی انٹری کے ساتھ محفوظ ہو جائے (2026-09-03، صارف کی
+  // درخواست پر) — ڈیفالٹ لفظ ہو تو کچھ محفوظ نہیں ہوتا (اگلی نئی انٹری
+  // خودکار ڈیفالٹ سے شروع ہوتی رہے)۔
+  const jamahLabelDefault = kataInstance === 'agency' ? 'Cash' : 'Jamah';
+  const jamahLabel0El = document.querySelector('[data-jamah-label="0"]');
+  const jamahLabel1El = document.querySelector('[data-jamah-label="1"]');
+  const jamahLabel0 = jamahLabel0El ? jamahLabel0El.textContent.trim() : jamahLabelDefault;
+  const jamahLabel1 = jamahLabel1El ? jamahLabel1El.textContent.trim() : jamahLabelDefault;
+  if(jamahLabel0 !== jamahLabelDefault || jamahLabel1 !== jamahLabelDefault){
+    jamah.labels = [jamahLabel0, jamahLabel1];
+  }
   const jamahTotal = jamah.price[0] + jamah.price[1];
 
   if(todayT === 0 && todayPrice === 0 && jamahTotal === 0){
