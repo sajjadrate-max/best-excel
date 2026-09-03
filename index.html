@@ -5066,14 +5066,19 @@ function kataMarkEntryEditDirty(idx){
   if(btn){ btn.disabled = false; btn.textContent = '💾 تبدیلیاں محفوظ کریں'; btn.style.opacity = '1'; }
 }
 function kataWireEditableEntryFields(container){
+  const textItemFields = ['idx','name','weight']; // یہ خالص متن ہیں، عدد نہیں — focus/blur پر کوما فارمیٹنگ نہ لگے
   container.querySelectorAll('[data-kata-edit-item]').forEach(input=>{
     input.addEventListener('input', ()=> kataOnEntryEditItemInput(input));
+    const field = input.dataset.kataEditItem.split(':')[2];
+    if(!textItemFields.includes(field)) kataWireJamahFormatting(input);
   });
   container.querySelectorAll('[data-kata-edit-extra]').forEach(input=>{
     input.addEventListener('input', ()=> kataOnEntryEditExtraInput(input));
+    kataWireJamahFormatting(input);
   });
   container.querySelectorAll('[data-kata-edit-sumrow]').forEach(input=>{
     input.addEventListener('input', ()=> kataOnEntryEditSumrowInput(input, container));
+    kataWireJamahFormatting(input);
   });
 }
 // اسی طرح Profit والا Jamah بھی — بالکل Price والے Bqaya جیسا۔
@@ -5137,6 +5142,13 @@ async function kataPrintEntry(btn){
   const renameBtn = card.querySelector('.kata-rename-entry-name-btn');
   const renameBtnPrevDisplay = renameBtn ? renameBtn.style.display : '';
   if(renameBtn) renameBtn.style.display = 'none';
+  // "ترمیم موڈ" کا سبز "محفوظ کریں" بٹن اور اس کے نیچے کی ہدایتی سطر بھی
+  // پرنٹ/PDF میں کبھی نظر نہ آئے — یہ صرف ویب سائٹ پر استعمال کے لیے ہیں،
+  // چھپی ہوئی رسید کا حصہ نہیں (2026-09-03، صارف کی نشاندہی پر: پرنٹ میں
+  // یہ بٹن اور خام input خانے نظر آ رہے تھے)۔ اسی طرح ⋮ مینو بھی۔
+  const editUiEls = card.querySelectorAll('.kata-edit-ui-only, .kata-dots-wrap');
+  const editUiPrevDisplay = [];
+  editUiEls.forEach(el=>{ editUiPrevDisplay.push(el.style.display); el.style.display = 'none'; });
   let inputSwaps = [];
   let hiddenPrintCells = [];
   // سیلزمین اور ربنواز دونوں کھاتوں — پرنٹ سے وہی 5 کالمز (Rate، Profit،
@@ -5282,6 +5294,7 @@ async function kataPrintEntry(btn){
     hiddenPrintCells.forEach(({cell, prev})=>{ cell.style.display = prev; }); // چھپائے گئے کالمز ویب سائٹ پر واپس دکھا دیں
     if(actions) actions.style.display = prevDisplay;
     if(renameBtn) renameBtn.style.display = renameBtnPrevDisplay;
+    editUiEls.forEach((el,i)=>{ el.style.display = editUiPrevDisplay[i]; });
     btn.textContent = originalLabel; btn.disabled = false;
   }
 }
@@ -5446,7 +5459,13 @@ function kataRenderEntryCard(entry, isLast, idx){
   function editField(rawValue, fieldKey, itemKey, widthCh){
     if(!editUnlocked) return null;
     const val = (rawValue==null) ? '' : rawValue;
-    return `<input type="text" inputmode="decimal" class="cell-input kata-edit-field" data-kata-edit-item="${entryIdx}:${itemKey}:${fieldKey}" style="width:${widthCh||5}ch;text-align:center;border:1px solid var(--line);" value="${kataEscape(String(val))}">`;
+    // نمبروں کو کوما کے ساتھ دکھاتے ہیں (باقی خانوں جیسے) — خالص متن
+    // (آئٹم کا نام، وزن بمعہ "kg") ویسے ہی رہتا ہے کیونکہ
+    // kataIndianNumberFormat خالص عدد نہ ہونے پر قدر جوں کی توں لوٹا دیتا
+    // ہے۔ اس سے پرنٹ/PDF میں بھی یہ خانے باقی خانوں جیسے صاف نظر آتے ہیں
+    // (2026-09-03، صارف کی نشاندہی پر — پرنٹ میں یہ خانے بغیر کوما کے
+    // اور خام input باکس کی شکل میں نظر آ رہے تھے)۔
+    return `<input type="text" inputmode="decimal" class="cell-input kata-edit-field" data-kata-edit-item="${entryIdx}:${itemKey}:${fieldKey}" style="width:${widthCh||5}ch;text-align:center;border:1px solid var(--line);" value="${kataEscape(String(kataIndianNumberFormat(val)))}">`;
   }
   let rows = '';
   let sumT = 0;
@@ -5499,7 +5518,7 @@ function kataRenderEntryCard(entry, isLast, idx){
   // کے لیے علیحدہ ہیلپر — یہ entry-level fields ہیں (item key نہیں)۔
   function editBox(rawValue, fieldKey, widthCh){
     if(!editUnlocked) return null;
-    return `<input type="text" inputmode="decimal" class="cell-input kata-edit-extra" data-kata-edit-extra="${entryIdx}:${fieldKey}" style="width:${widthCh||6}ch;text-align:center;font-family:'Courier Prime',monospace;font-size:13px;border:1px solid var(--line);" value="${kataEscape(String(rawValue==null?'':rawValue))}">`;
+    return `<input type="text" inputmode="decimal" class="cell-input kata-edit-extra" data-kata-edit-extra="${entryIdx}:${fieldKey}" style="width:${widthCh||6}ch;text-align:center;font-family:'Courier Prime',monospace;font-size:13px;border:1px solid var(--line);" value="${kataEscape(String(kataIndianNumberFormat(rawValue==null?'':rawValue)))}">`;
   }
   const dotsMenuItems = [];
   if(entry.id){
@@ -5584,8 +5603,10 @@ function kataRenderEntryCard(entry, isLast, idx){
         </div>` : ''}
       </div>`}
       ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya, idx, editUnlocked)}
-      ${editUnlocked ? `<button type="button" data-kata-edit-save-btn="${entryIdx}" disabled style="opacity:.6;width:100%;margin-top:10px;padding:10px;border:none;border-radius:5px;background:#1a7a3c;color:#fff;font-size:15px;font-weight:600;">💾 تبدیلیاں محفوظ کریں</button>
-      <div style="text-align:center;font-size:11px;color:#8a6d00;margin-top:4px;">جو خانے سفید/قابلِ ترمیم ہیں انہیں تبدیل کریں، پھر اوپر والا سبز بٹن دبا کر محفوظ کریں — ٹائپ کرتے ہی خودکار محفوظ نہیں ہوتا۔</div>` : ''}
+      ${editUnlocked ? `<div class="kata-edit-ui-only">
+      <button type="button" data-kata-edit-save-btn="${entryIdx}" disabled style="opacity:.6;width:100%;margin-top:10px;padding:10px;border:none;border-radius:5px;background:#1a7a3c;color:#fff;font-size:15px;font-weight:600;">💾 تبدیلیاں محفوظ کریں</button>
+      <div style="text-align:center;font-size:11px;color:#8a6d00;margin-top:4px;">جو خانے سفید/قابلِ ترمیم ہیں انہیں تبدیل کریں، پھر اوپر والا سبز بٹن دبا کر محفوظ کریں — ٹائپ کرتے ہی خودکار محفوظ نہیں ہوتا۔</div>
+      </div>` : ''}
       <div class="kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
         <button type="button" class="kata-print-entry-btn kata-print-mobile-btn" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 موبائل پرنٹ</button>
         <button type="button" class="kata-print-entry-btn kata-print-computer-btn" data-print-mode="computer" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 کمپیوٹر پرنٹ</button>
