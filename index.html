@@ -439,11 +439,11 @@ window.loadAuthSDKs = async function(){
     font-size:30px !important;
     text-align:center !important;
   }
-  /* لسٹ A — صارف کی دی گئی حوالہ تصویر (میرون تھیم) کے مطابق، صرف اسی
-     لسٹ پر (2026-08-23)۔ باقی لسٹیں (B/C/سیلزمین/دکاندار) اور Profit کالم
-     کی اندرونی رنگت نہیں چھیڑی۔ */
+  /* لسٹ A/B/C/سیلزمین/دکاندار — صارف کی تازہ درخواست (2026-09-03) پر اب
+     "Iqbal chemical" کھاتے جیسا رنگ: اوپر لال (#D42430) ٹائٹل، نیچے نیلا
+     (#1a73e8) کالم ہیڈر — پرانا میرون تھیم (#7a2323) ہٹا دیا۔ */
   .list-a-ref-style .list-a-ref-title{
-    background:#7a2323 !important;
+    background:#D42430 !important;
     color:#fff !important;
     font-size:26px !important;
     font-weight:400 !important;
@@ -451,7 +451,7 @@ window.loadAuthSDKs = async function(){
     border-radius:6px 6px 0 0;
   }
   .list-a-ref-style thead tr:nth-child(2) th{
-    background:#7a2323 !important;
+    background:#1a73e8 !important;
     color:#fff !important;
     font-weight:400 !important;
     font-size:12.5px !important;
@@ -1375,7 +1375,7 @@ function isMasterAllLocked(){
 // تبدیلی خودکار طور پر آگے تمام کھاتوں کی نئی انٹریوں میں لاگو ہوتی ہے
 // (موجودہ syncKataItemsFromRateList طریقہ کار — اس میں کوئی تبدیلی نہیں کی گئی)۔
 // لاک کرنا (واپس بند کرنا) password کے بغیر ہی چلتا ہے — صرف کھولنے پر تصدیق درکار ہے۔
-const RATE_LIST_LOCK_PASSWORD = 'BestExcel';
+const RATE_LIST_LOCK_PASSWORD = 'Bestexcel';
 function toggleMasterAllLock(){
   const currentlyLocked = isMasterAllLocked();
   if(currentlyLocked){
@@ -1585,7 +1585,7 @@ function formulationActivateTab(btn){
   document.getElementById(btn.dataset.tab).classList.add('active');
 }
 document.getElementById('formulationPwSubmit').addEventListener('click', ()=>{
-  if(formulationPwInput.value === 'BestExcel'){
+  if(formulationPwInput.value === 'Bestexcel'){
     const btn = formulationPendingBtn;
     formulationCloseGate();
     if(btn) formulationActivateTab(btn);
@@ -3990,7 +3990,7 @@ const KATA_CLOSED_ENTRY_PASSWORD = 'Bestexcel';
 // کا اپنا الگ اَن لاک — ایک انٹری کھولنے سے باقی نہیں کھلتیں۔ صفحہ ری لوڈ
 // پر دوبارہ بند ہو جاتا ہے (session-only unlock)۔
 let kataUnlockedEditEntryIds = new Set();
-const KATA_ENTRY_EDIT_PASSWORD = 'BestExcel';
+const KATA_ENTRY_EDIT_PASSWORD = 'Bestexcel';
 let kataInstance = 'salesman'; // which named ledger section is active — 'salesman' is the original/default (unprefixed storage keys, for backward compatibility with existing data), any other value (e.g. 'ribnawaz') gets its own separate namespace
 // Discount خانے صرف سیلزمین کھاتے میں دکھائے جاتے ہیں — ربنواز اور Agency
 // کھاتوں میں بالکل نہیں (2026-08-21، صریح صارف کی ہدایت پر)۔
