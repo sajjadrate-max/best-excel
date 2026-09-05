@@ -5094,6 +5094,7 @@ function kataOnEntryEditExtraInput(input){
   else if(field === 'less') entry.less = num;
   else if(field === 'weightKg') entry.weightKg = num;
   else if(field === 'weightGram') entry.weightKg = num / 1000;
+  else if(field === 'weightMann') entry.weightKg = num * 40;
   else if(field === 'totalWeightKg') entry.total.weightKg = num;
   else if(field === 'totalT') entry.total.t = num;
   else if(field === 'todayT') entry.today.t = num;
@@ -5641,8 +5642,8 @@ function kataRenderEntryCard(entry, isLast, idx){
           <div style="font-size:7px;color:#5b5346;margin-top:1px;">Total Price</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
-          ${editBox(Math.round((Number(entry.weightKg)||0)*1000),'weightGram',6) || `<div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${Math.round((Number(entry.weightKg)||0)*1000)}</div>`}
-          <div style="font-size:7px;color:#5b5346;margin-top:1px;">Net Weight (gram)</div>
+          ${editBox(((Number(entry.weightKg)||0)/40).toFixed(2),'weightMann',6) || `<div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${((Number(entry.weightKg)||0)/40).toFixed(2)}</div>`}
+          <div style="font-size:7px;color:#5b5346;margin-top:1px;">Net Weight (maund)</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           ${editBox((entry.total && entry.total.t) || 0,'totalT',5) || `<div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.total && entry.total.t) || 0}</div>`}
@@ -5925,8 +5926,8 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Total Price</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
-          <div class="n" data-kata-sum-weight-grams style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
-          <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Net Weight (gram)</div>
+          <div class="n" data-kata-sum-weight-mann-sales style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
+          <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Net Weight (maund)</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           <div class="n" data-kata-sum-t style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
@@ -6092,12 +6093,12 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
     // حساب، صارف کی درخواست 2026-09-03، CTN کی طرح) — لائیو تازہ ہوتا رہے۔
     const sumWeightTotalEl = document.querySelector('[data-kata-sum-weight-total]');
     if(sumWeightTotalEl) sumWeightTotalEl.textContent = ((prevTotal.weightKg||0) + (todayWeightGrams / 1000)).toFixed(2);
-    // سیلزمین کھاتے کی چار ڈبوں والی پٹی میں وزن گرام میں دکھایا جاتا ہے
-    // (آئٹم ٹیبل کے "Net Weight (gram)" کالم سے مطابقت رکھنے کے لیے) — کلوگرام
-    // والا خانہ (اوپر) دوسرے کھاتوں کے لیے الگ سے موجود ہے، اسے نہیں چھیڑا
-    // (2026-09-02، صارف کی درخواست پر)۔
-    const sumWeightGramsEl = document.querySelector('[data-kata-sum-weight-grams]');
-    if(sumWeightGramsEl) sumWeightGramsEl.textContent = kataIndianNumberFormat(Math.round(todayWeightGrams));
+    // سیلزمین کھاتے کی پانچ ڈبوں والی پٹی میں وزن اب گرام کی بجائے من میں
+    // دکھایا جاتا ہے — 1 من = 40 کلوگرام = 40,000 گرام (صارف کی درخواست
+    // 2026-09-05، "Net Weight (gram)" باکس کو "Net Weight (maund)" میں
+    // بدلا گیا)۔
+    const sumWeightMannSalesEl = document.querySelector('[data-kata-sum-weight-mann-sales]');
+    if(sumWeightMannSalesEl) sumWeightMannSalesEl.textContent = (todayWeightGrams / 40000).toFixed(2);
     // کل وزن (من) — 1 من = 40 کلوگرام (صارف کا بتایا ہوا تبادلہ)۔
     const sumWeightMannEl = document.querySelector('[data-kata-sum-weight-mann]');
     if(sumWeightMannEl) sumWeightMannEl.textContent = (todayWeightGrams / 1000 / 40).toFixed(2);
