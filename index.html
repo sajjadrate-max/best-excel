@@ -5507,6 +5507,31 @@ function kataColorStyleFor(cellColors, key){
   return (cellColors && cellColors[key]) ? `background-color:${cellColors[key]};` : '';
 }
 
+// Agency کھاتہ — "Total Weight (kg)"/"Previous Weight (kg)" کا خود سے
+// شفا پانے والا حساب (2026-09-05، صارف کی رپورٹ پر: پرانی/فیچر سے پہلے
+// محفوظ ہوئی انٹریوں میں entry.total.weightKg/entry.sabka.weightKg سرے
+// سے موجود ہی نہیں تھے، اس لیے 0.00 دکھا رہے تھے حالانکہ Today Weight
+// درست تھا) — اگر خود entry میں محفوظ قدر موجود ہو تو وہی استعمال ہوتی
+// ہے (بشمول ایڈٹ موڈ کی دستی تبدیلی)، ورنہ پچھلی انٹری سے (ری کرسو
+// طریقے سے) خود بخود حساب لگا لیا جاتا ہے۔
+function kataResolveEntryTotalWeightKg(idx){
+  const arr = kataOpenEntries || [];
+  const e = arr[idx];
+  if(!e) return 0;
+  if(e.total && e.total.weightKg != null) return e.total.weightKg;
+  let prevWeight;
+  if(e.sabka && e.sabka.weightKg != null) prevWeight = e.sabka.weightKg;
+  else if(idx > 0) prevWeight = kataResolveEntryTotalWeightKg(idx-1);
+  else prevWeight = 0;
+  return prevWeight + (Number(e.weightKg)||0);
+}
+function kataResolveEntrySabkaWeightKg(idx){
+  const arr = kataOpenEntries || [];
+  const e = arr[idx];
+  if(e && e.sabka && e.sabka.weightKg != null) return e.sabka.weightKg;
+  return idx > 0 ? kataResolveEntryTotalWeightKg(idx-1) : 0;
+}
+
 function kataRenderEntryCard(entry, isLast, idx){
   const showDiscount = kataShowDiscount();
   // Agency کھاتہ — صارف کی درخواست پر (2026-08-22) آئٹم ٹیبل سے Profit اور
@@ -5686,11 +5711,11 @@ function kataRenderEntryCard(entry, isLast, idx){
       </div>${kataInstance === 'agency' ? `
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          ${editBox((Number((entry.total && entry.total.weightKg)||0)).toFixed(2),'totalWeightKg',6) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number((entry.total && entry.total.weightKg)||0)).toFixed(2)}</div>`}
+          ${editBox((Number(kataResolveEntryTotalWeightKg(idx))).toFixed(2),'totalWeightKg',6) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(kataResolveEntryTotalWeightKg(idx))).toFixed(2)}</div>`}
           <div style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Total Weight (kg)</span></div>
         </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number((entry.sabka && entry.sabka.weightKg)||0)).toFixed(2)}</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(kataResolveEntrySabkaWeightKg(idx))).toFixed(2)}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Previous Weight (kg)</span></div>
         </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
