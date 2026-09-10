@@ -5141,8 +5141,29 @@ function kataOnEntryEditExtraInput(input){
   const num = kataParseNum(input.value);
   entry.today = entry.today || {};
   entry.total = entry.total || {};
-  if(field === 'kharch') entry.kharch = num;
-  else if(field === 'less') entry.less = num;
+  // ربنواز کھاتہ — صارف کی رپورٹ (2026-09-09): "کھرچہ"/"Less" بدلنے پر
+  // Profit پر کوئی اثر نہیں پڑتا تھا (پہلے صرف entry.kharch/less خود
+  // بدلتے تھے) — چونکہ محفوظ ہوتے وقت todayProfit میں سے یہ دونوں ایک بار
+  // منہا ہو چکے ہوتے ہیں، اب پرانی/نئی قدر کا فرق نکال کر Today/Total/
+  // Bqaya Profit میں وہی فرق فوری لگا دیتے ہیں (اسکرین پر بھی، محفوظ
+  // بٹن دبانے پر kataCascadeRecomputeFollowing آگے کی انٹریوں تک بھی لے
+  // جائے گا)۔
+  if(field === 'kharch' || field === 'less'){
+    const oldVal = entry[field] || 0;
+    entry[field] = num;
+    entry.today.profit = (entry.today.profit||0) - (num - oldVal);
+    entry.total.profit = ((entry.sabka && entry.sabka.profit)||0) + (entry.today.profit||0);
+    const jamahProfit = (entry.jamah && entry.jamah.profit) || [0,0];
+    entry.bqaya = entry.bqaya || {};
+    entry.bqaya.profit = entry.total.profit - ((jamahProfit[0]||0)+(jamahProfit[1]||0));
+    const card = input.closest('.card');
+    if(card){
+      const totalProfitEl = card.querySelector(`[data-kata-entry-total-profit="${idx}"]`);
+      if(totalProfitEl) totalProfitEl.textContent = entry.total.profit;
+      const bqayaProfitEl = card.querySelector(`[data-kata-entry-bqaya-profit="${idx}"]`);
+      if(bqayaProfitEl) bqayaProfitEl.textContent = entry.bqaya.profit;
+    }
+  }
   else if(field === 'weightKg') entry.weightKg = num;
   else if(field === 'weightGram') entry.weightKg = num / 1000;
   else if(field === 'weightMann') entry.weightKg = num * 40;
