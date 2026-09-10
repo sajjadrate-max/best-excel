@@ -2180,9 +2180,11 @@ function isMobileDevice(){
 // تھا — اب اصل ڈیوائس چیک پر منتقل کر دیا۔
 function kataApplyPrintButtonVisibility(root){
   if(!root) return;
-  const mobile = isMobileDevice();
-  root.querySelectorAll('.kata-print-mobile-btn').forEach(b=>{ b.style.display = mobile ? '' : 'none'; });
-  root.querySelectorAll('.kata-print-computer-btn').forEach(b=>{ b.style.display = mobile ? 'none' : ''; });
+  // صارف کی درخواست (2026-09-09): دونوں بٹن ("موبائل پرنٹ" اور "کمپیوٹر
+  // پرنٹ") ہمیشہ نظر آئیں — چاہے موبائل پر ہوں یا کمپیوٹر پر — پہلے صرف
+  // ڈیوائس کی قسم کے مطابق ایک ہی نظر آتا تھا۔
+  root.querySelectorAll('.kata-print-mobile-btn').forEach(b=>{ b.style.display = ''; });
+  root.querySelectorAll('.kata-print-computer-btn').forEach(b=>{ b.style.display = ''; });
 }
 
 async function sharePdfDirectly(blob, fileName, title){
@@ -4800,6 +4802,20 @@ function kataRenderDetail(name){
   // نظر نہ آئے۔
   if(typeof syncKataItemsFromRateList === 'function') syncKataItemsFromRateList();
 
+  // ربنواز کھاتہ — صارف کی درخواست (2026-09-09): پرانے Less/کھرچہ ترمیم
+  // bug سے متاثرہ Profit ہر کھاتے میں صرف ایک ہی بار خودکار درست کر دیں
+  // (نیچے kataRepairRibnawazProfits کا نوٹ دیکھیں) — book کے فلیگ کی وجہ
+  // سے دوبارہ نہیں چلتا۔
+  if(kataInstance === 'ribnawaz' && kataLocalMode && kataOpenId){
+    const booksForFix = kataLocalGetBooks();
+    const thisBookForFix = booksForFix.find(b=> b.id === kataOpenId);
+    if(thisBookForFix && !thisBookForFix.kharchLessProfitFixed20260909){
+      kataRepairRibnawazProfits();
+      thisBookForFix.kharchLessProfitFixed20260909 = true;
+      kataLocalSaveBooks(booksForFix);
+    }
+  }
+
   const lastEntry = kataOpenEntries.length ? kataOpenEntries[kataOpenEntries.length-1] : null;
   // اگلی انٹری کا "Sabka" ہمیشہ پچھلی انٹری کے "Bqaya" (Total منفی Jamah —
   // یعنی جو رقم واقعی ابھی تک باقی/واجب الادا ہے) سے چلنا چاہیے، نہ کہ
@@ -5098,6 +5114,40 @@ function kataCascadeRecomputeFollowing(idx){
     cur.bqaya.weightKg = cur.total.weightKg;
     if(showDiscount) cur.bqaya.discount = cur.total.discount - ((jd[0]||0)+(jd[1]||0));
   }
+}
+// ربنواز کھاتہ — صارف کی درخواست (2026-09-09): جو Less/کھرچہ خانے پرانے
+// (اس دن سے پہلے کے) bug کی وجہ سے ترمیم موڈ میں بدلے جا چکے تھے، ان کا
+// اثر کبھی Profit تک نہیں پہنچا تھا — یہ فنکشن ہر انٹری کا Today Profit
+// براہ راست آئٹمز کے T.Profit (prift × CTN) مجموعے میں سے اسی انٹری کے
+// کھرچہ/Less منہا کر کے از سرِ نو بناتا ہے (وہی فارمولا جو ہمیشہ سے درست
+// ہونا چاہیے تھا)، پھر Sabka/Total/Bqaya پوری کتاب میں آگے تک درست کرتا
+// ہے۔ نئی/پرانی، چھیڑی گئی/نہ چھیڑی گئی — سب انٹریوں کے لیے یکساں محفوظ۔
+function kataRepairRibnawazProfits(){
+  const itemByKey = {};
+  KATA_ITEMS.forEach(it=> itemByKey[it.key] = it);
+  kataOpenEntries.forEach((entry, i)=>{
+    let rawProfit = 0;
+    const items = entry.items || {};
+    Object.keys(items).forEach(k=>{
+      const v = items[k] || {};
+      const itemDef = itemByKey[k];
+      const prift = (v.prift!=null) ? v.prift : (itemDef ? itemDef.prift : 0);
+      const priftTotal = (v.priftTotal!=null) ? v.priftTotal : Math.round((prift * (Number(v.t)||0))*100)/100;
+      rawProfit += Number(priftTotal)||0;
+    });
+    entry.today = entry.today || {};
+    entry.today.profit = Math.round((rawProfit - (Number(entry.kharch)||0) - (Number(entry.less)||0))*100)/100;
+    entry.total = entry.total || {};
+    entry.total.profit = ((entry.sabka && entry.sabka.profit)||0) + entry.today.profit;
+    const jp = (entry.jamah && entry.jamah.profit) || [0,0];
+    entry.bqaya = entry.bqaya || {};
+    entry.bqaya.profit = entry.total.profit - ((jp[0]||0)+(jp[1]||0));
+    if(kataOpenEntries[i+1]){
+      kataOpenEntries[i+1].sabka = kataOpenEntries[i+1].sabka || {};
+      kataOpenEntries[i+1].sabka.profit = entry.bqaya.profit;
+    }
+  });
+  kataLocalSaveEntries(kataOpenId, kataOpenEntries);
 }
 function kataSaveEditedEntry(idx){
   const entry = kataOpenEntries[idx];
