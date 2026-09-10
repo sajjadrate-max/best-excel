@@ -2947,10 +2947,14 @@ function msRenderList(){
   // پر)۔
   const allBooks = msLocalGetBooks();
   const books = allBooks.filter(b => !b.closed);
-  container.innerHTML = msRenderStockCard();
-  kataApplyIndianFormattingToReadonly(container);
+  // صارف کی درخواست (2026-09-09): "موجودہ اسٹاک" کارڈ اب کھاتوں کی فہرست
+  // کے نیچے آئے گا — پہلے سب سے اوپر تھا، اسی لیے یہاں خالی کر کے پہلے
+  // کھاتوں کے کارڈ بناتے ہیں، اسٹاک کارڈ سب سے آخر میں جوڑا جاتا ہے۔
+  container.innerHTML = '';
   if(!books.length){
-    container.innerHTML += '<div class="note" style="text-align:center;">ابھی کوئی جاری کھاتہ موجود نہیں — اوپر بٹن سے نیا کھاتہ بنائیں۔</div>';
+    container.innerHTML = '<div class="note" style="text-align:center;">ابھی کوئی جاری کھاتہ موجود نہیں — اوپر بٹن سے نیا کھاتہ بنائیں۔</div>';
+    container.innerHTML += msRenderStockCard();
+    kataApplyIndianFormattingToReadonly(container);
     return;
   }
   books.forEach(b=>{
@@ -2968,6 +2972,10 @@ function msRenderList(){
     card.addEventListener('click', ()=> msOpen(b.id, b.name || ''));
     container.appendChild(card);
   });
+  // insertAdjacentHTML استعمال کیا، innerHTML+= نہیں — ورنہ پورا container
+  // دوبارہ پارس ہو کر اوپر لوپ میں لگائے گئے کھاتہ کارڈز کے کلک لسنر ضائع
+  // ہو جاتے۔
+  container.insertAdjacentHTML('beforeend', msRenderStockCard());
   kataApplyIndianFormattingToReadonly(container);
 }
 
@@ -3029,6 +3037,7 @@ function msRenderEntryCard(entry, isLast){
     <div class="card ms-entry-card kata-entry-card">
       ${isLast ? kataDotsMenuHtml([{cls:'ms-delete-entry-btn', label:'🗑 حذف کریں'}]) : ''}
       <div class="note" style="text-align:center;font-weight:400;">${kataFormatWhen(entry.createdAt)}</div>
+      <div class="kata-ref-title">Iqbal chemical</div>
       <div class="edit-table wide-table">
         <table dir="ltr">
           <colgroup><col style="width:16%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"><col style="width:7.6%"></colgroup>
@@ -5049,9 +5058,51 @@ function kataOnEntryJamahTInput(input, container){
   clearTimeout(kataEntryJamahSaveTimer);
   kataEntryJamahSaveTimer = setTimeout(()=> kataSaveEditedEntry(idx), 500);
 }
+// ربنواز کھاتہ — صارف کی درخواست (2026-09-09): ترمیم موڈ میں کسی بھی
+// پرانی انٹری کی کوئی بھی رقم بدلنے پر، اسی وقت اس کے بعد آنے والی تمام
+// انٹریوں کا Sabka/Total/Bqaya (CTN, Price, Profit, Discount, Weight)
+// خودکار زنجیر کی طرح نئے سرے سے بن جائے — پہلے یہ صرف اسی ایک ترمیم شدہ
+// انٹری تک محدود تھا، اگلی انٹریوں کا Sabka وہیں پرانی (غلط) قدر پر جما
+// رہتا تھا۔ صرف ربنواز کے لیے (صارف کی واضح ہدایت پر) — سیلزمین/Agency
+// میں کچھ نہیں بدلا۔ ہر اگلی انٹری کا اپنا "Today" (جو خود اس دن ٹائپ/
+// محفوظ ہوا تھا) کبھی نہیں بدلتا — صرف اس پر منحصر Sabka/Total/Bqaya۔
+function kataCascadeRecomputeFollowing(idx){
+  if(kataInstance !== 'ribnawaz') return;
+  const showDiscount = kataShowDiscount();
+  for(let i = idx+1; i < kataOpenEntries.length; i++){
+    const prevEntry = kataOpenEntries[i-1];
+    const cur = kataOpenEntries[i];
+    if(!prevEntry || !cur) break;
+    const prevFinal = prevEntry.bqaya || prevEntry.total || {};
+    cur.sabka = cur.sabka || {};
+    cur.sabka.t = prevFinal.t || 0;
+    cur.sabka.price = prevFinal.price || 0;
+    cur.sabka.profit = prevFinal.profit || 0;
+    cur.sabka.weightKg = prevFinal.weightKg || 0;
+    if(showDiscount) cur.sabka.discount = prevFinal.discount || 0;
+
+    cur.today = cur.today || {t:0, price:0, profit:0, discount:0};
+    cur.total = cur.total || {};
+    cur.total.t = (cur.sabka.t||0) + (cur.today.t||0);
+    cur.total.price = (cur.sabka.price||0) + (cur.today.price||0);
+    cur.total.profit = (cur.sabka.profit||0) + (cur.today.profit||0);
+    cur.total.weightKg = (cur.sabka.weightKg||0) + (Number(cur.weightKg)||0);
+    if(showDiscount) cur.total.discount = (cur.sabka.discount||0) + (cur.today.discount||0);
+
+    const jamah = cur.jamah || {t:[0,0], price:[0,0], profit:[0,0], discount:[0,0]};
+    const jd = jamah.discount || [0,0];
+    cur.bqaya = cur.bqaya || {};
+    cur.bqaya.t = cur.total.t - ((jamah.t[0]||0)+(jamah.t[1]||0));
+    cur.bqaya.price = cur.total.price - ((jamah.price[0]||0)+(jamah.price[1]||0));
+    cur.bqaya.profit = cur.total.profit - ((jamah.profit[0]||0)+(jamah.profit[1]||0));
+    cur.bqaya.weightKg = cur.total.weightKg;
+    if(showDiscount) cur.bqaya.discount = cur.total.discount - ((jd[0]||0)+(jd[1]||0));
+  }
+}
 function kataSaveEditedEntry(idx){
   const entry = kataOpenEntries[idx];
   if(!entry) return;
+  kataCascadeRecomputeFollowing(idx);
   if(kataLocalMode){
     kataLocalSaveEntries(kataOpenId, kataOpenEntries);
   } else if(entry.id){
