@@ -1840,6 +1840,17 @@ function buildAllTierTables(){
     computerPrintBtn.addEventListener('click', ()=> shareCardAsImage(tier, computerPrintBtn));
     printActions.appendChild(computerPrintBtn);
 
+    // صارف کی درخواست (2026-09-09): تیسرا بٹن — "Whatsapp پرنٹ" — موبائل
+    // اور کمپیوٹر دونوں پر ہمیشہ نظر آئے (kataApplyPrintButtonVisibility)۔
+    const whatsappPrintBtn = document.createElement('button');
+    whatsappPrintBtn.type = 'button';
+    whatsappPrintBtn.className = 'kata-print-entry-btn kata-print-whatsapp-btn';
+    whatsappPrintBtn.style.cssText = 'padding:2px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;';
+    whatsappPrintBtn.textContent = '🖨 Whatsapp پرنٹ';
+    whatsappPrintBtn.dataset.printMode = 'whatsapp';
+    whatsappPrintBtn.addEventListener('click', ()=> shareCardAsImage(tier, whatsappPrintBtn));
+    printActions.appendChild(whatsappPrintBtn);
+
     card.appendChild(printActions);
 
     tierListsContainer.appendChild(card);
@@ -2180,11 +2191,12 @@ function isMobileDevice(){
 // تھا — اب اصل ڈیوائس چیک پر منتقل کر دیا۔
 function kataApplyPrintButtonVisibility(root){
   if(!root) return;
-  // صارف کی درخواست (2026-09-09): دونوں بٹن ("موبائل پرنٹ" اور "کمپیوٹر
-  // پرنٹ") ہمیشہ نظر آئیں — چاہے موبائل پر ہوں یا کمپیوٹر پر — پہلے صرف
-  // ڈیوائس کی قسم کے مطابق ایک ہی نظر آتا تھا۔
+  // صارف کی درخواست (2026-09-09): تینوں بٹن ("موبائل پرنٹ"، "کمپیوٹر
+  // پرنٹ"، "Whatsapp پرنٹ") ہمیشہ نظر آئیں — چاہے موبائل پر ہوں یا
+  // کمپیوٹر پر۔
   root.querySelectorAll('.kata-print-mobile-btn').forEach(b=>{ b.style.display = ''; });
   root.querySelectorAll('.kata-print-computer-btn').forEach(b=>{ b.style.display = ''; });
+  root.querySelectorAll('.kata-print-whatsapp-btn').forEach(b=>{ b.style.display = ''; });
 }
 
 async function sharePdfDirectly(blob, fileName, title){
@@ -2204,6 +2216,34 @@ async function sharePdfDirectly(blob, fileName, title){
   }
   // کمپیوٹر پر — سیدھا پرنٹ ڈائیلاگ (کبھی Share شیٹ نہیں)۔
   printPdfBlob(blob);
+}
+
+// "Whatsapp پرنٹ" بٹن (صارف کی درخواست، 2026-09-09) — موبائل ہو یا
+// کمپیوٹر، دونوں پر پہلے ڈیوائس کی اپنی "شیئر" شیٹ کھولنے کی کوشش کرتے
+// ہیں (وہاں Whatsapp پر ٹیپ کرتے ہی Whatsapp کی اپنی مکمل رابطہ فہرست
+// خودکار کھل جاتی ہے) — براؤزر کی حفاظتی پابندی کی وجہ سے کسی ویب سائٹ
+// سے شیئر شیٹ کو مکمل نظرانداز کر کے سیدھا صرف Whatsapp کی فہرست تک
+// پہنچنا ممکن نہیں، یہی سب سے قریب ترین راستہ ہے۔ جن کمپیوٹرز پر یہ
+// شیئر شیٹ دستیاب نہیں وہاں فائل خودکار ڈاؤن لوڈ ہو کر Whatsapp ویب کھل
+// جاتا ہے، تاکہ صارف رابطہ چن کر خود فائل منسلک کر سکے۔
+async function whatsappShareBlob(blob, fileName, title){
+  try{
+    if(navigator.canShare && window.File){
+      const file = new File([blob], fileName, {type:'application/pdf'});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({files:[file], title});
+        return;
+      }
+    }
+  } catch(shareErr){
+    return; // صارف نے شیئر شیٹ خود بند کر دی
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fileName;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 10000);
+  window.open('https://web.whatsapp.com/send?text=' + encodeURIComponent(title + ' — فائل ابھی ڈاؤن لوڈ ہوئی ہے، براہ کرم رابطہ چن کر منسلک کریں۔'), '_blank');
 }
 
 async function shareCardAsImage(tier, btn){
@@ -2255,6 +2295,8 @@ async function shareCardAsImage(tier, btn){
     // خودکار (فون پر Share شیٹ، کمپیوٹر پر پرنٹ ڈائیلاگ)۔
     if(btn.dataset.printMode === 'computer'){
       printPdfBlob(blob);
+    } else if(btn.dataset.printMode === 'whatsapp'){
+      await whatsappShareBlob(blob, fileName, tier.title);
     } else {
       await sharePdfDirectly(blob, fileName, tier.title);
     }
@@ -3066,6 +3108,7 @@ function msRenderEntryCard(entry, isLast){
       <div class="ms-entry-actions kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
         <button type="button" class="kata-print-entry-btn kata-print-mobile-btn" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 موبائل پرنٹ</button>
         <button type="button" class="kata-print-entry-btn kata-print-computer-btn" data-print-mode="computer" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 کمپیوٹر پرنٹ</button>
+        <button type="button" class="kata-print-entry-btn kata-print-whatsapp-btn" data-print-mode="whatsapp" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 Whatsapp پرنٹ</button>
       </div>
     </div>`;
 }
@@ -5491,6 +5534,8 @@ async function kataPrintEntry(btn){
     // Share شیٹ، کمپیوٹر پر پرنٹ ڈائیلاگ) پر قائم رہے۔
     if(btn.dataset.printMode === 'computer'){
       printPdfBlob(blob);
+    } else if(btn.dataset.printMode === 'whatsapp'){
+      await whatsappShareBlob(blob, 'Iqbal chemical.pdf', 'کھاتہ انٹری');
     } else {
       await sharePdfDirectly(blob, 'Iqbal chemical.pdf', 'کھاتہ انٹری');
     }
@@ -5863,6 +5908,7 @@ function kataRenderEntryCard(entry, isLast, idx){
       <div class="kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
         <button type="button" class="kata-print-entry-btn kata-print-mobile-btn" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 موبائل پرنٹ</button>
         <button type="button" class="kata-print-entry-btn kata-print-computer-btn" data-print-mode="computer" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 کمپیوٹر پرنٹ</button>
+        <button type="button" class="kata-print-entry-btn kata-print-whatsapp-btn" data-print-mode="whatsapp" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 Whatsapp پرنٹ</button>
       </div>
     </div>`;
 }
