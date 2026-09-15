@@ -1057,36 +1057,6 @@ window.loadAuthSDKs = async function(){
 </style>
 </head>
 <body>
-<div id="siteOfflineBlock" style="position:fixed;inset:0;background:#F4EFE2;z-index:999999;display:none;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;text-align:center;">
-  <div style="max-width:340px;">
-    <div style="font-size:44px;margin-bottom:12px;">📶</div>
-    <div style="font-size:19px;font-weight:400;color:#7a2323;margin-bottom:8px;">انٹرنیٹ نہیں آ رہا</div>
-    <div style="font-size:14px;color:#5b5346;line-height:1.7;margin-bottom:18px;">یہ ویب سائٹ کلاؤڈ سے ڈیٹا لاتی ہے — بغیر انٹرنیٹ کے کام نہیں کر سکتی۔ براہِ کرم وائی فائی یا موبائل ڈیٹا آن کریں۔</div>
-    <button type="button" id="siteOfflineRetryBtn" style="padding:10px 24px;font-size:14px;border:none;border-radius:6px;background:#7a2323;color:#fff;cursor:pointer;">دوبارہ کوشش کریں</button>
-  </div>
-</div>
-<script>
-// ---------- انٹرنیٹ نہ ہونے پر پوری سائٹ روک دینا (2026-08-24) ----------
-// پہلے بغیر انٹرنیٹ کے صفحہ خالی نظر آتا تھا (کلاؤڈ ڈیٹا کبھی نہ آنے کی
-// وجہ سے) جس سے صارف کو لگتا تھا ڈیٹا ضائع ہو گیا — اب واضح پیغام کے ساتھ
-// پوری سائٹ ہی روک دی جاتی ہے، جب تک انٹرنیٹ واپس نہ آئے۔
-// (2026-08-24: پہلے یہاں navigator.onLine کے ساتھ ایک حقیقی fetch() سے بھی
-// تصدیق کی جاتی تھی — لیکن اگر صفحہ ڈاؤن لوڈ شدہ فائل سے content://...
-// کے ذریعے کھولا جائے (جیسے صارف اکثر کرتا ہے) تو وہ fetch ہمیشہ ناکام ہو
-// جاتا ہے چاہے انٹرنیٹ موجود ہو، جس سے یہ پیغام غلطی سے ہمیشہ نظر آتا
-// رہتا۔ اب صرف navigator.onLine — سادہ اور ہر جگہ قابلِ بھروسہ۔)
-(function(){
-  const block = document.getElementById('siteOfflineBlock');
-  const retryBtn = document.getElementById('siteOfflineRetryBtn');
-  function checkAndUpdate(){
-    block.style.display = navigator.onLine ? 'none' : 'flex';
-  }
-  window.addEventListener('online', checkAndUpdate);
-  window.addEventListener('offline', checkAndUpdate);
-  if(retryBtn) retryBtn.addEventListener('click', checkAndUpdate);
-  checkAndUpdate();
-})();
-</script>
 <div id="siteTextPromptModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
   <div class="auth-box" style="text-align:center;">
     <h2 id="siteTextPromptLabel" style="text-align:center;font-size:16px;border:none;"></h2>
@@ -1234,6 +1204,12 @@ function siteTextPrompt(label, callback){
        account book per dealer/customer, each new entry stacking below the
        last with the previous running total carried forward automatically ===================== -->
   <section id="kata" class="active">
+    <div id="kataOfflineBlock" style="display:none;text-align:center;padding:60px 20px;">
+      <div style="font-size:44px;margin-bottom:12px;">📶</div>
+      <div style="font-size:20px;font-weight:400;color:#7a2323;margin-bottom:8px;" dir="ltr">No Internet 🛜</div>
+      <div style="font-size:14px;color:#5b5346;line-height:1.7;margin-bottom:18px;max-width:340px;margin-left:auto;margin-right:auto;">انٹرنیٹ نہیں آ رہا — یہ کھاتہ کلاؤڈ سے فوراً اپڈیٹ ہوتا ہے، اس لیے بغیر انٹرنیٹ کے نہیں کھلتا۔ براہِ کرم وائی فائی یا موبائل ڈیٹا آن کریں۔</div>
+      <button type="button" id="kataOfflineRetryBtn" style="padding:10px 24px;font-size:14px;border:none;border-radius:6px;background:#7a2323;color:#fff;cursor:pointer;">دوبارہ کوشش کریں</button>
+    </div>
     <div id="kataListView">
       <div style="text-align:center;margin:14px 0;">
         <button type="button" class="share-btn" id="newKataBtn" style="margin:0;">+ نیا کھاتہ</button>
@@ -1248,6 +1224,49 @@ function siteTextPrompt(label, callback){
       <div id="kataDetailContainer"></div>
     </div>
   </section>
+
+  <script>
+  // ---------- سیلزمین/ربنواز/Agency کھاتے: بغیر انٹرنیٹ کے بند (2026-09-15) ----------
+  // یہ تینوں کھاتے ایک ہی #kata سیکشن میں ہیں (صرف kataInstance بدلتا ہے)۔
+  // پہلے پوری سائٹ ہی آف لائن ہونے پر بند ہو جاتی تھی (#siteOfflineBlock،
+  // 2026-08-24 والا) — اب یہ صرف انہی تین کھاتوں تک محدود ہے، باقی سائٹ
+  // (ریٹ لسٹ، ماہانہ ریکارڈ، فارمولیشن) آف لائن بھی چلتی رہے گی، چونکہ
+  // section{display:none} + section.active{display:block} کی وجہ سے یہ
+  // بلاک خودبخود صرف اس وقت نظر آئے گا جب #kata سیکشن ہی active ہو۔
+  (function(){
+    const block = document.getElementById('kataOfflineBlock');
+    const retryBtn = document.getElementById('kataOfflineRetryBtn');
+    const listView = document.getElementById('kataListView');
+    const detailView = document.getElementById('kataDetailView');
+    if(!block || !listView || !detailView) return;
+    let savedView = null; // آف لائن ہونے سے پہلے کون سا ویو کھلا تھا: 'list' یا 'detail'
+    function checkAndUpdate(){
+      if(!navigator.onLine){
+        if(block.style.display === 'none'){
+          // ابھی ابھی آف لائن ہوا — موجودہ ویو یاد رکھیں تاکہ نیٹ آنے پر واپس وہیں جا سکیں
+          savedView = (detailView.style.display !== 'none') ? 'detail' : 'list';
+        }
+        listView.style.display = 'none';
+        detailView.style.display = 'none';
+        block.style.display = 'block';
+      } else {
+        block.style.display = 'none';
+        if(savedView === 'detail'){
+          detailView.style.display = '';
+          listView.style.display = 'none';
+        } else {
+          listView.style.display = '';
+          detailView.style.display = 'none';
+        }
+      }
+    }
+    window.addEventListener('online', checkAndUpdate);
+    window.addEventListener('offline', checkAndUpdate);
+    if(retryBtn) retryBtn.addEventListener('click', checkAndUpdate);
+    window.kataOfflineRecheck = checkAndUpdate; // دوسری کھاتہ انسٹینس پر سوئچ کرتے وقت نیو بار میں بھی استعمال ہوتا ہے
+    checkAndUpdate();
+  })();
+  </script>
 
   <!-- ===================== RATE CALCULATOR ===================== -->
   <section id="rate">
@@ -1626,6 +1645,7 @@ document.querySelectorAll('nav button').forEach(btn=>{
       kataOpenName = '';
       kataOpenEntries = [];
       kataShowList();
+      if(window.kataOfflineRecheck) window.kataOfflineRecheck(); // دوسرے کھاتے پر سوئچ کرتے وقت بھی آف لائن ہونے پر No Internet ہی نظر آئے
       if(kataLocalMode) kataLocalRenderList();
       // Firestore mode: kataListUnsub is still watching the OLD instance's
       // collection — re-subscribe to the new one via initKataModule again.
