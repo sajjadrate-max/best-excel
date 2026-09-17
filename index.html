@@ -1206,8 +1206,8 @@ function siteTextPrompt(label, callback){
   <section id="kata" class="active">
     <div id="kataOfflineBlock" style="display:none;text-align:center;padding:60px 20px;">
       <div style="font-size:44px;margin-bottom:12px;">📶</div>
-      <div style="font-size:20px;font-weight:400;color:#7a2323;margin-bottom:8px;" dir="ltr">No Internet 🛜</div>
-      <div style="font-size:14px;color:#5b5346;line-height:1.7;margin-bottom:18px;max-width:340px;margin-left:auto;margin-right:auto;">انٹرنیٹ نہیں آ رہا — یہ کھاتہ کلاؤڈ سے فوراً اپڈیٹ ہوتا ہے، اس لیے بغیر انٹرنیٹ کے نہیں کھلتا۔ براہِ کرم وائی فائی یا موبائل ڈیٹا آن کریں۔</div>
+      <div style="font-size:22px;font-weight:400;color:#7a2323;margin-bottom:4px;">نیٹ آن کریں</div>
+      <div style="font-size:14px;color:#5b5346;line-height:1.7;margin-bottom:18px;max-width:340px;margin-left:auto;margin-right:auto;">یہ کھاتہ کلاؤڈ سے فوراً اپڈیٹ ہوتا ہے، اس لیے بغیر انٹرنیٹ کے نہیں کھلتا۔ براہِ کرم وائی فائی یا موبائل ڈیٹا آن کریں۔</div>
       <button type="button" id="kataOfflineRetryBtn" style="padding:10px 24px;font-size:14px;border:none;border-radius:6px;background:#7a2323;color:#fff;cursor:pointer;">دوبارہ کوشش کریں</button>
     </div>
     <div id="kataListView">
@@ -1233,6 +1233,19 @@ function siteTextPrompt(label, callback){
   // (ریٹ لسٹ، ماہانہ ریکارڈ، فارمولیشن) آف لائن بھی چلتی رہے گی، چونکہ
   // section{display:none} + section.active{display:block} کی وجہ سے یہ
   // بلاک خودبخود صرف اس وقت نظر آئے گا جب #kata سیکشن ہی active ہو۔
+  //
+  // (2026-09-17 فکس: کمپیوٹر پر یہ بالکل کام نہیں کر رہا تھا — وجہ:
+  // navigator.onLine صرف یہ بتاتا ہے کہ نیٹ ورک کیبل/وائی فائی جڑا ہے یا
+  // نہیں، اصل انٹرنیٹ (ISP) چل رہا ہے یا نہیں یہ نہیں بتاتا۔ کمپیوٹر پر
+  // اکثر وائی فائی/کیبل جڑا ہی رہتا ہے چاہے انٹرنیٹ بند ہو، تو
+  // navigator.onLine ہمیشہ true رہتا اور بلاک کبھی نظر نہیں آتا — یہی
+  // رپورٹ کی گئی خرابی تھی۔ اب navigator.onLine=true ہونے پر بھی ایک
+  // حقیقی fetch() سے تصدیق کی جاتی ہے، اور ہر 5 سیکنڈ بعد دوبارہ چیک ہوتا
+  // ہے (چونکہ صرف انٹرنیٹ بند ہونے پر 'offline' ایونٹ خود نہیں چلتا)۔ یہ
+  // fetch صرف اصل ویب سائٹ (https://...) پر چلتا ہے — اگر صفحہ لوکل
+  // ڈاؤن لوڈ شدہ فائل سے کھولا جائے (جیسے اکثر ہوتا ہے) تو fetch ہمیشہ
+  // ناکام ہو جاتا ہے چاہے انٹرنیٹ موجود ہو، اس لیے وہاں صرف
+  // navigator.onLine پر ہی بھروسہ کیا جاتا ہے۔
   (function(){
     const block = document.getElementById('kataOfflineBlock');
     const retryBtn = document.getElementById('kataOfflineRetryBtn');
@@ -1240,8 +1253,25 @@ function siteTextPrompt(label, callback){
     const detailView = document.getElementById('kataDetailView');
     if(!block || !listView || !detailView) return;
     let savedView = null; // آف لائن ہونے سے پہلے کون سا ویو کھلا تھا: 'list' یا 'detail'
-    function checkAndUpdate(){
-      if(!navigator.onLine){
+    let checking = false;
+
+    async function isReallyOnline(){
+      if(!navigator.onLine) return false;
+      if(location.protocol !== 'http:' && location.protocol !== 'https:') return true; // لوکل فائل — fetch پر بھروسہ نہیں کیا جا سکتا
+      try{
+        await fetch('https://www.gstatic.com/generate_204', { method:'GET', mode:'no-cors', cache:'no-store' });
+        return true;
+      }catch(e){
+        return false; // نیٹ ورک جڑا ہے مگر اصل انٹرنیٹ نہیں — یہی کمپیوٹر والا کیس
+      }
+    }
+
+    async function checkAndUpdate(){
+      if(checking) return;
+      checking = true;
+      const online = await isReallyOnline();
+      checking = false;
+      if(!online){
         if(block.style.display === 'none'){
           // ابھی ابھی آف لائن ہوا — موجودہ ویو یاد رکھیں تاکہ نیٹ آنے پر واپس وہیں جا سکیں
           savedView = (detailView.style.display !== 'none') ? 'detail' : 'list';
@@ -1265,6 +1295,7 @@ function siteTextPrompt(label, callback){
     if(retryBtn) retryBtn.addEventListener('click', checkAndUpdate);
     window.kataOfflineRecheck = checkAndUpdate; // دوسری کھاتہ انسٹینس پر سوئچ کرتے وقت نیو بار میں بھی استعمال ہوتا ہے
     checkAndUpdate();
+    setInterval(checkAndUpdate, 5000); // ہر 5 سیکنڈ دوبارہ تصدیق — صرف انٹرنیٹ (WAN) بند ہونے پر براؤزر کا 'offline' ایونٹ خود نہیں چلتا
   })();
   </script>
 
