@@ -1246,6 +1246,17 @@ function siteTextPrompt(label, callback){
   // ڈاؤن لوڈ شدہ فائل سے کھولا جائے (جیسے اکثر ہوتا ہے) تو fetch ہمیشہ
   // ناکام ہو جاتا ہے چاہے انٹرنیٹ موجود ہو، اس لیے وہاں صرف
   // navigator.onLine پر ہی بھروسہ کیا جاتا ہے۔
+  //
+  // (2026-09-19 فکس، دوبارہ لاگو: موبائل پر کوئی مخصوص کھاتہ/book کھولتے ہی
+  // چند سیکنڈ میں خودکار طور پر واپس فہرست (list) پر آ جاتا تھا۔ اصل وجہ:
+  // اوپر والا ہر-5-سیکنڈ interval، آن لائن ہونے پر ہر بار بلا شرط
+  // listView/detailView کی display دوبارہ سیٹ کر دیتا تھا — یعنی اگر
+  // savedView کبھی 'detail' پر سیٹ نہ ہوا ہو (site کبھی آف لائن نہ ہوئی ہو،
+  // صرف periodic recheck چلتی رہی) تو یہ ہمیشہ 'list' والی شاخ میں جا کر
+  // کھلا ہوا book زبردستی بند کر کے فہرست پر لے آتا۔ فکس: checkAndUpdate اب
+  // صرف اسی وقت view کو چھیڑتا ہے جب حالت واقعی بدلی ہو (آف لائن سے آن لائن،
+  // یا آن لائن سے آف لائن) — لگاتار آن لائن رہنے کی صورت میں کچھ بھی دوبارہ
+  // سیٹ نہیں کیا جاتا۔
   (function(){
     const block = document.getElementById('kataOfflineBlock');
     const retryBtn = document.getElementById('kataOfflineRetryBtn');
@@ -1253,6 +1264,7 @@ function siteTextPrompt(label, callback){
     const detailView = document.getElementById('kataDetailView');
     if(!block || !listView || !detailView) return;
     let savedView = null; // آف لائن ہونے سے پہلے کون سا ویو کھلا تھا: 'list' یا 'detail'
+    let wasOffline = false; // پچھلی چیک میں بلاک نظر آ رہا تھا یا نہیں — صرف حالت بدلنے پر ہی ویو دوبارہ سیٹ کیا جائے
     let checking = false;
 
     async function isReallyOnline(){
@@ -1272,22 +1284,31 @@ function siteTextPrompt(label, callback){
       const online = await isReallyOnline();
       checking = false;
       if(!online){
-        if(block.style.display === 'none'){
+        if(!wasOffline){
           // ابھی ابھی آف لائن ہوا — موجودہ ویو یاد رکھیں تاکہ نیٹ آنے پر واپس وہیں جا سکیں
           savedView = (detailView.style.display !== 'none') ? 'detail' : 'list';
-        }
-        listView.style.display = 'none';
-        detailView.style.display = 'none';
-        block.style.display = 'block';
-      } else {
-        block.style.display = 'none';
-        if(savedView === 'detail'){
-          detailView.style.display = '';
           listView.style.display = 'none';
-        } else {
-          listView.style.display = '';
           detailView.style.display = 'none';
+          block.style.display = 'block';
+          wasOffline = true;
         }
+        // پہلے سے ہی آف لائن بلاک دکھ رہا ہے — کچھ نہ چھیڑیں۔
+      } else {
+        if(wasOffline){
+          // ابھی ابھی آن لائن واپس آیا — محفوظ شدہ ویو بحال کریں
+          block.style.display = 'none';
+          if(savedView === 'detail'){
+            detailView.style.display = '';
+            listView.style.display = 'none';
+          } else {
+            listView.style.display = '';
+            detailView.style.display = 'none';
+          }
+          wasOffline = false;
+        }
+        // پہلے سے ہی آن لائن ہے — صارف جس ویو (فہرست یا کھلا ہوا book) میں
+        // ہے اسے بالکل نہ چھیڑیں، ورنہ ہر 5 سیکنڈ بعد کھلا ہوا book واپس
+        // فہرست پر آ جاتا (یہی موبائل والی رپورٹ کی گئی خرابی تھی)۔
       }
     }
     window.addEventListener('online', checkAndUpdate);
