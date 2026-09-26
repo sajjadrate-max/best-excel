@@ -1246,17 +1246,6 @@ function siteTextPrompt(label, callback){
   // ڈاؤن لوڈ شدہ فائل سے کھولا جائے (جیسے اکثر ہوتا ہے) تو fetch ہمیشہ
   // ناکام ہو جاتا ہے چاہے انٹرنیٹ موجود ہو، اس لیے وہاں صرف
   // navigator.onLine پر ہی بھروسہ کیا جاتا ہے۔
-  //
-  // (2026-09-19 فکس، دوبارہ لاگو: موبائل پر کوئی مخصوص کھاتہ/book کھولتے ہی
-  // چند سیکنڈ میں خودکار طور پر واپس فہرست (list) پر آ جاتا تھا۔ اصل وجہ:
-  // اوپر والا ہر-5-سیکنڈ interval، آن لائن ہونے پر ہر بار بلا شرط
-  // listView/detailView کی display دوبارہ سیٹ کر دیتا تھا — یعنی اگر
-  // savedView کبھی 'detail' پر سیٹ نہ ہوا ہو (site کبھی آف لائن نہ ہوئی ہو،
-  // صرف periodic recheck چلتی رہی) تو یہ ہمیشہ 'list' والی شاخ میں جا کر
-  // کھلا ہوا book زبردستی بند کر کے فہرست پر لے آتا۔ فکس: checkAndUpdate اب
-  // صرف اسی وقت view کو چھیڑتا ہے جب حالت واقعی بدلی ہو (آف لائن سے آن لائن،
-  // یا آن لائن سے آف لائن) — لگاتار آن لائن رہنے کی صورت میں کچھ بھی دوبارہ
-  // سیٹ نہیں کیا جاتا۔
   (function(){
     const block = document.getElementById('kataOfflineBlock');
     const retryBtn = document.getElementById('kataOfflineRetryBtn');
@@ -1264,7 +1253,6 @@ function siteTextPrompt(label, callback){
     const detailView = document.getElementById('kataDetailView');
     if(!block || !listView || !detailView) return;
     let savedView = null; // آف لائن ہونے سے پہلے کون سا ویو کھلا تھا: 'list' یا 'detail'
-    let wasOffline = false; // پچھلی چیک میں بلاک نظر آ رہا تھا یا نہیں — صرف حالت بدلنے پر ہی ویو دوبارہ سیٹ کیا جائے
     let checking = false;
 
     async function isReallyOnline(){
@@ -1284,31 +1272,22 @@ function siteTextPrompt(label, callback){
       const online = await isReallyOnline();
       checking = false;
       if(!online){
-        if(!wasOffline){
+        if(block.style.display === 'none'){
           // ابھی ابھی آف لائن ہوا — موجودہ ویو یاد رکھیں تاکہ نیٹ آنے پر واپس وہیں جا سکیں
           savedView = (detailView.style.display !== 'none') ? 'detail' : 'list';
-          listView.style.display = 'none';
-          detailView.style.display = 'none';
-          block.style.display = 'block';
-          wasOffline = true;
         }
-        // پہلے سے ہی آف لائن بلاک دکھ رہا ہے — کچھ نہ چھیڑیں۔
+        listView.style.display = 'none';
+        detailView.style.display = 'none';
+        block.style.display = 'block';
       } else {
-        if(wasOffline){
-          // ابھی ابھی آن لائن واپس آیا — محفوظ شدہ ویو بحال کریں
-          block.style.display = 'none';
-          if(savedView === 'detail'){
-            detailView.style.display = '';
-            listView.style.display = 'none';
-          } else {
-            listView.style.display = '';
-            detailView.style.display = 'none';
-          }
-          wasOffline = false;
+        block.style.display = 'none';
+        if(savedView === 'detail'){
+          detailView.style.display = '';
+          listView.style.display = 'none';
+        } else {
+          listView.style.display = '';
+          detailView.style.display = 'none';
         }
-        // پہلے سے ہی آن لائن ہے — صارف جس ویو (فہرست یا کھلا ہوا book) میں
-        // ہے اسے بالکل نہ چھیڑیں، ورنہ ہر 5 سیکنڈ بعد کھلا ہوا book واپس
-        // فہرست پر آ جاتا (یہی موبائل والی رپورٹ کی گئی خرابی تھی)۔
       }
     }
     window.addEventListener('online', checkAndUpdate);
@@ -4192,6 +4171,23 @@ function kataLocalGetEntries(bookId){
 }
 function kataLocalSaveEntries(bookId, arr){ (window.firebaseSyncSet || ((k,v)=>localStorage.setItem(k,v)))(kataLocalEntriesKey(bookId), JSON.stringify(arr)); }
 
+// موبائل/Whatsapp پرنٹ کے لیے (2026-09-26، صارف کی درخواست پر): اسی نام کے
+// کسٹمر/کھاتے کی، مہینہ بہ مہینہ auto-rollover سے بننے والی تمام کتابوں
+// (کھلی + بند شدہ) کی ساری انٹریاں، تاریخ کی ترتیب میں، ایک ہی فہرست میں
+// جمع کر دیتا ہے — تاکہ صرف موجودہ کھلی کتاب کی نہیں بلکہ کسٹمر کی اب تک کی
+// مکمل (پچھلے سب مہینوں سمیت) تاریخ ایک ہی PDF میں چلی جائے۔ سیلزمین/
+// ربنواز/Agency تینوں کھاتوں میں یکساں کام کرتا ہے کیونکہ ہر instance کی
+// اپنی الگ storage namespace ہے (kataLocalBooksKey/kataLocalEntriesKey)۔
+function kataGetFullHistoryEntries(){
+  const baseName = kataBaseBookName(kataOpenName);
+  const allBooks = kataLocalGetBooks().filter(b => kataBaseBookName(b.name) === baseName);
+  allBooks.sort((a,b)=> new Date(a.createdAt||0) - new Date(b.createdAt||0));
+  let entries = [];
+  allBooks.forEach(b=>{ entries = entries.concat(kataLocalGetEntries(b.id)); });
+  if(!entries.length) entries = kataOpenEntries.slice(); // حفاظتی: کوئی میچنگ کتاب نہ ملے تو کم از کم موجودہ کھلی کتاب کی انٹریاں
+  return entries;
+}
+
 // Runs every time the کھاتوں کی فہرست is opened — same rollover logic as
 // سرف کا ماہانہ حساب's msCheckMonthRollover (see there for the full
 // explanation). Never deletes anything, only closes old books and adds new
@@ -5449,11 +5445,15 @@ function kataOnEntryJamahDiscountInput(input, container){
 // (always the FIRST card) whenever an entry's id was missing/didn't match,
 // so printing entry #2 silently printed entry #1 instead. Targeting the
 // button's own ancestor card can never point at the wrong entry.
-async function kataPrintEntry(btn){
-  const card = btn.closest('.kata-entry-card');
-  if(!card) return;
-  const originalLabel = btn.textContent;
-  btn.textContent = '⏳...'; btn.disabled = true;
+// ایک انٹری کارڈ کو پرنٹ/PDF کے لیے تیار کر کے html2canvas سے کھینچتا ہے —
+// یہ منطق پہلے صرف kataPrintEntry کے اندر تھی، اب الگ فنکشن میں نکالی گئی
+// ہے (2026-09-26) تاکہ ایک ہی کارڈ (پرانا "کمپیوٹر پرنٹ" رویہ) اور مکمل
+// تاریخ کے کئی کارڈز (نیا "موبائل/Whatsapp پرنٹ" رویہ، نیچے
+// kataPrintFullHistory دیکھیں) دونوں اسی ایک، مشترکہ، پہلے سے آزمائے ہوئے
+// طریقے سے کھینچے جائیں — منطق کو دو جگہ الگ الگ لکھنے سے بچنے کے لیے۔
+// واپس کرتا ہے: {imgData, width, height} (width/height = ویب سائٹ پر کارڈ
+// کا اصل CSS پکسل سائز، جو پہلے کی طرح PDF میں سائز نکالنے کی بنیاد بنتا ہے)۔
+async function kataCaptureCardForPrint(card){
   const actions = card.querySelector('.kata-entry-actions');
   const prevDisplay = actions ? actions.style.display : '';
   if(actions) actions.style.display = 'none'; // don't capture the print/delete buttons themselves
@@ -5498,13 +5498,6 @@ async function kataPrintEntry(btn){
         });
       });
     }
-    // 2026-09-03 (صارف کی نئی، واضح ہدایت پر): پہلے یہاں ٹوٹلز (Sabka/
-    // Today/Total/Jamah/Bqaya) والی ٹیبل سے Price کالم بھی پرنٹ میں چھپایا
-    // جاتا تھا، صرف Profit/Discount نظر آتے تھے — جس سے پرنٹ کا نمبر ویب
-    // سائٹ سے بہت مختلف/غلط لگتا تھا (اصل میں مختلف کالم دیکھ رہے تھے)۔
-    // اب صارف نے واضح کہا: کھاتے میں جو حساب ہے وہی پرنٹ میں بھی نظر آئے —
-    // اس لیے یہ ٹوٹلز ٹیبل والی چھپاؤ مکمل ہٹا دی۔ آئٹم ٹیبل کی موجودہ
-    // چھپاؤ (اوپر) ویسی ہی رہتی ہے، وہاں کوئی تبدیلی کی درخواست نہیں آئی۔
   }
   // Agency کھاتہ — "کمیشن" کے دونوں کالم (ریٹ + ٹوٹل) اور "کل کمیشن" باکس
   // پرنٹ/PDF میں کبھی نظر نہ آئیں (صارف کی واضح درخواست، 2026-08-30) — یہ
@@ -5521,12 +5514,8 @@ async function kataPrintEntry(btn){
   // html2canvas صرف نظر آنے والا حصہ کھینچتا تھا۔ اب ٹیبل fixed layout کی
   // وجہ سے پہلے ہی مکمل اسکرین میں فٹ ہے (کوئی سکرول نہیں) — اسی موجودہ
   // حالت میں کھینچنا اب زیادہ درست ہے، ورنہ پرنٹ ویب سائٹ سے مختلف نظر آتا۔
+  card.classList.add('kata-print-tight'); // صرف پرنٹ کے وقت — کیپچر کے بعد نیچے finally میں ہٹا دیا جاتا ہے، ویب سائٹ پر کبھی نظر نہیں آتا
   try{
-    card.classList.add('kata-print-tight'); // صرف پرنٹ کے وقت — کیپچر کے بعد نیچے finally میں ہٹا دیا جاتا ہے، ویب سائٹ پر کبھی نظر نہیں آتا
-    // صرف "کمپیوٹر پرنٹ" کیپچر کے وقت "BEST" واٹر مارک بھی عارضی طور پر
-    // چھپا دیتے ہیں (html2canvas سے پہلے، ورنہ تصویر میں آ جاتا) — موبائل
-    // پرنٹ اور ویب سائٹ متاثر نہیں ہوتے (2026-09-01، صارف کی درخواست پر)۔
-    if(btn.dataset.printMode === 'computer') card.classList.add('kata-print-no-watermark');
     try{ await document.fonts.ready; } catch(e){ /* proceed anyway */ }
     if(typeof window.measureAndSizeInput === 'function'){
       card.querySelectorAll('.cell-input').forEach(window.measureAndSizeInput);
@@ -5550,11 +5539,36 @@ async function kataPrintEntry(btn){
     });
     const cardRect = card.getBoundingClientRect(); // ویب سائٹ پر خانہ اصل میں کتنا "چھوٹا" نظر آتا ہے، اسی سائز کو پرنٹ کے لیے بنیاد بنائیں گے
     const canvas = await html2canvas(card, {scale:3, backgroundColor:'#F4EFE2', useCORS:true});
-    inputSwaps.forEach(({inp, span})=>{ span.remove(); inp.style.display = ''; });
-    inputSwaps = [];
+    return { imgData: canvas.toDataURL('image/png'), width: cardRect.width, height: cardRect.height };
+  } finally {
+    card.classList.remove('kata-print-tight');
+    inputSwaps.forEach(({inp, span})=>{ span.remove(); inp.style.display = ''; }); // اگر html2canvas سے پہلے ہی کوئی خرابی آئی ہو تو بھی inputs واپس آ جائیں
+    hiddenPrintCells.forEach(({cell, prev})=>{ cell.style.display = prev; }); // چھپائے گئے کالمز ویب سائٹ پر واپس دکھا دیں
+    if(actions) actions.style.display = prevDisplay;
+    if(renameBtn) renameBtn.style.display = renameBtnPrevDisplay;
+    editUiEls.forEach((el,i)=>{ el.style.display = editUiPrevDisplay[i]; });
+  }
+}
+
+// "کمپیوٹر پرنٹ" بٹن — صرف یہی ایک انٹری، ہمیشہ کی طرح ایک صفحے پر دو
+// کاپیاں (اوپر+نیچے، 2026-09-20 فیچر)۔ "موبائل پرنٹ"/"Whatsapp پرنٹ" اب اس
+// فنکشن سے الگ ہو کر kataPrintFullHistory میں چلے گئے ہیں (2026-09-26،
+// نیچے دیکھیں) کیونکہ وہ اب صرف اسی ایک انٹری کی بجائے مکمل کھاتے کی
+// تاریخ بھیجتے ہیں۔
+async function kataPrintEntry(btn){
+  const card = btn.closest('.kata-entry-card');
+  if(!card) return;
+  if(btn.dataset.printMode !== 'computer') return kataPrintFullHistory(btn);
+  const originalLabel = btn.textContent;
+  btn.textContent = '⏳...'; btn.disabled = true;
+  // صرف "کمپیوٹر پرنٹ" کیپچر کے وقت "BEST" واٹر مارک بھی عارضی طور پر
+  // چھپا دیتے ہیں (html2canvas سے پہلے، ورنہ تصویر میں آ جاتا) — موبائل
+  // پرنٹ اور ویب سائٹ متاثر نہیں ہوتے (2026-09-01، صارف کی درخواست پر)۔
+  card.classList.add('kata-print-no-watermark');
+  try{
+    const { imgData, width, height } = await kataCaptureCardForPrint(card);
     if(typeof jspdf === 'undefined' || !jspdf.jsPDF) throw new Error('jsPDF-not-loaded');
     const { jsPDF } = jspdf;
-    const imgData = canvas.toDataURL('image/png');
     // پرنٹر کا پرنٹ ڈائیلاگ عام طور پر ہمیشہ Portrait کاغذ فرض کرتا ہے —
     // پہلے یہاں کھاتے کی چوڑی ٹیبل کے مطابق PDF کا صفحہ بھی چوڑا (landscape)
     // بنایا جاتا تھا، جس کی وجہ سے پرنٹر پر کاغذ الٹی/پسیلی (sideways) نکل
@@ -5570,8 +5584,8 @@ async function kataPrintEntry(btn){
     // لے آتے ہیں (1 پکسل ≈ 0.75pt)، صفحہ نہیں بھرتے — نیچے خالی جگہ رہے
     // گی، وہی مقصود ہے۔
     const pxToPt = 0.75;
-    let drawW = cardRect.width * pxToPt;
-    let drawH = cardRect.height * pxToPt;
+    let drawW = width * pxToPt;
+    let drawH = height * pxToPt;
     // صارف کی درخواست (2026-08-26): چوڑائی مزید بڑھائیں (خانے کچھ چوڑے
     // ہوں)، چاہے لمبائی نیچے کی طرف تھوڑی مزید بڑھ جائے — اب چوڑائی کو
     // پورا صفحہ استعمال کرنے کی بنیاد بنایا ہے۔
@@ -5579,10 +5593,8 @@ async function kataPrintEntry(btn){
     const availH = pageH - margin*2;
     // صارف کی درخواست (2026-08-29): "کمپیوٹر پرنٹ" بٹن کے لیے صفحے کا صرف
     // ایک تہائی (1/3) حصہ استعمال ہو (پہلے 1/2 رکھا گیا تھا، بعد میں 1/3
-    // کر دیا گیا) — "موبائل پرنٹ" بٹن پرانی مکمل-صفحہ-بھرنے والی حالت پر
-    // ہی قائم رہتا ہے۔
-    const isComputerPrint = btn.dataset.printMode === 'computer';
-    const printAvailH = isComputerPrint ? (availH / 3) : availH;
+    // کر دیا گیا)۔
+    const printAvailH = availH / 3;
     const sizeBoost = 1.12; // صارف کی درخواست (2026-08-26): پورے صفحے کی چوڑائی بھرنے کے بعد بھی مجموعی سائز تھوڑا مزید بڑا کریں
     let safetyScale = (availW / drawW) * sizeBoost;
     if(drawH * safetyScale > printAvailH){
@@ -5592,46 +5604,95 @@ async function kataPrintEntry(btn){
     drawW *= safetyScale;
     drawH *= safetyScale;
     // صارف کی درخواست (2026-08-26): چھوٹی انٹریوں میں نیچے خالی جگہ بچ
-    // جاتی تھی — اب لمبائی کو بھی مطلوبہ اونچائی (مکمل یا نصف صفحہ) تک
-    // کھینچ دیتے ہیں (چوڑائی وہی رہتی ہے) تاکہ خالی جگہ نہ رہے۔
+    // جاتی تھی — اب لمبائی کو بھی مطلوبہ اونچائی (نصف صفحہ) تک کھینچ دیتے
+    // ہیں (چوڑائی وہی رہتی ہے) تاکہ خالی جگہ نہ رہے۔
     if(drawH < printAvailH){
       drawH = printAvailH;
     }
     // صارف کی درخواست (2026-09-20): "کمپیوٹر پرنٹ" پر کاغذ بچانے کے لیے ایک
     // ہی کلک میں، ایک ہی صفحے پر، اسی انٹری کی دو کاپیاں ایک ساتھ چھپیں —
-    // ایک بالکل صفحے کے اوپر، دوسری بالکل صفحے کے نیچے (پہلے صرف ایک کاپی
-    // اوپر چھپتی تھی)۔ چونکہ printAvailH پہلے سے ہی صفحے کا صرف 1/3 حصہ ہے،
-    // اوپر اور نیچے کی دو کاپیوں کے درمیان کافی خالی جگہ رہتی ہے، ٹکراؤ
-    // نہیں ہوتا۔ صرف "کمپیوٹر پرنٹ" کے لیے — "Whatsapp پرنٹ" میں کوئی
-    // تبدیلی نہیں، وہ ہمیشہ کی طرح ایک ہی کاپی، اوپر سے شروع کرتا ہے۔
+    // ایک بالکل صفحے کے اوپر، دوسری بالکل صفحے کے نیچے۔
     pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
-    if(isComputerPrint){
-      pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, pageH - margin - drawH, drawW, drawH);
+    pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, pageH - margin - drawH, drawW, drawH);
+    const blob = pdf.output('blob');
+    if(!blob) throw new Error('no-blob');
+    printPdfBlob(blob);
+  } catch(err){
+    alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
+    console.warn(err);
+  } finally {
+    card.classList.remove('kata-print-no-watermark');
+    btn.textContent = originalLabel; btn.disabled = false;
+  }
+}
+
+// "موبائل پرنٹ" اور "Whatsapp پرنٹ" دونوں بٹن — صارف کی درخواست پر
+// (2026-09-26): اب صرف اسی ایک انٹری کی بجائے، اسی کسٹمر/کھاتے کی اب تک کی
+// ساری انٹریاں (اگر مہینہ بہ مہینہ auto-rollover سے کئی الگ کتابیں بن چکی
+// ہوں تو ان سب کی مل کر) ایک ہی PDF فائل میں چلی جاتی ہیں — ہر انٹری اپنے
+// الگ صفحے پر، بالکل ویب سائٹ پر نظر آنے والی شکل میں (سابقہ/جمع/بقایا
+// سمیت)۔ سیلزمین/ربنواز/Agency تینوں کھاتوں میں کام کرتا ہے۔ "کمپیوٹر
+// پرنٹ" میں کوئی تبدیلی نہیں — وہ اب بھی صرف کلک کی گئی انٹری بھیجتا ہے۔
+async function kataPrintFullHistory(btn){
+  const originalLabel = btn.textContent;
+  btn.textContent = '⏳...'; btn.disabled = true;
+  const printMode = btn.dataset.printMode; // 'whatsapp' یا خالی (موبائل)
+  let offscreen = null;
+  try{
+    const entries = kataGetFullHistoryEntries();
+    if(!entries.length) throw new Error('no-entries');
+    // نیا، اصل صفحے سے چھپا ہوا (off-screen) کنٹینر — اسی چوڑائی کا جو
+    // اصل کھاتے کے کارڈز کی ہے، تاکہ ہر انٹری بالکل ویب سائٹ جیسی ہی بنے۔
+    const liveContainer = document.getElementById('kataDetailContainer');
+    const containerWidth = liveContainer ? liveContainer.getBoundingClientRect().width : 380;
+    offscreen = document.createElement('div');
+    offscreen.style.position = 'fixed';
+    offscreen.style.left = '-99999px';
+    offscreen.style.top = '0';
+    offscreen.style.width = containerWidth + 'px';
+    offscreen.style.background = '#F4EFE2';
+    document.body.appendChild(offscreen);
+    offscreen.innerHTML = entries.map((entry, i)=> kataRenderEntryCard(entry, i === entries.length - 1, i)).join('');
+    kataApplyIndianFormattingToReadonly(offscreen);
+    try{ await document.fonts.ready; } catch(e){ /* proceed anyway */ }
+    if(typeof jspdf === 'undefined' || !jspdf.jsPDF) throw new Error('jsPDF-not-loaded');
+    const { jsPDF } = jspdf;
+    const pdf = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 22;
+    const pxToPt = 0.75;
+    const availW = pageW - margin*2;
+    const availH = pageH - margin*2;
+    const sizeBoost = 1.12;
+    const cards = Array.from(offscreen.querySelectorAll('.kata-entry-card'));
+    // ہر انٹری اپنے الگ صفحے پر — پہلے کی طرح ویب سائٹ کے اصل کمپیکٹ سائز
+    // میں (پورا صفحہ زبردستی نہیں بھرتے)۔
+    for(let i=0;i<cards.length;i++){
+      const { imgData, width, height } = await kataCaptureCardForPrint(cards[i]);
+      let drawW = width * pxToPt;
+      let drawH = height * pxToPt;
+      let safetyScale = (availW / drawW) * sizeBoost;
+      if(drawH * safetyScale > availH){
+        safetyScale = availH / drawH;
+      }
+      drawW *= safetyScale;
+      drawH *= safetyScale;
+      if(i > 0) pdf.addPage();
+      pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
     }
     const blob = pdf.output('blob');
     if(!blob) throw new Error('no-blob');
-    // دو الگ پرنٹ بٹن (2026-08-29): "کمپیوٹر پرنٹ" بٹن پر ہمیشہ سیدھا
-    // براؤزر کا پرنٹ ڈائیلاگ کھلے (چاہے فون سے ہی کیوں نہ کھولا جائے)،
-    // اور "موبائل پرنٹ" بٹن پرانی خودکار طرزِ عمل (ڈیوائس چیک کر کے فون پر
-    // Share شیٹ، کمپیوٹر پر پرنٹ ڈائیلاگ) پر قائم رہے۔
-    if(btn.dataset.printMode === 'computer'){
-      printPdfBlob(blob);
-    } else if(btn.dataset.printMode === 'whatsapp'){
-      await whatsappShareBlob(blob, 'Iqbal chemical.pdf', 'کھاتہ انٹری');
+    if(printMode === 'whatsapp'){
+      await whatsappShareBlob(blob, 'Iqbal chemical.pdf', 'مکمل کھاتہ ریکارڈ');
     } else {
-      await sharePdfDirectly(blob, 'Iqbal chemical.pdf', 'کھاتہ انٹری');
+      await sharePdfDirectly(blob, 'Iqbal chemical.pdf', 'مکمل کھاتہ ریکارڈ');
     }
   } catch(err){
     alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
     console.warn(err);
   } finally {
-    card.classList.remove('kata-print-tight');
-    card.classList.remove('kata-print-no-watermark');
-    inputSwaps.forEach(({inp, span})=>{ span.remove(); inp.style.display = ''; }); // اگر html2canvas سے پہلے ہی کوئی خرابی آئی ہو تو بھی inputs واپس آ جائیں
-    hiddenPrintCells.forEach(({cell, prev})=>{ cell.style.display = prev; }); // چھپائے گئے کالمز ویب سائٹ پر واپس دکھا دیں
-    if(actions) actions.style.display = prevDisplay;
-    if(renameBtn) renameBtn.style.display = renameBtnPrevDisplay;
-    editUiEls.forEach((el,i)=>{ el.style.display = editUiPrevDisplay[i]; });
+    if(offscreen && offscreen.parentNode) offscreen.parentNode.removeChild(offscreen);
     btn.textContent = originalLabel; btn.disabled = false;
   }
 }
@@ -5909,7 +5970,7 @@ function kataRenderEntryCard(entry, isLast, idx){
       <div style="display:flex;margin-top:8px;border:1px solid var(--line);border-radius:3px;overflow:hidden;">
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           ${editBox((entry.today && entry.today.profit) || 0,'todayProfit',5) || `<div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.profit) || 0}</div>`}
-          <div style="font-size:7px;color:#5b5346;margin-top:1px;">Total Profit</div>
+          <div style="font-size:7px;color:#5b5346;margin-top:1px;">Today Profit</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           ${editBox((entry.today && entry.today.price) || 0,'todayPrice',6) || `<div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.price) || 0}</div>`}
@@ -6194,7 +6255,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <div style="display:flex;margin-top:8px;border:1px solid var(--line);border-radius:3px;overflow:hidden;">
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           <div class="n" data-kata-sum-profit style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
-          <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Total Profit</div>
+          <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Today Profit</div>
         </div>
         <div style="flex:1;background:var(--paper-dark);padding:3px 1px;text-align:center;border-right:1px solid var(--line);">
           <div class="n" data-kata-sum-price style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
