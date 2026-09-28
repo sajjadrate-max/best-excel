@@ -1254,6 +1254,14 @@ function siteTextPrompt(label, callback){
     if(!block || !listView || !detailView) return;
     let savedView = null; // آف لائن ہونے سے پہلے کون سا ویو کھلا تھا: 'list' یا 'detail'
     let checking = false;
+    // 2026-09-28: اہم — یہ فلیگ (wasOffline) لازمی ہے۔ اس کے بغیر نیچے کا
+    // 'else' (آن لائن والا) حصہ ہر 5 سیکنڈ بعد، چاہے آف لائن کبھی ہوا ہی نہ
+    // ہو، ہمیشہ لسٹ/ڈیٹیل ویو کی display دوبارہ سیٹ کر دیتا ہے — جس کی وجہ سے
+    // کوئی بھی کھاتہ کھولتے ہی چند سیکنڈ بعد خودبخود واپس فہرست پر آ جاتا ہے۔
+    // اصل حالت میں کوئی تبدیلی (offline↔online transition) نہ ہو تو یہ کوڈ
+    // بالکل کچھ نہ کرے — یہی اصول ہمیشہ برقرار رکھیں، چاہے فائل کو کتنی بار
+    // بھی دوبارہ لکھا جائے۔
+    let wasOffline = false;
 
     async function isReallyOnline(){
       if(!navigator.onLine) return false;
@@ -1272,22 +1280,29 @@ function siteTextPrompt(label, callback){
       const online = await isReallyOnline();
       checking = false;
       if(!online){
-        if(block.style.display === 'none'){
+        if(!wasOffline){
           // ابھی ابھی آف لائن ہوا — موجودہ ویو یاد رکھیں تاکہ نیٹ آنے پر واپس وہیں جا سکیں
           savedView = (detailView.style.display !== 'none') ? 'detail' : 'list';
-        }
-        listView.style.display = 'none';
-        detailView.style.display = 'none';
-        block.style.display = 'block';
-      } else {
-        block.style.display = 'none';
-        if(savedView === 'detail'){
-          detailView.style.display = '';
           listView.style.display = 'none';
-        } else {
-          listView.style.display = '';
           detailView.style.display = 'none';
+          block.style.display = 'block';
+          wasOffline = true;
         }
+        // پہلے سے ہی آف لائن ہے — کچھ نہ کریں، ہر ٹک پر دوبارہ display سیٹ نہ کریں
+      } else {
+        if(wasOffline){
+          block.style.display = 'none';
+          if(savedView === 'detail'){
+            detailView.style.display = '';
+            listView.style.display = 'none';
+          } else {
+            listView.style.display = '';
+            detailView.style.display = 'none';
+          }
+          wasOffline = false;
+        }
+        // پہلے سے ہی آن لائن ہے — کچھ نہ کریں، یہی اصل فکس ہے (کھلا ہوا کھاتہ
+        // چھیڑا نہیں جائے گا چاہے 5 سیکنڈ والا ٹائمر کتنی بار بھی چلے)
       }
     }
     window.addEventListener('online', checkAndUpdate);
