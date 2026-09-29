@@ -5025,9 +5025,27 @@ function kataRenderDetail(name){
     html += `<div class="card" style="cursor:pointer;text-align:center;" data-kata-prev-closed-book-id="${prevClosedBook.id}" data-kata-prev-closed-book-name="${kataEscape(prevClosedBook.name)}">${prevLastEntryDate ? `<div class="note" style="text-align:center;font-size:11px;margin-bottom:2px;">آخری انٹری: ${prevLastEntryDate.toLocaleDateString('en-GB')}</div>` : ''}<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(kataBaseBookName(prevClosedBook.name))} 🔒</h2></div>`;
   }
 
+  // 2026-09-29: صارف کی درخواست پر — "⬅ کھاتوں کی فہرست" واپسی بٹن پہلے صرف
+  // سب سے اوپر (پورے کھاتے/شیٹ سے پہلے، #kataBackBtn) تھا۔ اب پوری شیٹ کے
+  // بالکل نیچے بھی وہی بٹن دکھایا جاتا ہے (ہر بار جب بھی شیٹ/کھاتہ بنتا ہے)،
+  // تاکہ آخری انٹری تک اسکرول کرنے کے بعد اوپر واپس جائے بغیر ہی فہرست پر
+  // جایا جا سکے — تینوں کھاتوں (سیلزمین/ربنواز/Agency) میں خودکار لاگو،
+  // چونکہ یہ سب اسی مشترکہ kataRenderDetail فنکشن سے بنتے ہیں۔ اوپر والے
+  // اصل #kataBackBtn پر پہلے سے موجود کلک لاجک (لوکل/Firestore دونوں موڈ)
+  // کو دوبارہ نہ لکھنے کے لیے، نیچے والا بٹن صرف اوپر والے بٹن پر خودکار
+  // کلک کر دیتا ہے۔
+  html += `<div class="card" style="text-align:center;"><button type="button" class="lock-btn kata-back-btn-bottom" style="margin:0;">⬅ کھاتوں کی فہرست</button></div>`;
+
   container.innerHTML = html;
   kataApplyIndianFormattingToReadonly(container);
   kataApplyPrintButtonVisibility(container);
+  const backBtnBottom = container.querySelector('.kata-back-btn-bottom');
+  if(backBtnBottom){
+    backBtnBottom.addEventListener('click', ()=>{
+      const topBackBtn = document.getElementById('kataBackBtn');
+      if(topBackBtn) topBackBtn.click();
+    });
+  }
 
   if(!kataOpenClosed || kataClosedFormUnlocked){
     const saveBtn = document.getElementById('kataSaveEntryBtn');
@@ -6299,7 +6317,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Less</div>
         </div>` : `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;box-sizing:border-box;">
-          <div class="n" data-kata-sum-kharch style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
+          <input type="text" inputmode="decimal" data-kata-sum-kharch data-kata-kraya-manual class="cell-input" style="border:none;background:transparent;font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;width:100%;box-sizing:border-box;text-align:center;padding:0;" value="0">
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total Rent</div>
         </div>`}
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
@@ -6453,9 +6471,14 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
     // کل وزن (من) — 1 من = 40 کلوگرام (صارف کا بتایا ہوا تبادلہ)۔
     const sumWeightMannEl = document.querySelector('[data-kata-sum-weight-mann]');
     if(sumWeightMannEl) sumWeightMannEl.textContent = (todayWeightGrams / 1000 / 40).toFixed(2);
-    // Agency کھاتہ — صارف کی درخواست پر (2026-08-27): "کرایہ" اب دستی نہیں،
-    // ہر آئٹم کی "ٹوٹل کرایہ" (فی کارٹن کرایہ × T CTN) کا مجموعہ خودکار
-    // بنتا ہے، اور Price میں پہلے کی طرح شامل ہوتا ہے۔
+    // Agency کھاتہ — پہلے "کرایہ" صرف خودکار تھا (ہر آئٹم کی "ٹوٹل کرایہ"
+    // یعنی فی کارٹن کرایہ × T CTN کا مجموعہ)، Price میں پہلے کی طرح شامل
+    // ہوتا ہے۔ 2026-09-29 صارف کی درخواست پر: اب یہ خانہ خود بھی لکھا جا
+    // سکتا ہے — خودکار مجموعہ اسی خانے میں پہلے کی طرح نظر آتا رہتا ہے، مگر
+    // اگر صارف خود اس میں کوئی رقم ٹائپ کر دے (data-kata-kraya-manual پر
+    // 'input' ایونٹ، نیچے وائرنگ دیکھیں) تو وہ رقم محفوظ ہو جاتی ہے اور
+    // خودکار مجموعہ اسے دوبارہ اوور رائیٹ نہیں کرتا — جب تک نئی انٹری فارم
+    // دوبارہ نہ بنے (تب دوبارہ خودکار مجموعے سے شروع ہوتا ہے)۔
     let kharch;
     if(kataInstance === 'agency'){
       kharch = 0;
@@ -6467,7 +6490,17 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
         kharch += kr * t2;
       });
       const sumKharchEl = document.querySelector('[data-kata-sum-kharch]');
-      if(sumKharchEl) sumKharchEl.textContent = kataIndianNumberFormat(kharch);
+      if(sumKharchEl){
+        if(sumKharchEl.tagName === 'INPUT'){
+          if(sumKharchEl.dataset.kataManualEdited === '1'){
+            kharch = Number(sumKharchEl.value) || 0; // صارف کی اپنی لکھی ہوئی رقم استعمال ہو
+          } else {
+            sumKharchEl.value = kharch;
+          }
+        } else {
+          sumKharchEl.textContent = kataIndianNumberFormat(kharch);
+        }
+      }
       // کمیشن — Price/کرایہ سے بالکل الگ اپنا مستقل چلنے والا مجموعہ (صارف
       // کی درخواست پر 2026-08-30): کہیں بھی Price/Profit میں شامل نہیں
       // ہوتا، صرف اپنا "کل کمیشن" باکس اپڈیٹ ہوتا رہتا ہے۔
@@ -6667,6 +6700,18 @@ function kataWireLiveFormulas(prevTotal, prevItemData){
   }
   document.querySelectorAll('#kataDetailView .cell-input').forEach(kataTrackUndo);
 
+  // Agency کھاتہ — "Total Rent" خانہ اب صرف خودکار نہیں، صارف خود بھی رقم
+  // لکھ سکتا ہے (2026-09-29، صارف کی درخواست پر): جیسے ہی صارف اس خانے میں
+  // خود کچھ ٹائپ کرے، اسے "دستی" نشان زد کر دیتے ہیں تاکہ اوپر والا خودکار
+  // مجموعہ (recomputeTotalsBlock) اسے دوبارہ اوور رائیٹ نہ کرے۔
+  const krayaManualEl = document.querySelector('[data-kata-kraya-manual]');
+  if(krayaManualEl){
+    krayaManualEl.addEventListener('input', ()=>{
+      krayaManualEl.dataset.kataManualEdited = '1';
+      recomputeTotalsBlock(); // Total Price/Profit فوراً نئی (دستی) رقم کے مطابق تازہ ہوں
+    });
+  }
+
   function kataUndo(){
     let entry = kataUndoStack.pop();
     while(entry && !document.body.contains(entry.input)) entry = kataUndoStack.pop(); // skip entries from rows no longer in the DOM (e.g. after a save re-render)
@@ -6795,9 +6840,16 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
   document.querySelectorAll('#kataDetailContainer [data-color-key]').forEach(td=>{
     if(td.style.backgroundColor) cellColors[td.dataset.colorKey] = td.style.backgroundColor;
   });
-  // Agency کھاتہ — صارف کی درخواست پر (2026-08-27): "کرایہ" اب دستی نہیں،
-  // ہر آئٹم کی "ٹوٹل کرایہ" کا مجموعہ (todayKrayaSum) ہی محفوظ ہوتا ہے۔
-  const kharch = showKraya ? todayKrayaSum : (Number((document.querySelector('[data-kata-field="kharch"]')||{}).value || 0) || 0);
+  // Agency کھاتہ — پہلے ہمیشہ ہر آئٹم کی "ٹوٹل کرایہ" کا خودکار مجموعہ
+  // (todayKrayaSum) ہی محفوظ ہوتا تھا۔ 2026-09-29 صارف کی درخواست پر: اگر
+  // صارف نے "Total Rent" کے خانے میں خود رقم ٹائپ کر دی ہو (دیکھیں
+  // kataWireLiveFormulas میں data-kata-kraya-manual) تو وہی دستی رقم محفوظ
+  // ہو، ورنہ ہمیشہ کی طرح خودکار مجموعہ — یعنی جو رقم اس وقت خانے میں نظر
+  // آ رہی ہے، وہی محفوظ ہوتی ہے۔
+  const kharchDisplayEl = document.querySelector('[data-kata-sum-kharch]');
+  const kharch = showKraya
+    ? (kharchDisplayEl && kharchDisplayEl.tagName === 'INPUT' ? (Number(kharchDisplayEl.value) || 0) : todayKrayaSum)
+    : (Number((document.querySelector('[data-kata-field="kharch"]')||{}).value || 0) || 0);
   // ربنواز کھاتہ — خرچہ اور Less دونوں Price میں شامل ہونے کی بجائے Profit
   // سے منفی ہوتے ہیں (2026-08-22)۔ Agency میں پرانا انداز برقرار ہے۔
   const lessInput = document.querySelector('[data-kata-field="less"]');
