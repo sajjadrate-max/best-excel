@@ -1105,7 +1105,17 @@ function siteTextPrompt(label, callback){
   <div class="auth-box" style="text-align:center;">
     <h2 style="text-align:center;font-size:18px;">🔒 یہ ویب سائٹ محفوظ ہے</h2>
     <label>کوڈ درج کریں</label>
-    <input type="password" id="siteAccessInput" style="text-align:center;" autofocus>
+    <!-- 2026-09-29: صارف کی شکایت — براؤزر/کی بورڈ اس خانے کے اوپر پہلے سے
+         محفوظ شدہ (غلط/پرانے) "پاس ورڈ" تجویز کرتا تھا (کسٹمر کے ناموں جیسے
+         عجیب اندراجات، اسکرین شاٹ میں نظر آئے) — چونکہ یہ خانہ type="password"
+         تھا اور براؤزر اسے عام لاگ اِن سمجھ کر اپنی محفوظ شدہ فہرست دکھا رہا
+         تھا۔ autocomplete="new-password" اور name کی وجہ سے اب براؤزر اسے
+         "نیا پاس ورڈ بنانے" والا خانہ سمجھے گا، پرانی تجاویز خودکار نہیں
+         دکھائے گا (موبائل اور کمپیوٹر دونوں پر)۔ اگر پہلے سے کوئی غلط اندراج
+         براؤزر کے اپنے پاس ورڈ مینیجر میں محفوظ ہو چکا ہے تو وہ صرف براؤزر کی
+         اپنی سیٹنگز (پاس ورڈز کی فہرست) سے دستی حذف کیا جا سکتا ہے، یہ فکس
+         صرف آئندہ کے لیے نئی تجاویز روکتا ہے۔ -->
+    <input type="password" id="siteAccessInput" name="ic-access-code" autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" autocapitalize="off" autocorrect="off" spellcheck="false" style="text-align:center;" autofocus>
     <div id="siteAccessError" class="note" style="color:#B23;text-align:center;"></div>
     <button type="button" id="siteAccessSubmit" class="lock-btn" style="width:100%;">کھولیں</button>
   </div>
@@ -5486,7 +5496,14 @@ function kataOnEntryJamahDiscountInput(input, container){
 // طریقے سے کھینچے جائیں — منطق کو دو جگہ الگ الگ لکھنے سے بچنے کے لیے۔
 // واپس کرتا ہے: {imgData, width, height} (width/height = ویب سائٹ پر کارڈ
 // کا اصل CSS پکسل سائز، جو پہلے کی طرح PDF میں سائز نکالنے کی بنیاد بنتا ہے)۔
-async function kataCaptureCardForPrint(card){
+// 2026-09-29: صارف کی شکایت — Whatsapp/موبائل پرنٹ (مکمل تاریخ، کئی صفحے) پر
+// بہت وقت لگتا تھا اور کمپیوٹر پر کلک کرنے کے بعد "گھوم گھوم کر خاموش" ہو
+// جاتا تھا (html2canvas ہر صفحے کو 3x ریزولیوشن پر کھینچتا ہے، بہت ساری
+// انٹریوں پر یہ سست/بھاری پڑ جاتا ہے)۔ اب اختیاری دوسرا پیرامیٹر (scale) —
+// "کمپیوٹر پرنٹ" (ایک ہی انٹری) اسے خالی چھوڑ کر پہلے کی طرح 3x پر ہی رہتا
+// ہے، صرف مکمل تاریخ والا فنکشن (kataPrintFullHistory) نیچے 2x پاس کرتا ہے
+// تاکہ کئی صفحوں پر تیز اور کم بھاری ہو۔
+async function kataCaptureCardForPrint(card, scale){
   const actions = card.querySelector('.kata-entry-actions');
   const prevDisplay = actions ? actions.style.display : '';
   if(actions) actions.style.display = 'none'; // don't capture the print/delete buttons themselves
@@ -5571,7 +5588,7 @@ async function kataCaptureCardForPrint(card){
       inputSwaps.push({inp, span});
     });
     const cardRect = card.getBoundingClientRect(); // ویب سائٹ پر خانہ اصل میں کتنا "چھوٹا" نظر آتا ہے، اسی سائز کو پرنٹ کے لیے بنیاد بنائیں گے
-    const canvas = await html2canvas(card, {scale:3, backgroundColor:'#F4EFE2', useCORS:true});
+    const canvas = await html2canvas(card, {scale: scale || 3, backgroundColor:'#F4EFE2', useCORS:true});
     return { imgData: canvas.toDataURL('image/png'), width: cardRect.width, height: cardRect.height };
   } finally {
     card.classList.remove('kata-print-tight');
@@ -5701,8 +5718,22 @@ async function kataPrintFullHistory(btn){
     const cards = Array.from(offscreen.querySelectorAll('.kata-entry-card'));
     // ہر انٹری اپنے الگ صفحے پر — پہلے کی طرح ویب سائٹ کے اصل کمپیکٹ سائز
     // میں (پورا صفحہ زبردستی نہیں بھرتے)۔
-    for(let i=0;i<cards.length;i++){
-      const { imgData, width, height } = await kataCaptureCardForPrint(cards[i]);
+    // 2026-09-29 صارف کی درخواست پر دو تبدیلیاں:
+    // (1) PDF کھلتے ہی سب سے پہلا صفحہ سب سے تازہ ترین انٹری کا ہو (پہلے
+    //     PDF ہمیشہ سب سے پرانی انٹری پر کھلتا تھا، چونکہ صفحے تاریخ وار
+    //     ترتیب میں بنتے تھے) — اسی لیے یہاں کارڈز کو الٹی (نئی سے پرانی)
+    //     ترتیب میں PDF صفحات میں شامل کرتے ہیں، چاہے اندرونی حساب کتاب
+    //     (Sabka/Bqaya) ہمیشہ کی طرح پرانی سے نئی ترتیب پر ہی بنا ہو۔
+    // (2) بہت ساری انٹریوں (پورے سال کا ریکارڈ) پر html2canvas کا 3x
+    //     ریزولیوشن بہت سست/بھاری تھا (کمپیوٹر پر کلک کے بعد گھوم گھوم کر
+    //     خاموش ہو جاتا تھا) — یہاں صرف اسی مکمل تاریخ والے فنکشن میں 2x
+    //     استعمال کرتے ہیں (کمپیوٹر پرنٹ اسی 3x پر ہی رہتا ہے، اوپر
+    //     kataCaptureCardForPrint کا نوٹ دیکھیں)۔ بٹن پر جاری صفحہ نمبر بھی
+    //     دکھاتے ہیں تاکہ صارف کو معلوم رہے کہ کام جاری ہے، رکا نہیں۔
+    let pageIndex = 0;
+    for(let i=cards.length-1;i>=0;i--){
+      btn.textContent = `⏳ ${pageIndex+1}/${cards.length}`;
+      const { imgData, width, height } = await kataCaptureCardForPrint(cards[i], 2);
       let drawW = width * pxToPt;
       let drawH = height * pxToPt;
       let safetyScale = (availW / drawW) * sizeBoost;
@@ -5711,8 +5742,9 @@ async function kataPrintFullHistory(btn){
       }
       drawW *= safetyScale;
       drawH *= safetyScale;
-      if(i > 0) pdf.addPage();
+      if(pageIndex > 0) pdf.addPage();
       pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
+      pageIndex++;
     }
     const blob = pdf.output('blob');
     if(!blob) throw new Error('no-blob');
@@ -6264,6 +6296,11 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <div class="note" style="text-align:center;margin-top:6px;">
         <div style="margin-bottom:4px;">تاریخ (اختیاری — خالی چھوڑیں تو آج کی تاریخ استعمال ہوگی؛ بند/تالے والے کھاتے میں پرانی تاریخ لکھی جا سکتی ہے)</div>
         <input type="date" id="kataEntryDateInput" class="cell-input" style="border:1px solid var(--line);text-align:center;">
+        <!-- 2026-09-29: پہلے تاریخ لکھنے پر ٹائم ہمیشہ خودکار PM 12:00 لگتا تھا،
+             صارف کی درخواست پر اب ٹائم بھی اپنی مرضی سے لکھا جا سکتا ہے — خالی
+             چھوڑیں تو پہلے کی طرح PM 12:00 ہی استعمال ہوگا۔ -->
+        <div style="margin:6px 0 4px;">ٹائم (اختیاری — خالی چھوڑیں تو PM 12:00 استعمال ہوگا)</div>
+        <input type="time" id="kataEntryTimeInput" class="cell-input" style="border:1px solid var(--line);text-align:center;">
       </div>
       <div class="kata-ref-title">Iqbal chemical</div>
       <div class="edit-table wide-table kata-ref-style">
@@ -6742,12 +6779,17 @@ async function kataSaveEntry(prevTotal, prevSaleMahana, prevItemData){
   const showDiscount = kataShowDiscount();
   const showKraya = kataShowKraya();
   // تاریخ کا خانہ خالی ہو تو ہمیشہ کی طرح "ابھی" کا وقت — بھرا ہو تو وہی
-  // تاریخ استعمال ہوتی ہے (دوپہر 12 بجے، تاکہ ٹائم زون کی وجہ سے دن آگے
-  // پیچھے نہ ہو) — بند/تالے والے کھاتے میں پرانی تاریخ کی انٹری شامل کرنے
-  // کے لیے (2026-09-01، صارف کی درخواست پر)۔
+  // تاریخ استعمال ہوتی ہے — بند/تالے والے کھاتے میں پرانی تاریخ کی انٹری
+  // شامل کرنے کے لیے (2026-09-01، صارف کی درخواست پر)۔ ٹائم پہلے ہمیشہ
+  // خودکار PM 12:00 لگتا تھا (ٹائم زون کی وجہ سے دن آگے پیچھے نہ ہو، اسی
+  // لیے دوپہر منتخب کی گئی تھی) — اب صارف خود بھی ٹائم لکھ سکتا ہے
+  // (#kataEntryTimeInput، 2026-09-29 صارف کی درخواست پر)، خالی چھوڑنے پر
+  // پہلے کی طرح PM 12:00 ہی استعمال ہوتا ہے۔
   const dateInputEl = document.getElementById('kataEntryDateInput');
   const customDateStr = dateInputEl && dateInputEl.value ? dateInputEl.value : '';
-  const customDate = customDateStr ? new Date(customDateStr + 'T12:00:00') : null;
+  const timeInputEl = document.getElementById('kataEntryTimeInput');
+  const customTimeStr = (timeInputEl && timeInputEl.value) ? timeInputEl.value : '12:00';
+  const customDate = customDateStr ? new Date(customDateStr + 'T' + customTimeStr + ':00') : null;
   const items = {};
   let todayT = 0, todayRate = 0, todayDiscount = 0, todayProfit = 0, todayWeightGrams = 0, todayKrayaSum = 0, todayCommission = 0;
   KATA_ITEMS.forEach(item=>{
