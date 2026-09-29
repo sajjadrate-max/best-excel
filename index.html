@@ -5676,6 +5676,60 @@ async function kataPrintEntry(btn){
   }
 }
 
+// 2026-09-29: مکمل تاریخ والی PDF کھلتے ہی خودکار سب سے آخری/تازہ ترین
+// صفحے پر جا کر کھلے (صارف کی واضح، دو بار دہرائی گئی درخواست) — صفحات کی
+// اصل ترتیب (پرانی → نئی) کبھی نہیں بدلتی، صرف یہ کہ PDF ویور شروع میں کون
+// سا صفحہ دکھائے۔ jsPDF (یہاں 2.5.1) کی پبلک API میں کسی مخصوص صفحے پر
+// کھولنے کی سہولت نہیں — صرف پہلے صفحے کے لیے ڈیفالٹ زوم موڈ سے خودکار
+// "/OpenAction [X 0 R /FitH null]" بنتا ہے۔ یہ فنکشن PDF کی خام (raw) بائٹس
+// میں یہی انٹری ڈھونڈ کر آخری صفحے کے اصل object id سے بدل دیتا ہے، اور
+// اگر لمبائی بدلے تو "startxref" کی قدر بھی اسی فرق سے درست کر دیتا ہے
+// تاکہ فائل کبھی نہ ٹوٹے۔ متوقع پیٹرن نہ ملے یا کچھ بھی غیر متوقع ہو تو
+// null لوٹاتا ہے اور اصل/معمولی PDF ہی استعمال ہوتی ہے — کبھی خراب فائل
+// نہیں بھیجی جاتی۔ نوٹ: یہ صرف اس بات کی ضمانت ہے کہ فائل خراب نہیں ہوگی،
+// یہ ضمانت نہیں کہ ہر PDF ویور (خاص طور پر WhatsApp کا اپنا اندرونی
+// preview) اس ہدایت پر عمل کرے گا — نہ مانے تو عام طرح پہلے صفحے پر کھلے
+// گی، ترتیب یا مواد پر کوئی اثر نہیں پڑتا۔
+async function kataSetPdfOpenToLastPage(pdf, lastPageNum){
+  try{
+    const pageInfo = (typeof pdf.getPageInfo === 'function') ? pdf.getPageInfo(lastPageNum) : pdf.internal.getPageInfo(lastPageNum);
+    if(!pageInfo || !pageInfo.objId) return null;
+    const buf = pdf.output('arraybuffer');
+    const bytes = new Uint8Array(buf);
+    // بائٹس کو حرف بہ حرف (latin1) سٹرنگ میں بدلتے ہیں تاکہ باینری ڈیٹا
+    // بالکل درست/محفوظ رہے (ہر بائٹ ویلیو 0-255 براہِ راست ایک کریکٹر کوڈ
+    // بنتی ہے، UTF-8 جیسی تبدیلی سے بائٹس بدل نہیں سکتے)۔
+    let str = '';
+    const chunkSize = 0x8000;
+    for(let i=0;i<bytes.length;i+=chunkSize){
+      str += String.fromCharCode.apply(null, bytes.subarray(i, i+chunkSize));
+    }
+    const m = str.match(/\/OpenAction \[(\d+) 0 R/);
+    if(!m) return null;
+    const oldRef = m[1] + ' 0 R';
+    const newRef = pageInfo.objId + ' 0 R';
+    if(oldRef === newRef) return null; // پہلے سے ہی آخری صفحہ = پہلا صفحہ (صرف ایک انٹری)
+    const idx = str.indexOf('/OpenAction [' + oldRef);
+    if(idx === -1) return null;
+    const before = idx + '/OpenAction ['.length;
+    str = str.slice(0, before) + newRef + str.slice(before + oldRef.length);
+    const delta = newRef.length - oldRef.length;
+    if(delta !== 0){
+      const sx = str.match(/startxref\s*\n(\d+)\s*\n%%EOF/);
+      if(!sx) return null; // متوقع ڈھانچہ نہ ملے تو حفاظتی طور پر کچھ نہ بدلیں
+      const newOffset = parseInt(sx[1], 10) + delta;
+      str = str.replace(/startxref\s*\n\d+\s*\n%%EOF/, 'startxref\n' + newOffset + '\n%%EOF');
+    }
+    if(!str.startsWith('%PDF-') || !str.endsWith('%%EOF')) return null; // آخری حفاظتی چیک
+    const newBytes = new Uint8Array(str.length);
+    for(let i=0;i<str.length;i++) newBytes[i] = str.charCodeAt(i) & 0xFF;
+    return new Blob([newBytes], {type:'application/pdf'});
+  } catch(e){
+    console.warn('PDF کو آخری صفحے پر کھولنے کی تبدیلی ناکام، معمولی PDF استعمال ہوگی', e);
+    return null;
+  }
+}
+
 // "موبائل پرنٹ" اور "Whatsapp پرنٹ" دونوں بٹن — صارف کی درخواست پر
 // (2026-09-26): اب صرف اسی ایک انٹری کی بجائے، اسی کسٹمر/کھاتے کی اب تک کی
 // ساری انٹریاں (اگر مہینہ بہ مہینہ auto-rollover سے کئی الگ کتابیں بن چکی
@@ -5718,21 +5772,16 @@ async function kataPrintFullHistory(btn){
     const cards = Array.from(offscreen.querySelectorAll('.kata-entry-card'));
     // ہر انٹری اپنے الگ صفحے پر — پہلے کی طرح ویب سائٹ کے اصل کمپیکٹ سائز
     // میں (پورا صفحہ زبردستی نہیں بھرتے)۔
-    // 2026-09-29 صارف کی درخواست پر دو تبدیلیاں:
-    // (1) PDF کھلتے ہی سب سے پہلا صفحہ سب سے تازہ ترین انٹری کا ہو (پہلے
-    //     PDF ہمیشہ سب سے پرانی انٹری پر کھلتا تھا، چونکہ صفحے تاریخ وار
-    //     ترتیب میں بنتے تھے) — اسی لیے یہاں کارڈز کو الٹی (نئی سے پرانی)
-    //     ترتیب میں PDF صفحات میں شامل کرتے ہیں، چاہے اندرونی حساب کتاب
-    //     (Sabka/Bqaya) ہمیشہ کی طرح پرانی سے نئی ترتیب پر ہی بنا ہو۔
-    // (2) بہت ساری انٹریوں (پورے سال کا ریکارڈ) پر html2canvas کا 3x
-    //     ریزولیوشن بہت سست/بھاری تھا (کمپیوٹر پر کلک کے بعد گھوم گھوم کر
-    //     خاموش ہو جاتا تھا) — یہاں صرف اسی مکمل تاریخ والے فنکشن میں 2x
-    //     استعمال کرتے ہیں (کمپیوٹر پرنٹ اسی 3x پر ہی رہتا ہے، اوپر
-    //     kataCaptureCardForPrint کا نوٹ دیکھیں)۔ بٹن پر جاری صفحہ نمبر بھی
-    //     دکھاتے ہیں تاکہ صارف کو معلوم رہے کہ کام جاری ہے، رکا نہیں۔
-    let pageIndex = 0;
-    for(let i=cards.length-1;i>=0;i--){
-      btn.textContent = `⏳ ${pageIndex+1}/${cards.length}`;
+    // 2026-09-29 (اصلاح): صفحات ہمیشہ کی طرح صحیح تاریخ وار ترتیب میں ہی
+    // بنتے ہیں — سب سے پرانی انٹری صفحہ 1، سب سے تازہ ترین آخری صفحے پر
+    // (پہلے ایک بار غلطی سے یہ ترتیب الٹ دی گئی تھی، صارف کی نشاندہی پر
+    // واپس درست کی گئی؛ صرف "PDF ویورمیں کھلتے ہی کون سا صفحہ نظر آئے" کا
+    // مسئلہ الگ تھا، نیچے دیکھیں)۔ بہت ساری انٹریوں (پورے سال کا ریکارڈ) پر
+    // html2canvas کا 3x ریزولیوشن بہت سست/بھاری تھا، اس لیے یہاں 2x استعمال
+    // ہوتا ہے (کمپیوٹر پرنٹ اسی 3x پر ہی رہتا ہے)۔ بٹن پر جاری صفحہ نمبر بھی
+    // دکھاتے ہیں تاکہ صارف کو معلوم رہے کہ کام جاری ہے، رکا نہیں۔
+    for(let i=0;i<cards.length;i++){
+      btn.textContent = `⏳ ${i+1}/${cards.length}`;
       const { imgData, width, height } = await kataCaptureCardForPrint(cards[i], 2);
       let drawW = width * pxToPt;
       let drawH = height * pxToPt;
@@ -5742,12 +5791,18 @@ async function kataPrintFullHistory(btn){
       }
       drawW *= safetyScale;
       drawH *= safetyScale;
-      if(pageIndex > 0) pdf.addPage();
+      if(i > 0) pdf.addPage();
       pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
-      pageIndex++;
     }
-    const blob = pdf.output('blob');
+    // صفحات ہمیشہ درست تاریخ وار ترتیب میں ہی رہتے ہیں — سب سے پرانی انٹری
+    // صفحہ 1، سب سے تازہ ترین/آخری انٹری سب سے آخری صفحے پر (اوپر سے نیچے
+    // کی طرف حساب، 2026-09-29 صارف کی تصدیق شدہ حتمی ترتیب)۔ PDF کھلتے ہی
+    // خودکار اسی آخری صفحے پر جائے — اوپر kataSetPdfOpenToLastPage کا نوٹ۔
+    const lastPageNum = pdf.internal.getNumberOfPages();
+    let blob = pdf.output('blob');
     if(!blob) throw new Error('no-blob');
+    const openLastBlob = await kataSetPdfOpenToLastPage(pdf, lastPageNum);
+    if(openLastBlob) blob = openLastBlob;
     if(printMode === 'whatsapp'){
       await whatsappShareBlob(blob, 'Iqbal chemical.pdf', 'مکمل کھاتہ ریکارڈ');
     } else {
