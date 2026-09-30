@@ -1,7 +1,7 @@
 {
   "name": "Best Excel",
   "short_name": "Best Excel",
-  "start_url": "index.html",
+  "start_url": "best-excel.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#c62828",
