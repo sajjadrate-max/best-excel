@@ -2322,6 +2322,35 @@ async function whatsappShareBlob(blob, fileName, title){
   window.open('https://web.whatsapp.com/send?text=' + encodeURIComponent(title + ' — فائل ابھی ڈاؤن لوڈ ہوئی ہے، براہ کرم رابطہ چن کر منسلک کریں۔'), '_blank');
 }
 
+// "موبائل پرنٹ"/"Whatsapp پرنٹ" کی مکمل تاریخ اب PDF کی بجائے ایک HTML
+// فائل کے طور پر بھیجی جاتی ہے (2026-09-30، نیچے kataPrintFullHistory
+// دیکھیں) — یہ اسی whatsappShareBlob/sharePdfDirectly والے پیٹرن پر ہے،
+// صرف mime type/فائل ایکسٹینشن 'text/html' کا ہے، تاکہ موجودہ PDF فنکشنز
+// کو بالکل نہ چھیڑا جائے (وہ اب بھی "کمپیوٹر پرنٹ" کی سنگل-انٹری PDF کے
+// لیے استعمال ہوتے ہیں)۔ viaWhatsapp=true ہو تو ناکامی کی صورت میں
+// ڈاؤن لوڈ کے بعد Whatsapp ویب بھی کھولتا ہے، ورنہ صرف شیئر/ڈاؤن لوڈ۔
+async function shareHtmlBlob(blob, fileName, title, viaWhatsapp){
+  try{
+    if(navigator.canShare && window.File){
+      const file = new File([blob], fileName, {type:'text/html'});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({files:[file], title});
+        return;
+      }
+    }
+  } catch(shareErr){
+    return; // صارف نے شیئر شیٹ خود بند کر دی
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fileName;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 10000);
+  if(viaWhatsapp){
+    window.open('https://web.whatsapp.com/send?text=' + encodeURIComponent(title + ' — فائل ابھی ڈاؤن لوڈ ہوئی ہے، براہ کرم رابطہ چن کر منسلک کریں۔'), '_blank');
+  }
+}
+
 async function shareCardAsImage(tier, btn){
   const originalLabel = btn.textContent;
   btn.textContent = '⏳ تیار ہو رہا ہے...';
@@ -5600,6 +5629,70 @@ async function kataCaptureCardForPrint(card, scale){
   }
 }
 
+// 2026-09-30: kataCaptureCardForPrint کی طرح — وہی چھپاؤ/input-to-span
+// swap لاجک (تاکہ ویب سائٹ جیسی ہی حالت محفوظ ہو، print-only بٹن/کالم
+// چھپیں) — لیکن html2canvas سے تصویر کھینچنے کی بجائے کارڈ کا اصل HTML
+// (outerHTML) بطور متن لوٹاتا ہے، تاکہ ایک خودکار قابلِ اسکرول HTML فائل
+// بنائی جا سکے (kataPrintFullHistory دیکھیں)۔
+function kataPrepareCardHtmlForExport(card){
+  const actions = card.querySelector('.kata-entry-actions');
+  const prevDisplay = actions ? actions.style.display : '';
+  if(actions) actions.style.display = 'none';
+  const renameBtn = card.querySelector('.kata-rename-entry-name-btn');
+  const renameBtnPrevDisplay = renameBtn ? renameBtn.style.display : '';
+  if(renameBtn) renameBtn.style.display = 'none';
+  let hiddenPrintCells = [];
+  card.querySelectorAll('.kata-jamah-label-edit-btn').forEach(el=>{
+    hiddenPrintCells.push({cell: el, prev: el.style.display});
+    el.style.display = 'none';
+  });
+  const editUiEls = card.querySelectorAll('.kata-edit-ui-only, .kata-dots-wrap');
+  const editUiPrevDisplay = [];
+  editUiEls.forEach(el=>{ editUiPrevDisplay.push(el.style.display); el.style.display = 'none'; });
+  if(kataInstance === 'salesman' || kataInstance === 'ribnawaz'){
+    const itemTable = card.querySelector('.wide-table table');
+    if(itemTable){
+      [5,7,9,10,11].forEach(pos=>{
+        itemTable.querySelectorAll(`tr > *:nth-child(${pos})`).forEach(cell=>{
+          hiddenPrintCells.push({cell, prev: cell.style.display});
+          cell.style.display = 'none';
+        });
+        itemTable.querySelectorAll(`colgroup > col:nth-child(${pos})`).forEach(col=>{
+          hiddenPrintCells.push({cell: col, prev: col.style.display});
+          col.style.display = 'none';
+        });
+      });
+    }
+  }
+  if(kataInstance === 'agency'){
+    card.querySelectorAll('.kata-commission-col').forEach(el=>{
+      hiddenPrintCells.push({cell: el, prev: el.style.display});
+      el.style.display = 'none';
+    });
+  }
+  if(typeof window.measureAndSizeInput === 'function'){
+    card.querySelectorAll('.cell-input').forEach(window.measureAndSizeInput);
+  }
+  let inputSwaps = [];
+  card.querySelectorAll('input').forEach(inp=>{
+    const span = document.createElement('span');
+    span.className = inp.className;
+    const inlineStyle = inp.getAttribute('style') || '';
+    span.setAttribute('style', inlineStyle + ';display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;');
+    span.textContent = inp.value;
+    inp.style.display = 'none';
+    inp.parentNode.insertBefore(span, inp);
+    inputSwaps.push({inp, span});
+  });
+  const html = card.outerHTML;
+  inputSwaps.forEach(({inp, span})=>{ span.remove(); inp.style.display = ''; });
+  hiddenPrintCells.forEach(({cell, prev})=>{ cell.style.display = prev; });
+  if(actions) actions.style.display = prevDisplay;
+  if(renameBtn) renameBtn.style.display = renameBtnPrevDisplay;
+  editUiEls.forEach((el,i)=>{ el.style.display = editUiPrevDisplay[i]; });
+  return html;
+}
+
 // "کمپیوٹر پرنٹ" بٹن — صرف یہی ایک انٹری، ہمیشہ کی طرح ایک صفحے پر دو
 // کاپیاں (اوپر+نیچے، 2026-09-20 فیچر)۔ "موبائل پرنٹ"/"Whatsapp پرنٹ" اب اس
 // فنکشن سے الگ ہو کر kataPrintFullHistory میں چلے گئے ہیں (2026-09-26،
@@ -5676,27 +5769,27 @@ async function kataPrintEntry(btn){
   }
 }
 
-// 2026-09-30: صارف کی نئی تجویز — چونکہ WhatsApp کا اپنا preview ہمیشہ صرف
-// پہلا صفحہ دکھاتا ہے (کوئی "فلاں صفحے پر کھلو" والی ہدایت نہیں مانتا،
-// پچھلی کوشش — raw PDF بائٹس میں OpenAction بدلنا — اسی وجہ سے ہٹا دی گئی
-// ہے)، اس لیے اب PDF کی ساخت ہی اس طرح بناتے ہیں کہ پہلا صفحہ خودبخود تازہ
-// ترین حساب دکھائے: PDF کا پہلا صفحہ سب سے تازہ ترین (آخری) انٹری کی ایک
-// کاپی ("تازہ بل") ہوتا ہے، اور اس کے بعد مکمل تاریخ (سب سے پرانی سے سب
-// سے نئی تک، ہمیشہ کی طرح درست ترتیب میں) الگ سے چلتی ہے — یعنی وہی تازہ
-// ترین انٹری آخری صفحے پر بھی دوبارہ نظر آئے گی (فائل کے اندر دو الگ
-// "حصے": پہلے صرف تازہ بل، پھر مکمل ریکارڈ)۔ اس طرح کسی بھی PDF ویور
-// (WhatsApp سمیت) میں فائل کھولتے ہی تازہ ترین حساب نظر آتا ہے، اور نیچے
-// سکرول کر کے مکمل تاریخ وار ریکارڈ (پرانے سے نئے کی درست ترتیب میں)
-// دیکھا جا سکتا ہے — یہ صرف صفحوں کی سادہ ترتیب پر انحصار کرتا ہے، کسی
-// غیر دستاویزی PDF خصوصیت پر نہیں، اس لیے ہر جگہ قابلِ بھروسہ ہے۔
+// 2026-09-30 (حتمی حل — PDF کی بجائے HTML فائل): PDF ویورز (خاص طور پر
+// WhatsApp کا اپنا اندرونی preview) کبھی بھی خود بخود کسی خاص صفحے پر
+// نہیں کھلتے، ہمیشہ صرف پہلا صفحہ دکھاتے ہیں — کئی کوششوں (raw PDF بائٹس
+// میں OpenAction بدلنا، "تازہ بل" ڈپلیکیٹ پہلا صفحہ) کے باوجود یہ مسئلہ
+// قابلِ بھروسہ طریقے سے حل نہیں ہوا۔ صارف کی اپنی تجویز پر اب PDF کی
+// بجائے ایک خودکار HTML فائل بنائی جاتی ہے — یہ عام ویب صفحے کی طرح
+// براؤزر میں کھلتی ہے، اور کھلتے ہی سادہ JS کے ذریعے خودکار سب سے نیچے
+// (یعنی سب سے تازہ ترین انٹری) پر سکرول ہو جاتی ہے۔ صفحات کی ترتیب ہمیشہ
+// کی طرح درست تاریخ وار (سب سے پرانی سب سے اوپر، تازہ ترین سب سے نیچے)
+// رہتی ہے — صارف اوپر سکرول کر کے مکمل پرانا ریکارڈ دیکھ سکتا ہے۔ یہ ہر
+// جگہ (WhatsApp، براؤزر، فائل مینیجر) قابلِ بھروسہ طریقے سے کام کرتا ہے
+// کیونکہ یہ کسی PDF ویور کی خاص/غیر دستاویزی خصوصیت پر انحصار نہیں کرتا،
+// صرف عام ویب صفحے کے رویے پر۔
 
 // "موبائل پرنٹ" اور "Whatsapp پرنٹ" دونوں بٹن — صارف کی درخواست پر
-// (2026-09-26): اب صرف اسی ایک انٹری کی بجائے، اسی کسٹمر/کھاتے کی اب تک کی
-// ساری انٹریاں (اگر مہینہ بہ مہینہ auto-rollover سے کئی الگ کتابیں بن چکی
-// ہوں تو ان سب کی مل کر) ایک ہی PDF فائل میں چلی جاتی ہیں — ہر انٹری اپنے
-// الگ صفحے پر، بالکل ویب سائٹ پر نظر آنے والی شکل میں (سابقہ/جمع/بقایا
-// سمیت)۔ سیلزمین/ربنواز/Agency تینوں کھاتوں میں کام کرتا ہے۔ "کمپیوٹر
-// پرنٹ" میں کوئی تبدیلی نہیں — وہ اب بھی صرف کلک کی گئی انٹری بھیجتا ہے۔
+// (2026-09-26): اسی ایک انٹری کی بجائے، اسی کسٹمر/کھاتے کی اب تک کی ساری
+// انٹریاں (اگر مہینہ بہ مہینہ auto-rollover سے کئی الگ کتابیں بن چکی ہوں
+// تو ان سب کی مل کر) ایک ہی فائل میں چلی جاتی ہیں — ہر انٹری بالکل ویب
+// سائٹ پر نظر آنے والی شکل میں (سابقہ/جمع/بقایا سمیت)۔ سیلزمین/ربنواز/
+// Agency تینوں کھاتوں میں کام کرتا ہے۔ "کمپیوٹر پرنٹ" میں کوئی تبدیلی
+// نہیں — وہ اب بھی صرف کلک کی گئی انٹری، PDF کی صورت میں بھیجتا ہے۔
 async function kataPrintFullHistory(btn){
   const originalLabel = btn.textContent;
   btn.textContent = '⏳...'; btn.disabled = true;
@@ -5719,55 +5812,53 @@ async function kataPrintFullHistory(btn){
     offscreen.innerHTML = entries.map((entry, i)=> kataRenderEntryCard(entry, i === entries.length - 1, i)).join('');
     kataApplyIndianFormattingToReadonly(offscreen);
     try{ await document.fonts.ready; } catch(e){ /* proceed anyway */ }
-    if(typeof jspdf === 'undefined' || !jspdf.jsPDF) throw new Error('jsPDF-not-loaded');
-    const { jsPDF } = jspdf;
-    const pdf = new jsPDF({ orientation:'portrait', unit:'pt', format:'a4' });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 22;
-    const pxToPt = 0.75;
-    const availW = pageW - margin*2;
-    const availH = pageH - margin*2;
-    const sizeBoost = 1.12;
     const cards = Array.from(offscreen.querySelectorAll('.kata-entry-card'));
-    // ہر انٹری اپنے الگ صفحے پر — پہلے کی طرح ویب سائٹ کے اصل کمپیکٹ سائز
-    // میں (پورا صفحہ زبردستی نہیں بھرتے)۔
-    // 2026-09-29 (اصلاح): صفحات ہمیشہ کی طرح صحیح تاریخ وار ترتیب میں ہی
-    // بنتے ہیں — سب سے پرانی انٹری صفحہ 1، سب سے تازہ ترین آخری صفحے پر
-    // (پہلے ایک بار غلطی سے یہ ترتیب الٹ دی گئی تھی، صارف کی نشاندہی پر
-    // واپس درست کی گئی؛ صرف "PDF ویورمیں کھلتے ہی کون سا صفحہ نظر آئے" کا
-    // مسئلہ الگ تھا، نیچے دیکھیں)۔ بہت ساری انٹریوں (پورے سال کا ریکارڈ) پر
-    // html2canvas کا 3x ریزولیوشن بہت سست/بھاری تھا، اس لیے یہاں 2x استعمال
-    // ہوتا ہے (کمپیوٹر پرنٹ اسی 3x پر ہی رہتا ہے)۔ بٹن پر جاری صفحہ نمبر بھی
-    // دکھاتے ہیں تاکہ صارف کو معلوم رہے کہ کام جاری ہے، رکا نہیں۔
-    // 2026-09-30 (واپس سادہ حالت پر): "تازہ بل" پہلا صفحہ اور راء PDF بائٹس
-    // میں OpenAction بدلنے والی کوشش دونوں صارف کی درخواست پر ہٹا دی گئی
-    // ہیں۔ اب صرف اتنا: ہر انٹری اپنے الگ صفحے پر، سیدھی تاریخ وار ترتیب
-    // میں (سب سے پرانی صفحہ 1، سب سے تازہ ترین آخری صفحے پر) — PDF ہمیشہ
-    // کی طرح پہلے صفحے پر ہی کھلتی ہے، کوئی خاص صفحہ زبردستی نہیں کھلتا۔
-    for(let i=0;i<cards.length;i++){
-      btn.textContent = `⏳ ${i+1}/${cards.length}`;
-      const { imgData, width, height } = await kataCaptureCardForPrint(cards[i], 2);
-      let drawW = width * pxToPt;
-      let drawH = height * pxToPt;
-      let safetyScale = (availW / drawW) * sizeBoost;
-      if(drawH * safetyScale > availH){
-        safetyScale = availH / drawH;
-      }
-      drawW *= safetyScale;
-      drawH *= safetyScale;
-      if(i > 0) pdf.addPage();
-      pdf.addImage(imgData, 'PNG', (pageW - drawW)/2, margin, drawW, drawH);
-    }
-    const blob = pdf.output('blob');
-    if(!blob) throw new Error('no-blob');
+    btn.textContent = '⏳ تیار ہو رہا ہے...';
+    // ہر کارڈ کا حتمی (پرنٹ کے لیے صاف کیا گیا) HTML سیدھی تاریخ وار ترتیب
+    // میں جمع کرتے ہیں — سب سے پرانی انٹری سب سے پہلے، سب سے تازہ ترین سب
+    // سے آخر میں (صفحے کے نیچے کی طرف)۔
+    const cardsHtml = cards.map(card=>{
+      card.classList.add('kata-print-tight');
+      const html = kataPrepareCardHtmlForExport(card);
+      card.classList.remove('kata-print-tight');
+      return html;
+    }).join('\n');
+    offscreen.parentNode.removeChild(offscreen);
+    offscreen = null;
+    // موجودہ صفحے کا مکمل CSS (ایک ہی <style> بلاک میں) نئی فائل میں بھی
+    // شامل کرتے ہیں تاکہ وہ بالکل ویب سائٹ جیسی ہی نظر آئے، اور کسی بیرونی
+    // فائل پر انحصار نہ ہو (فونٹس کے علاوہ)۔
+    const styleEl = document.querySelector('style');
+    const cssText = styleEl ? styleEl.textContent : '';
+    const fullHtml = `<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مکمل کھاتہ ریکارڈ — Iqbal chemical</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400..700&family=Noto+Naskh+Arabic:wght@400..700&family=Courier+Prime:wght@400;700&family=Anton&family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<style>
+${cssText}
+html,body{background:#F4EFE2;margin:0;padding:16px 0;}
+.kata-full-history-wrap{max-width:${Math.round(containerWidth)}px;margin:0 auto;display:flex;flex-direction:column;gap:14px;padding:0 8px;box-sizing:border-box;}
+</style>
+</head>
+<body>
+<div class="kata-full-history-wrap">
+${cardsHtml}
+</div>
+<script>window.scrollTo(0, document.body.scrollHeight);<\/script>
+</body>
+</html>`;
+    const blob = new Blob([fullHtml], {type:'text/html'});
     if(printMode === 'whatsapp'){
-      await whatsappShareBlob(blob, 'Iqbal chemical.pdf', 'مکمل کھاتہ ریکارڈ');
+      await shareHtmlBlob(blob, 'Iqbal chemical.html', 'مکمل کھاتہ ریکارڈ', true);
     } else {
-      await sharePdfDirectly(blob, 'Iqbal chemical.pdf', 'مکمل کھاتہ ریکارڈ');
+      await shareHtmlBlob(blob, 'Iqbal chemical.html', 'مکمل کھاتہ ریکارڈ', false);
     }
   } catch(err){
-    alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
+    alert('فائل بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
     console.warn(err);
   } finally {
     if(offscreen && offscreen.parentNode) offscreen.parentNode.removeChild(offscreen);
