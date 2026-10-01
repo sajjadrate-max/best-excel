@@ -370,6 +370,16 @@ window.loadAuthSDKs = async function(){
     font-size:12.5px;
     cursor:pointer;
   }
+  /* گاہک نمبر کا ڈبہ (2026-10-01): لال ڈبہ، اندر نمایاں نیلا نمبر */
+  .kata-custno-badge{
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:38px;height:38px;padding:0 6px;margin:0 8px;
+    border:3px solid #D42430;border-radius:9px;
+    background:#fff5f5;
+    color:#0F4CFF;font-family:'Courier Prime',monospace;font-size:20px;font-weight:700;
+    box-shadow:0 2px 5px rgba(212,36,48,.35);
+    vertical-align:middle;cursor:pointer;
+  }
   .kata-dots-wrap{
     position:absolute;
     top:6px;
@@ -4180,7 +4190,12 @@ function syncKataItemsFromRateList(){
   }
 }
 window.syncKataItemsFromRateList = syncKataItemsFromRateList;
-syncKataItemsFromRateList(); // اسی وقت — چونکہ ریٹ لسٹ کا ڈیٹا اس سے پہلے ہی لوڈ ہو چکا ہوتا ہے
+// 2026-10-01: صفحہ لوڈ ہوتے وقت یہ کال kataInstance وغیرہ (نیچے let سے بنتے ہیں)
+// کے بننے سے پہلے چلتی ہے — فہرست دوبارہ بنانے کی کوشش پر کنسول میں
+// "Cannot access 'kataInstance' before initialization" کی غلطی آتی تھی۔ ڈیٹا
+// پر کوئی اثر نہیں تھا (فہرست بعد میں ویسے بھی بنتی ہے)، اب یہ غلطی خاموشی
+// سے روک دی گئی ہے۔
+try{ syncKataItemsFromRateList(); }catch(e){ if(!(e instanceof ReferenceError)) throw e; }
 
 // Second table on the same page — "Sale Mahana Record" (monthly sale
 // tally). Separate item set/weights from the table above (note RS.300 CTN
@@ -4542,6 +4557,49 @@ function kataEnsureCustomerNumbers(allBooks){
   });
   if(changed) kataLocalSaveBooks(allBooks);
 }
+// کسی گاہک کو نیا نمبر دینا — جس گاہک کے پاس پہلے وہ نمبر تھا، اسے اِس کا پرانا نمبر مل جاتا ہے (تبادلہ)
+function kataSetCustomerNumber(allBooks, bookId, newNo){
+  const book = allBooks.find(b=> b.id === bookId);
+  if(!book || !newNo || newNo < 1) return false;
+  const R = kataCustRoot(book.name);
+  const oldNo = book.custNo;
+  if(oldNo === newNo) return false;
+  const holder = allBooks.find(b=> !b.closed && b.custNo === newNo && kataCustRoot(b.name) !== R);
+  if(holder){
+    const S = kataCustRoot(holder.name);
+    allBooks.forEach(b=>{ if(kataCustRoot(b.name) === S) b.custNo = oldNo; });
+  }
+  allBooks.forEach(b=>{ if(kataCustRoot(b.name) === R) b.custNo = newNo; });
+  return true;
+}
+function kataPromptCustomerNumber(bookId){
+  const books = kataLocalGetBooks();
+  const book = books.find(b=> b.id === bookId);
+  if(!book) return;
+  const openCount = books.filter(b=> !b.closed).length;
+  siteTextPrompt(`"${kataBaseBookName(book.name)}" کا نیا نمبر لکھیں (1 سے ${openCount} تک)`, function(val){
+    if(val === null) return;
+    const n = parseInt(String(val).trim(), 10);
+    if(!n || n < 1 || n > openCount){ alert('درست نمبر لکھیں (1 سے ' + openCount + ' تک)'); return; }
+    if(kataSetCustomerNumber(books, bookId, n)){ kataLocalSaveBooks(books); kataLocalRenderList(); }
+  });
+}
+// صارف کی دی ہوئی ترتیب (2026-10-01) — Agency کے لیے صرف ایک بار، کلاؤڈ سے
+// ڈیٹا آنے کے بعد۔ اس کے بعد نمبر صرف خود ڈبہ دبا کر بدلے جا سکتے ہیں۔
+function kataApplyInitialAgencyOrder(allBooks){
+  if(kataInstance !== 'agency' || !window._kataCloudPulled) return;
+  const FLAG = 'kataCustNoInitDone_agency_v1';
+  if(localStorage.getItem(FLAG)) return;
+  const order = ['gull khan', 'mian zeeshan', 'hasnain abid', 'zeeshan haider', 'rao zeeshan'];
+  let changed = false;
+  order.forEach((prefix, i)=>{
+    const b = allBooks.find(x=> !x.closed && kataCustRoot(x.name).indexOf(prefix) === 0);
+    if(b && kataSetCustomerNumber(allBooks, b.id, i+1)) changed = true;
+  });
+  if(changed) kataLocalSaveBooks(allBooks);
+  localStorage.setItem(FLAG, '1');
+  if(window.firebaseSyncSet) window.firebaseSyncSet(FLAG, '1');
+}
 function kataRenumberAfterDelete(deletedBook, remaining){
   if(!deletedBook || !deletedBook.custNo || deletedBook.closed) return;
   const r = kataCustRoot(deletedBook.name);
@@ -4569,6 +4627,7 @@ function kataLocalRenderList(){
   // ورنہ دونوں جگہ گنے جانے سے رقم دگنی ہو جاتی (2026-09-01، صارف کی
   // درخواست پر)۔
   kataEnsureCustomerNumbers(allBooks);
+  kataApplyInitialAgencyOrder(allBooks);
   const books = allBooks.filter(b => !b.closed).sort((a,b)=> (a.custNo||0) - (b.custNo||0));
   if(!books.length && !allBooks.some(b=>b.closed)){
     container.innerHTML = '<div class="note" style="text-align:center;">ابھی کوئی جاری کھاتہ موجود نہیں — اوپر بٹن سے نیا کھاتہ بنائیں۔</div>';
@@ -4599,8 +4658,12 @@ function kataLocalRenderList(){
     // Agency کھاتہ — صارف کی درخواست پر (2026-08-28): نام میں غلطی درست
     // کرنے کے لیے ✏️ بٹن (صرف Agency میں)۔ (2026-08-30 — ہر کھاتے کے اپنے
     // ڈبے کے اوپر اسی کھاتے کی آخری انٹری کی تاریخ۔)
-    card.innerHTML = `${lastEntryDate ? `<div class="note" style="text-align:center;font-size:11px;margin-bottom:2px;">آخری انٹری: ${lastEntryDate.toLocaleDateString('en-GB')}</div>` : ''}<h2 style="border:none;margin:0;font-size:18px;">${b.custNo ? `<span style="display:inline-block;min-width:30px;padding:0 6px;margin-left:6px;border-radius:14px;background:var(--maroon-deep);color:#fff;font-size:15px;">${b.custNo}</span>` : ''}${kataEscape(kataBaseBookName(b.name || '(بلا نام)'))}${b.closed ? ' 🔒' : ''}${kataInstance === 'agency' ? ` <button type="button" class="kata-rename-book-btn" data-kata-book-id="${b.id}" style="font-size:14px;background:none;border:1px solid var(--line);border-radius:4px;padding:2px 6px;cursor:pointer;">✏️</button>` : ''}</h2>`;
-    card.addEventListener('click', (ev)=>{ if(ev.target.closest('.kata-rename-book-btn')) return; kataLocalOpen(b.id, b.name || ''); });
+    card.innerHTML = `${lastEntryDate ? `<div class="note" style="text-align:center;font-size:11px;margin-bottom:2px;">آخری انٹری: ${lastEntryDate.toLocaleDateString('en-GB')}</div>` : ''}<h2 style="border:none;margin:0;font-size:18px;">${b.custNo ? `<span class="kata-custno-badge" data-kata-custno-book="${b.id}" title="نمبر تبدیل کرنے کے لیے دبائیں">${b.custNo}</span>` : ''}${kataEscape(kataBaseBookName(b.name || '(بلا نام)'))}${b.closed ? ' 🔒' : ''}${kataInstance === 'agency' ? ` <button type="button" class="kata-rename-book-btn" data-kata-book-id="${b.id}" style="font-size:14px;background:none;border:1px solid var(--line);border-radius:4px;padding:2px 6px;cursor:pointer;">✏️</button>` : ''}</h2>`;
+    card.addEventListener('click', (ev)=>{
+      if(ev.target.closest('.kata-rename-book-btn')) return;
+      if(ev.target.closest('.kata-custno-badge')){ kataPromptCustomerNumber(b.id); return; }
+      kataLocalOpen(b.id, b.name || '');
+    });
 
     container.appendChild(card);
   });
@@ -5157,7 +5220,7 @@ function kataRenderDetail(name){
     prevItemData[item.key] = {totalT: (v && v.totalT) || 0, discount: (v && v.discount) || 0, weight: (v && v.weight != null) ? v.weight : null, krayaRate: (v && v.krayaRate) || 0, commissionRate: (v && v.commissionRate) || 0};
   });
 
-  let html = `<div class="card" style="text-align:center;">${kataDotsMenuHtml([{cls:'kata-close-book-btn', label:'📅 یہ ریکارڈ محفوظ کر کے نیا مہینہ شروع کریں'}, {cls:'kata-book-delete-btn', label:'🗑 یہ کھاتہ حذف کریں'}])}<h2 style="border:none;margin:0;">${(()=>{ const ob = kataLocalMode ? kataLocalGetBooks().find(x=>x.id===kataOpenId) : null; return (ob && ob.custNo) ? `<span style="display:inline-block;min-width:30px;padding:0 6px;margin-left:6px;border-radius:14px;background:var(--maroon-deep);color:#fff;font-size:16px;">${ob.custNo}</span>` : ''; })()}${kataEscape(kataBaseBookName(name))}${kataOpenClosed ? ' 🔒' : ''}</h2></div>`;
+  let html = `<div class="card" style="text-align:center;">${kataDotsMenuHtml([{cls:'kata-close-book-btn', label:'📅 یہ ریکارڈ محفوظ کر کے نیا مہینہ شروع کریں'}, {cls:'kata-book-delete-btn', label:'🗑 یہ کھاتہ حذف کریں'}])}<h2 style="border:none;margin:0;">${(()=>{ const ob = kataLocalMode ? kataLocalGetBooks().find(x=>x.id===kataOpenId) : null; return (ob && ob.custNo) ? `<span class="kata-custno-badge">${ob.custNo}</span>` : ''; })()}${kataEscape(kataBaseBookName(name))}${kataOpenClosed ? ' 🔒' : ''}</h2></div>`;
 
   kataOpenEntries.forEach((entry, i)=>{
     const isLast = i === kataOpenEntries.length - 1;
@@ -8260,6 +8323,7 @@ async function firebaseSyncInit(){
     return;
   }
   await firebaseSyncPullAll();
+  window._kataCloudPulled = true;
   // موجودہ تمام کھاتوں کی انٹریاں ابھی سے مستقل آرکائیو میں بھی محفوظ ہو جائیں
   try{
     for(let i=0;i<localStorage.length;i++){
