@@ -1100,6 +1100,18 @@ function siteTextPrompt(label, callback){
   cancelBtn.addEventListener('click', onCancel);
   input.addEventListener('keydown', onKey);
 }
+// 2026-10-01: سخت حفاظت — کوئی بھی انٹری یا پورا کھاتہ حذف کرنے سے پہلے
+// پاس ورڈ لازمی (سیلزمین/ربنواز/Agency کھاتے اور Monthly record، سب جگہ)۔
+function askDeletePassword(){
+  return new Promise(resolve=>{
+    siteTextPrompt('حذف کرنے کے لیے پاس ورڈ درج کریں', function(pw){
+      if(pw === null){ resolve(false); return; }
+      if(pw === 'Bestexcel'){ resolve(true); return; }
+      alert('غلط پاس ورڈ — کچھ حذف نہیں ہوا۔');
+      resolve(false);
+    });
+  });
+}
 </script>
 <div id="siteAccessGate" style="position:fixed;inset:0;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:rgba(0,0,0,.9);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
   <div class="auth-box" style="text-align:center;">
@@ -2952,7 +2964,24 @@ function msLocalSaveBooks(arr){
   if(window.firebaseSyncMergeBooksSet) window.firebaseSyncMergeBooksSet(msLocalBooksKey(), arr, ()=>{ if(document.getElementById('msListView').style.display !== 'none') msRenderList(); });
 }
 function msLocalGetEntries(bookId){ try{ return JSON.parse(localStorage.getItem(msLocalEntriesKey(bookId))) || []; }catch(e){ return []; } }
-function msLocalSaveEntries(bookId, arr){ (window.firebaseSyncSet || ((k,v)=>localStorage.setItem(k,v)))(msLocalEntriesKey(bookId), JSON.stringify(arr)); }
+// 2026-10-01: Monthly record کی انٹریاں بھی اب ملاپ (merge) سے محفوظ ہوتی ہیں
+// اور مستقل آرکائیو میں بھی جاتی ہیں — کبھی overwrite سے ضائع نہیں ہوں گی۔
+function msLocalSaveEntries(bookId, arr){
+  const key = msLocalEntriesKey(bookId);
+  if(window.kataArchiveEntries) window.kataArchiveEntries(key, arr);
+  if(window.firebaseSyncMergeEntriesSet){
+    window.firebaseSyncMergeEntriesSet(key, arr, ()=>{
+      if(msOpenId === bookId && document.getElementById('msDetailView').style.display !== 'none'){
+        const active = document.activeElement;
+        if(active && active.closest && active.closest('#msNewEntryCard')) return;
+        msOpenEntries = msLocalGetEntries(bookId);
+        msRenderDetail(msOpenName);
+      }
+    });
+  } else {
+    localStorage.setItem(key, JSON.stringify(arr));
+  }
+}
 
 function msShowList(){
   document.getElementById('msListView').style.display = '';
@@ -3457,10 +3486,12 @@ function msSaveEntry(prevTotal, prevItemData){
   kataShowSavedToast();
 }
 
-function msDeleteEntry(){
-  if(!confirm('کیا آپ واقعی یہ انٹری حذف کرنا چاہتے ہیں؟ یہ واپس نہیں ہو سکتا۔')) return;
+async function msDeleteEntry(){
+  if(!confirm('کیا آپ واقعی یہ انٹری حذف کرنا چاہتے ہیں؟')) return;
+  if(!(await askDeletePassword())) return;
   const entries = msLocalGetEntries(msOpenId);
-  entries.pop();
+  const removed = entries.pop();
+  if(removed && window.firebaseSyncRecordTombstone) window.firebaseSyncRecordTombstone(msLocalEntriesKey(msOpenId), kataEntryMergeKey(removed));
   msLocalSaveEntries(msOpenId, entries);
   msOpenEntries = entries;
   msRenderDetail(msOpenName);
@@ -3592,8 +3623,9 @@ function msManualCloseBook(name){
   msRenderList();
 }
 
-function msDeleteWholeBook(name){
-  if(!confirm(`کیا آپ واقعی "${name || '(بلا نام)'}" کھاتہ مکمل طور پر حذف کرنا چاہتے ہیں؟ اس میں موجود تمام انٹریز بھی حذف ہو جائیں گی — یہ واپس نہیں ہو سکتا۔`)) return;
+async function msDeleteWholeBook(name){
+  if(!confirm(`کیا آپ واقعی "${name || '(بلا نام)'}" کھاتہ مکمل طور پر حذف کرنا چاہتے ہیں؟ اس میں موجود تمام انٹریز بھی حذف ہو جائیں گی۔`)) return;
+  if(!(await askDeletePassword())) return;
   const deletedId = msOpenId;
   const remaining = msLocalGetBooks().filter(x=>x.id !== deletedId);
   localStorage.setItem(msLocalBooksKey(), JSON.stringify(remaining));
@@ -4228,6 +4260,7 @@ function kataLocalGetEntries(bookId){
 // کا ریکارڈ کبھی مٹا نہ سکے (firebaseSyncMergeEntriesSet دیکھیں)۔
 function kataLocalSaveEntries(bookId, arr){
   const key = kataLocalEntriesKey(bookId);
+  if(window.kataArchiveEntries) window.kataArchiveEntries(key, arr); // مستقل آرکائیو میں بھی
   if(window.firebaseSyncMergeEntriesSet){
     window.firebaseSyncMergeEntriesSet(key, arr, ()=>{
       if(kataOpenId === bookId && kataLocalMode && document.getElementById('kataDetailView').style.display !== 'none'){
@@ -5137,11 +5170,25 @@ function kataRenderDetail(name){
   // اصل #kataBackBtn پر پہلے سے موجود کلک لاجک (لوکل/Firestore دونوں موڈ)
   // کو دوبارہ نہ لکھنے کے لیے، نیچے والا بٹن صرف اوپر والے بٹن پر خودکار
   // کلک کر دیتا ہے۔
+  // 2026-10-01: گمشدہ ریکارڈ واپس لانے کا آلہ — ہر کھاتے میں (خاص طور پر جب
+  // کوئی انٹری نظر نہ آ رہی ہو)۔ اسی نام کی انٹریاں اس ڈیوائس، کلاؤڈ، یا
+  // Gmail بیک اپ (.json) میں تلاش کر کے واپس لاتا ہے۔
+  if(kataLocalMode){
+    html += `<div class="card" style="text-align:center;" id="kataRecoverCard">
+      <div class="note" style="margin-bottom:8px;">${kataOpenEntries.length ? 'اگر اس کھاتے کی کوئی پرانی انٹری غائب ہے تو یہاں سے تلاش کریں۔' : '⚠️ اس کھاتے میں کوئی انٹری نظر نہیں آ رہی — گمشدہ ریکارڈ یہاں سے تلاش کریں۔'}</div>
+      <button type="button" class="lock-btn" id="kataRecoverScanBtn" style="background:#1e5f4a;">🔍 گمشدہ ریکارڈ تلاش کریں (ڈیوائس + کلاؤڈ)</button>
+      <div class="note" style="margin:10px 0 4px;">یا Gmail بیک اپ کی .json فائل منتخب کریں:</div>
+      <input type="file" id="kataRecoverFileInput" accept=".json,application/json,text/plain" style="max-width:100%;">
+      <div id="kataRecoverResults" style="margin-top:10px;"></div>
+    </div>`;
+  }
+
   html += `<div class="card" style="text-align:center;"><button type="button" class="lock-btn kata-back-btn-bottom" style="margin:0;">⬅ کھاتوں کی فہرست</button></div>`;
 
   container.innerHTML = html;
   kataApplyIndianFormattingToReadonly(container);
   kataApplyPrintButtonVisibility(container);
+  if(kataLocalMode && typeof kataWireRecoverPanel === 'function') kataWireRecoverPanel(container);
   const backBtnBottom = container.querySelector('.kata-back-btn-bottom');
   if(backBtnBottom){
     backBtnBottom.addEventListener('click', ()=>{
@@ -5374,6 +5421,128 @@ function kataCascadeRecomputeFollowing(idx){
 // اور اس کے بعد کی تمام انٹریوں کا Previous Bill درست کر دیتا ہے۔ ہر بار
 // کھاتہ کھلنے پر چلتا ہے مگر صرف واقعی خراب انٹری کو ہی چھیڑتا ہے، اس لیے
 // دوبارہ چلنے سے رقم دوگنی نہیں ہوتی۔
+// ---------- گمشدہ ریکارڈ تلاش/بحال (2026-10-01) ----------
+// ذرائع: (1) اس ڈیوائس کا localStorage، (2) کلاؤڈ (localSync)، (3) Gmail
+// بیک اپ فائل۔ ہر ذریعے میں اسی کھاتہ قسم (سیلزمین/ربنواز/Agency) کی ہر
+// انٹری فہرست دیکھی جاتی ہے؛ وہ انٹریاں جن کا نام (salesman) اس کھاتے کے
+// اصل نام سے ملتا ہو، دکھائی جاتی ہیں۔ "واپس لائیں" صرف شامل (merge) کرتا
+// ہے — کچھ بھی حذف یا overwrite نہیں ہوتا۔
+function kataRecoverPrefix(){
+  return kataInstance === 'salesman' ? 'kataLocalEntries_' : 'kataLocalEntries_' + kataInstance + '_';
+}
+function kataRecoverCollectFromMap(map, sourceLabel, out){
+  const prefix = kataRecoverPrefix();
+  const ownKey = kataLocalEntriesKey(kataOpenId);
+  const rootKey = kataRootBookName(kataOpenName).trim().toLowerCase();
+  const books = kataLocalGetBooks();
+  Object.keys(map).forEach(k=>{
+    if(k.indexOf(prefix) !== 0 || /_deletedIds$/.test(k)) return;
+    const rest = k.slice(prefix.length);
+    if(kataInstance === 'salesman' && /^(ribnawaz|agency)_/.test(rest)) return; // دوسرے کھاتوں کی کلیدیں
+    let arr;
+    try{ arr = typeof map[k] === 'string' ? JSON.parse(map[k]) : map[k]; }catch(e){ return; }
+    if(!Array.isArray(arr) || !arr.length) return;
+    const matches = arr.filter(e=> e && kataRootBookName(e.salesman || '').trim().toLowerCase() === rootKey);
+    const book = books.find(b=> b.id === rest);
+    // کسی دوسری موجودہ کتاب (مثلاً اسی گاہک کا اگلا مہینہ) کی انٹریاں یہاں نہیں —
+    // وہ گمشدہ نہیں، اپنی کتاب میں نظر آتی ہیں۔ صرف اسی کتاب کی (کلاؤڈ/بیک اپ
+    // والی) کاپی، یا وہ فہرستیں جن کی کتاب ہی غائب ہو چکی ہے۔
+    if(book && k !== ownKey) return;
+    const useArr = (k === ownKey) ? arr : matches;
+    if(!useArr.length) return;
+    if(k === ownKey && sourceLabel === 'ڈیوائس') return; // یہی کھلی ہوئی فہرست — پہلے سے نظر آ رہی ہے
+    out.push({source: sourceLabel, key: k, bookName: book ? book.name : '(کتاب موجود نہیں — گمشدہ)', entries: useArr});
+  });
+}
+function kataRecoverRender(found){
+  const box = document.getElementById('kataRecoverResults');
+  if(!box) return;
+  const ownKeys = new Set(kataOpenEntries.map(kataEntryMergeKey));
+  const seenSets = new Set();
+  const useful = found.map(f=> Object.assign({}, f, {newOnes: f.entries.filter(e=> !ownKeys.has(kataEntryMergeKey(e)))}))
+                      .filter(f=> {
+                        if(!f.newOnes.length) return false;
+                        const sig = f.newOnes.map(kataEntryMergeKey).sort().join('|');
+                        if(seenSets.has(sig)) return false;
+                        seenSets.add(sig); return true;
+                      });
+  if(!useful.length){
+    box.innerHTML = '<div class="note" style="color:#B23;">اس نام کا کوئی اضافی ریکارڈ نہیں ملا۔ Gmail سے پرانی تاریخ کی بیک اپ فائل آزمائیں۔</div>';
+    return;
+  }
+  window._kataRecoverFound = useful;
+  box.innerHTML = useful.map((f,i)=>{
+    const dates = f.newOnes.map(e=> kataEntryDateOnly(e.createdAt)).filter(Boolean).sort((a,b)=>a-b);
+    const range = dates.length ? dates[0].toLocaleDateString('en-GB') + ' تا ' + dates[dates.length-1].toLocaleDateString('en-GB') : '';
+    return `<div class="card" style="text-align:center;margin:6px 0;">
+      <div class="note">ذریعہ: ${f.source} — ${kataEscape(kataRootBookName(f.bookName))}</div>
+      <div style="font-size:15px;margin:4px 0;">${f.newOnes.length} انٹریاں ${range ? '(' + range + ')' : ''}</div>
+      <button type="button" class="lock-btn" data-kata-recover-idx="${i}" style="background:#1a7a3c;">⬇ یہ ریکارڈ اس کھاتے میں واپس لائیں</button>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('[data-kata-recover-idx]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const f = window._kataRecoverFound[Number(btn.dataset.kataRecoverIdx)];
+      if(!f) return;
+      if(!confirm(f.newOnes.length + ' انٹریاں اس کھاتے میں شامل کی جائیں؟ موجودہ کچھ بھی حذف نہیں ہوگا۔')) return;
+      if(window.kataUntombstone) window.kataUntombstone(kataLocalEntriesKey(kataOpenId), f.newOnes.map(kataEntryMergeKey));
+      const current = kataLocalGetEntries(kataOpenId);
+      const ordered = f.newOnes.slice().sort((a,b)=> (kataEntryDateOnly(a.createdAt)||0) - (kataEntryDateOnly(b.createdAt)||0));
+      const merged = current.concat(ordered).sort((a,b)=> (kataEntryDateOnly(a.createdAt)||0) - (kataEntryDateOnly(b.createdAt)||0));
+      kataLocalSaveEntries(kataOpenId, merged);
+      kataOpenEntries = merged;
+      kataRenderDetail(kataOpenName);
+      kataShowSavedToast();
+    });
+  });
+}
+function kataArchiveMapFrom(map){
+  const out = {};
+  Object.keys(map || {}).forEach(k=>{ if(kataIsArchiveKey(k)) out[k.slice('kataArchive__'.length)] = map[k]; });
+  return out;
+}
+function kataWireRecoverPanel(container){
+  const scanBtn = container.querySelector('#kataRecoverScanBtn');
+  const fileInput = container.querySelector('#kataRecoverFileInput');
+  const box = container.querySelector('#kataRecoverResults');
+  if(scanBtn) scanBtn.addEventListener('click', async ()=>{
+    box.innerHTML = '<div class="note">⏳ تلاش ہو رہی ہے...</div>';
+    const found = [];
+    const localMap = {};
+    for(let i=0;i<localStorage.length;i++){ const k = localStorage.key(i); localMap[k] = localStorage.getItem(k); }
+    kataRecoverCollectFromMap(localMap, 'ڈیوائس', found);
+    kataRecoverCollectFromMap(kataArchiveMapFrom(localMap), 'مستقل آرکائیو', found);
+    if(window.db){
+      try{
+        const snap = await window.db.collection('localSync').get();
+        const cloudMap = {};
+        snap.forEach(d=>{ const v = d.data(); if(v && typeof v.value === 'string') cloudMap[d.id] = v.value; });
+        kataRecoverCollectFromMap(cloudMap, 'کلاؤڈ', found);
+        kataRecoverCollectFromMap(kataArchiveMapFrom(cloudMap), 'مستقل آرکائیو (کلاؤڈ)', found);
+      } catch(err){ console.warn('recover cloud scan failed', err); }
+    }
+    kataRecoverRender(found);
+  });
+  if(fileInput) fileInput.addEventListener('change', ()=>{
+    const file = fileInput.files && fileInput.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const obj = JSON.parse(reader.result);
+        const map = (obj && obj.data && typeof obj.data === 'object') ? obj.data : obj;
+        const found = [];
+        kataRecoverCollectFromMap(map, 'Gmail بیک اپ', found);
+        kataRecoverCollectFromMap(kataArchiveMapFrom(map), 'Gmail بیک اپ (آرکائیو)', found);
+        kataRecoverRender(found);
+      } catch(err){
+        box.innerHTML = '<div class="note" style="color:#B23;">یہ فائل پڑھی نہیں جا سکی — Gmail بیک اپ والی .json فائل منتخب کریں۔</div>';
+      }
+    };
+    reader.readAsText(file);
+  });
+}
+
 function kataHealAgencyRent(){
   let fixedAt = -1;
   kataOpenEntries.forEach((entry, i)=>{
@@ -6030,7 +6199,8 @@ function kataEditLastEntrySalesman(){
 }
 
 async function kataDeleteEntry(){
-  if(!confirm('کیا آپ واقعی یہ انٹری حذف کرنا چاہتے ہیں؟ یہ واپس نہیں ہو سکتا۔')) return;
+  if(!confirm('کیا آپ واقعی یہ انٹری حذف کرنا چاہتے ہیں؟')) return;
+  if(!(await askDeletePassword())) return;
   if(kataLocalMode){
     const entries = kataLocalGetEntries(kataOpenId);
     const removed = entries.pop(); // delete is only ever offered on the last entry, so just drop it — no id matching needed (older entries may lack one)
@@ -6088,7 +6258,8 @@ function kataManualCloseBook(name){
 // when the wrong book was opened by mistake. Accessible via the "⋮" menu
 // in the detail view's header, then returns to the کھاتوں کی فہرست.
 async function kataDeleteWholeBook(name){
-  if(!confirm(`کیا آپ واقعی "${name || '(بلا نام)'}" کھاتہ مکمل طور پر حذف کرنا چاہتے ہیں؟ اس میں موجود تمام انٹریز بھی حذف ہو جائیں گی — یہ واپس نہیں ہو سکتا۔`)) return;
+  if(!confirm(`کیا آپ واقعی "${name || '(بلا نام)'}" کھاتہ مکمل طور پر حذف کرنا چاہتے ہیں؟ اس میں موجود تمام انٹریز بھی حذف ہو جائیں گی۔`)) return;
+  if(!(await askDeletePassword())) return;
   if(kataLocalMode){
     const deletedId = kataOpenId;
     const remaining = kataLocalGetBooks().filter(x=>x.id !== deletedId);
@@ -7733,8 +7904,39 @@ window.firebaseSyncDeleteBook = firebaseSyncDeleteBook;
 // تینوں جگہ دونوں طرف کی انٹریاں id کے مطابق ملائی جاتی ہیں — کوئی انٹری
 // صرف اسی وقت ہٹتی ہے جب اسے خود "🗑 حذف کریں" سے حذف کیا جائے (tombstone)۔
 function kataIsEntriesKey(k){
-  return typeof k === 'string' && k.indexOf('kataLocalEntries_') === 0 && !/_deletedIds$/.test(k);
+  return typeof k === 'string' && (k.indexOf('kataLocalEntries_') === 0 || k.indexOf('msLocalEntries_') === 0) && !/_deletedIds$/.test(k);
 }
+// ---------- مستقل آرکائیو (2026-10-01) ----------
+// ہر کھاتے کی ہر وہ انٹری جو کبھی بھی محفوظ ہوئی، ایک الگ "آرکائیو" کاپی میں
+// بھی ہمیشہ کے لیے رہتی ہے (اس ڈیوائس اور کلاؤڈ دونوں میں)۔ آرکائیو صرف
+// بڑھتا ہے — اس میں سے کبھی کچھ نہیں ہٹتا، حذف کی گئی انٹری بھی نہیں۔ اگر
+// کبھی کسی بھی وجہ سے کسی کھاتے کی انٹریاں غائب ہوں تو "🔍 گمشدہ ریکارڈ تلاش
+// کریں" انہیں یہیں سے واپس لا سکتا ہے۔
+function kataIsArchiveKey(k){ return typeof k === 'string' && k.indexOf('kataArchive__') === 0; }
+function kataArchiveKeyFor(entriesKey){ return 'kataArchive__' + entriesKey; }
+function kataArchiveEntries(entriesKey, arr){
+  if(!arr || !arr.length) return;
+  const aKey = kataArchiveKeyFor(entriesKey);
+  let old = [];
+  try{ old = JSON.parse(localStorage.getItem(aKey) || '[]') || []; }catch(e){}
+  const merged = kataMergeEntryArrays(arr, old, []); // تازہ ترین ورژن ترجیحی، پرانی کوئی انٹری نہیں ہٹتی
+  if(JSON.stringify(merged) === JSON.stringify(old)) return;
+  if(window.firebaseSyncMergeEntriesSet) window.firebaseSyncMergeEntriesSet(aKey, merged);
+  else localStorage.setItem(aKey, JSON.stringify(merged));
+}
+window.kataArchiveEntries = kataArchiveEntries;
+function kataUntombstone(key, mergeKeys){
+  const tKey = key + '_deletedIds';
+  const tomb = kataReadLocalTomb(key).filter(k=> !mergeKeys.includes(k));
+  localStorage.setItem(tKey, JSON.stringify(tomb));
+  if(window.db){
+    firebaseSyncFetchTombstones(key).then(cloudTomb=>{
+      const all = Array.from(new Set([...cloudTomb, ...tomb])).filter(k=> !mergeKeys.includes(k));
+      return window.db.collection('localSync').doc(tKey).set({ value: JSON.stringify(all), updatedAt: Date.now() });
+    }).catch(err=> console.warn('untombstone failed', err));
+  }
+}
+window.kataUntombstone = kataUntombstone;
 function kataEntryMergeKey(e){
   if(!e) return '';
   if(e.id) return 'id:' + e.id;
@@ -7788,7 +7990,8 @@ function kataEntryMarkPending(key, on){
   localStorage.setItem(KATA_ENTRY_SYNC_PENDING_KEY, JSON.stringify(l));
 }
 async function firebaseSyncMergeEntriesSet(key, localArr, onMerged){
-  const tombLocal = kataReadLocalTomb(key);
+  const isArchive = kataIsArchiveKey(key);
+  const tombLocal = isArchive ? [] : kataReadLocalTomb(key);
   const cleanLocal = (localArr || []).filter(e=> !tombLocal.includes(kataEntryMergeKey(e)));
   localStorage.setItem(key, JSON.stringify(cleanLocal)); // فوراً اسی ڈیوائس پر
   scheduleGmailBackup();
@@ -7800,7 +8003,7 @@ async function firebaseSyncMergeEntriesSet(key, localArr, onMerged){
       const data = doc.data();
       if(data && typeof data.value === 'string'){ try{ cloudArr = JSON.parse(data.value) || []; }catch(e){ cloudArr = []; } }
     }
-    const tomb = Array.from(new Set([...(await firebaseSyncFetchTombstones(key)), ...tombLocal]));
+    const tomb = isArchive ? [] : Array.from(new Set([...(await firebaseSyncFetchTombstones(key)), ...tombLocal]));
     const merged = kataMergeEntryArrays(cleanLocal, cloudArr, tomb);
     const json = JSON.stringify(merged);
     localStorage.setItem(key, json);
@@ -7833,7 +8036,7 @@ function kataApplyCloudEntries(key, cloudJson, tombFromCloud){
   let cloudArr = [], localArr = [];
   try{ cloudArr = JSON.parse(cloudJson) || []; }catch(e){}
   try{ localArr = JSON.parse(localStorage.getItem(key) || '[]') || []; }catch(e){}
-  const tomb = Array.from(new Set([...(tombFromCloud || []), ...kataReadLocalTomb(key)]));
+  const tomb = kataIsArchiveKey(key) ? [] : Array.from(new Set([...(tombFromCloud || []), ...kataReadLocalTomb(key)]));
   const merged = kataMergeEntryArrays(cloudArr, localArr, tomb);
   localStorage.setItem(key, JSON.stringify(merged));
   if(merged.length > cloudArr.filter(e=> !tomb.includes(kataEntryMergeKey(e))).length){
@@ -7855,7 +8058,7 @@ async function firebaseSyncPullAll(){
     snap.forEach(docSnap=>{
       const data = docSnap.data();
       if(!(data && typeof data.value === 'string')) return;
-      if(kataIsEntriesKey(docSnap.id)) kataApplyCloudEntries(docSnap.id, data.value, tombs[docSnap.id]);
+      if(kataIsEntriesKey(docSnap.id) || kataIsArchiveKey(docSnap.id)) kataApplyCloudEntries(docSnap.id, data.value, tombs[docSnap.id]);
       else localStorage.setItem(docSnap.id, data.value);
     });
     kataEntrySyncRetryPending();
@@ -7881,7 +8084,7 @@ function firebaseSyncListenLive(){
       if(data && typeof data.value === 'string'){
         if(change.doc.id === SITE_DATA_KEY){
           siteDataCloudJson = data.value; // ابھی localStorage میں نہیں لکھتے — نیچے merge کے بعد لکھیں گے
-        } else if(kataIsEntriesKey(change.doc.id)){
+        } else if(kataIsEntriesKey(change.doc.id) || kataIsArchiveKey(change.doc.id)){
           kataApplyCloudEntries(change.doc.id, data.value, null); // انٹریاں: ملاپ، کبھی overwrite نہیں
         } else {
           localStorage.setItem(change.doc.id, data.value);
@@ -8004,6 +8207,13 @@ async function firebaseSyncInit(){
     return;
   }
   await firebaseSyncPullAll();
+  // موجودہ تمام کھاتوں کی انٹریاں ابھی سے مستقل آرکائیو میں بھی محفوظ ہو جائیں
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if(kataIsEntriesKey(k)){ try{ kataArchiveEntries(k, JSON.parse(localStorage.getItem(k) || '[]')); }catch(e){} }
+    }
+  } catch(err){ console.warn('archive seed failed', err); }
   if(typeof window.initKataModuleLocal === 'function') window.initKataModuleLocal();
   if(typeof window.restoreSiteData === 'function') window.restoreSiteData(); // ریٹ لسٹ + Best Excel official بھی اسی طرح کلاؤڈ سے تازہ ہوں
   if(typeof window.msReloadRatesFromStorage === 'function') window.msReloadRatesFromStorage(); // سرف کا ماہانہ حساب کے Price/Profit ریٹس بھی کلاؤڈ سے تازہ
