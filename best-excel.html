@@ -4471,7 +4471,7 @@ function kataLocalRenderList(){
   // ورنہ دونوں جگہ گنے جانے سے رقم دگنی ہو جاتی (2026-09-01، صارف کی
   // درخواست پر)۔
   const books = allBooks.filter(b => !b.closed);
-  if(!books.length){
+  if(!books.length && !allBooks.some(b=>b.closed)){
     container.innerHTML = '<div class="note" style="text-align:center;">ابھی کوئی جاری کھاتہ موجود نہیں — اوپر بٹن سے نیا کھاتہ بنائیں۔</div>';
     if(totalBox) totalBox.innerHTML = '';
     return;
@@ -4505,6 +4505,36 @@ function kataLocalRenderList(){
 
     container.appendChild(card);
   });
+  // 2026-10-01: پچھلے مہینوں کے بند کھاتے بھی فہرست کے نیچے ایک بٹن سے
+  // کھولے جا سکیں (کل باقی رقم میں شامل نہیں — دگنی گنتی سے بچنے کے لیے)۔
+  const closedBooks = allBooks.filter(b => b.closed)
+    .sort((a,b)=> new Date(b.createdAt||0) - new Date(a.createdAt||0));
+  if(closedBooks.length){
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'lock-btn';
+    toggle.style.cssText = 'display:block;margin:14px auto;background:#5b5346;';
+    toggle.textContent = `📂 پچھلے مہینوں کے کھاتے (${closedBooks.length})`;
+    const wrap = document.createElement('div');
+    wrap.style.display = window._kataShowClosedBooks ? '' : 'none';
+    toggle.addEventListener('click', ()=>{
+      window._kataShowClosedBooks = !window._kataShowClosedBooks;
+      wrap.style.display = window._kataShowClosedBooks ? '' : 'none';
+    });
+    closedBooks.forEach(b=>{
+      const entries = kataLocalGetEntries(b.id);
+      const last = entries.length ? entries[entries.length-1] : null;
+      const d = last ? kataEntryDateOnly(last.createdAt) : null;
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.cssText = 'cursor:pointer;text-align:center;';
+      card.innerHTML = `<div class="note" style="text-align:center;font-size:11px;margin-bottom:2px;">مہینہ: ${kataMonthKey(d || new Date(b.createdAt||Date.now()))}${d ? ' — آخری انٹری: ' + d.toLocaleDateString('en-GB') : ''}</div><h2 style="border:none;margin:0;font-size:17px;">${kataEscape(kataRootBookName(b.name || '(بلا نام)'))} 🔒</h2>`;
+      card.addEventListener('click', ()=> kataLocalOpen(b.id, b.name || ''));
+      wrap.appendChild(card);
+    });
+    container.appendChild(toggle);
+    container.appendChild(wrap);
+  }
   if(kataInstance === 'agency'){
     container.querySelectorAll('.kata-rename-book-btn').forEach(btn=>{
       btn.addEventListener('click', (ev)=>{
@@ -4798,6 +4828,12 @@ function kataEscape(s){
 function kataBaseBookName(name){
   return (name || '').replace(/ - \d{4}-\d{2}$/, '');
 }
+// تمام " - YYYY-MM" (جتنی بار بھی لگے ہوں) ہٹا کر اصل/جڑ نام
+function kataRootBookName(name){
+  let cur = name || '', prev;
+  do{ prev = cur; cur = cur.replace(/ - \d{4}-\d{2}$/, ''); } while(cur !== prev);
+  return cur;
+}
 
 // پرانی محفوظ شدہ انٹریوں میں "Khula Special"/"Khula sada" کا وزن "20.000"
 // کی شکل میں محفوظ تھا (نئی انٹریوں میں اب "20kg" لکھا جاتا ہے) — صارف کی
@@ -5053,19 +5089,26 @@ function kataRenderDetail(name){
   // اسی کھاتے کے اندر سے پرانا/بند کھاتہ کھولا جا سکے (2026-09-01، صارف کی
   // درخواست پر)۔ صرف کھلے (غیر بند) کھاتے پر دکھتا ہے، چونکہ بند کھاتے میں
   // خود کوئی "نئی انٹری" موجود نہیں۔
-  let prevClosedBook = null;
-  if(!kataOpenClosed){
-    const baseName = name.replace(/ - \d{4}-\d{2}$/, '');
-    if(baseName !== name){
-      const siblingBooks = kataLocalGetBooks();
-      prevClosedBook = siblingBooks.find(b => b.name === baseName && b.closed && b.id !== kataOpenId) || null;
-    }
-  }
-  if(prevClosedBook){
-    const prevEntries = kataLocalGetEntries(prevClosedBook.id);
-    const prevLastEntry = prevEntries.length ? prevEntries[prevEntries.length-1] : null;
-    const prevLastEntryDate = prevLastEntry ? kataEntryDateOnly(prevLastEntry.createdAt) : null;
-    html += `<div class="card" style="cursor:pointer;text-align:center;" data-kata-prev-closed-book-id="${prevClosedBook.id}" data-kata-prev-closed-book-name="${kataEscape(prevClosedBook.name)}">${prevLastEntryDate ? `<div class="note" style="text-align:center;font-size:11px;margin-bottom:2px;">آخری انٹری: ${prevLastEntryDate.toLocaleDateString('en-GB')}</div>` : ''}<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(kataBaseBookName(prevClosedBook.name))} 🔒</h2></div>`;
+  // 2026-10-01: صارف کی درخواست — پچھلے مہینوں کا ریکارڈ ہر کھاتے (کھلا ہو
+  // یا بند) سے ہمیشہ دیکھا جا سکے۔ پہلے صرف ایک ہی پچھلا کھاتہ، صرف کھلے
+  // کھاتے سے، اور صرف بالکل ہم نام ہونے پر نظر آتا تھا — اب اسی بنیادی نام
+  // (تمام " - YYYY-MM" ہٹا کر، چھوٹے/بڑے حروف کا فرق نظرانداز) والے تمام
+  // دوسرے مہینوں کے کھاتے تاریخ وار دکھائے جاتے ہیں۔
+  const kataRootKey = (n)=> kataRootBookName(n).trim().toLowerCase();
+  const thisRoot = kataRootKey(name);
+  const otherMonthBooks = kataLocalGetBooks()
+    .filter(b => b.id !== kataOpenId && kataRootKey(b.name) === thisRoot)
+    .sort((a,b)=> new Date(b.createdAt||0) - new Date(a.createdAt||0));
+  if(otherMonthBooks.length){
+    html += `<div class="card" style="text-align:center;"><h2 style="border:none;margin:0 0 8px;font-size:16px;">📂 دوسرے مہینوں کا ریکارڈ</h2>`;
+    otherMonthBooks.forEach(ob=>{
+      const obEntries = kataLocalGetEntries(ob.id);
+      const obLast = obEntries.length ? obEntries[obEntries.length-1] : null;
+      const obDate = obLast ? kataEntryDateOnly(obLast.createdAt) : null;
+      const obMonth = kataMonthKey(obDate || new Date(ob.createdAt||Date.now()));
+      html += `<div class="card" style="cursor:pointer;text-align:center;margin:6px 0;" data-kata-prev-closed-book-id="${ob.id}" data-kata-prev-closed-book-name="${kataEscape(ob.name)}"><div class="note" style="text-align:center;font-size:11px;margin-bottom:2px;">مہینہ: ${obMonth}${obDate ? ' — آخری انٹری: ' + obDate.toLocaleDateString('en-GB') : ''}</div><h2 style="border:none;margin:0;font-size:17px;">${kataEscape(kataRootBookName(ob.name))}${ob.closed ? ' 🔒' : ''}</h2></div>`;
+    });
+    html += `</div>`;
   }
 
   // 2026-09-29: صارف کی درخواست پر — "⬅ کھاتوں کی فہرست" واپسی بٹن پہلے صرف
@@ -5215,13 +5258,12 @@ function kataRenderDetail(name){
       });
     });
   });
-  const prevClosedBookCard = container.querySelector('[data-kata-prev-closed-book-id]');
-  if(prevClosedBookCard){
+  container.querySelectorAll('[data-kata-prev-closed-book-id]').forEach(prevClosedBookCard=>{
     prevClosedBookCard.addEventListener('click', ()=>{
       kataLocalOpen(prevClosedBookCard.dataset.kataPrevClosedBookId, prevClosedBookCard.dataset.kataPrevClosedBookName);
-      kataScrollToNewEntryBoundary();
+      window.scrollTo({top:0});
     });
-  }
+  });
 }
 
 // پرانی (پہلے سے محفوظ) انٹریوں کے Jamah خانوں میں تبدیلی — صرف اسی
@@ -5922,10 +5964,13 @@ ${cardsHtml}
 </body>
 </html>`;
     const blob = new Blob([fullHtml], {type:'text/html'});
+    // 2026-10-01: فائل نام میں کھاتے والے کا نام بھی — "Iqbal chemical - نام.html"
+    const kataFileOwner = kataRootBookName(kataOpenName).replace(/[\\/:*?"<>|]/g, '').trim();
+    const kataHtmlFileName = kataFileOwner ? `Iqbal chemical - ${kataFileOwner}.html` : 'Iqbal chemical.html';
     if(printMode === 'whatsapp'){
-      await shareHtmlBlob(blob, 'Iqbal chemical.html', 'مکمل کھاتہ ریکارڈ', true);
+      await shareHtmlBlob(blob, kataHtmlFileName, 'مکمل کھاتہ ریکارڈ', true);
     } else {
-      await shareHtmlBlob(blob, 'Iqbal chemical.html', 'مکمل کھاتہ ریکارڈ', false);
+      await shareHtmlBlob(blob, kataHtmlFileName, 'مکمل کھاتہ ریکارڈ', false);
     }
   } catch(err){
     alert('فائل بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
@@ -6443,8 +6488,11 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       }</td>
       <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input${numClass}${thinClass}" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}" value="${kataEscape(liveName)}"></td>
       <td data-color-key="${item.key}-t" class="kata-t-cell" style="display:flex;align-items:center;gap:1px;padding:1px;"><input type="number" inputmode="numeric" class="cell-input${numClass}" data-kata-field="t" data-kata-item="${item.key}" data-kata-tctn-order="${idx}" style="border:1px solid var(--line);background-color:#d9f2d9;flex:1;min-width:0;" value="0">${kataInstance === 'salesman' ? `<input type="text" inputmode="numeric" maxlength="2" title="سابقہ (پرانا حصہ) — صرف نوٹ کے لیے" data-kata-field="sabkaNote" data-kata-item="${item.key}" style="width:11px;height:12px;font-size:5px;padding:0;border:1px solid var(--line);text-align:center;box-sizing:border-box;flex-shrink:0;">` : ''}</td>
-      <td data-color-key="${item.key}-weight"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);width:100%;box-sizing:border-box;" value="${kataEscape(kataDisplayWeight(liveWeight))}"></td>
-      <td data-color-key="${item.key}-rate"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${liveRate}" ${isZNet ? '' : 'disabled'}></td>
+      ${isZNet
+        ? /* 2026-10-01: Z Net Bill میں Weight کا خانہ ہمیشہ خالی رہتا تھا — صارف کی درخواست پر Weight+Price ایک ہی (ملا ہوا) خانہ */
+          `<td data-color-key="${item.key}-rate" colspan="2"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-rate="${item.key}" style="border:1px solid var(--line);width:100%;box-sizing:border-box;" value="${liveRate}"></td>`
+        : `<td data-color-key="${item.key}-weight"><input type="text" class="cell-input kata-smaller-size${thinClass}" data-kata-field="weight" data-kata-item="${item.key}" style="border:1px solid var(--line);width:100%;box-sizing:border-box;" value="${kataEscape(kataDisplayWeight(liveWeight))}"></td>
+      <td data-color-key="${item.key}-rate"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-rate="${item.key}" style="border:1px solid var(--line);" value="${liveRate}" disabled></td>`}
       <td data-color-key="${item.key}-totalrate"><span class="cell-val${numClass}" data-kata-totalrate="${item.key}">0</span></td>${priftCells}${krayaCells}${discountCells}
     </tr>`;
   });
