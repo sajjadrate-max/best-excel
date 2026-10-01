@@ -4327,6 +4327,7 @@ function kataCheckMonthRolloverLocal(){
         name: (b.name || 'کھاتہ') + ' - ' + curMonth,
         createdAt: new Date().toISOString(),
         carryForward: carryForward,
+        custNo: b.custNo, // گاہک کا مستقل نمبر نئے مہینے میں بھی وہی
       });
     }
   });
@@ -4507,6 +4508,53 @@ function kataBackfillCommissionForAgency(){
 }
 window.kataBackfillCommissionForAgency = kataBackfillCommissionForAgency;
 
+// ---------- گاہکوں کا مستقل نمبر شمار (2026-10-01) ----------
+// ہر گاہک (اصل نام، مہینے کا لاحقہ ہٹا کر) کو ایک نمبر ملتا ہے جو ہمیشہ وہی
+// رہتا ہے — نئے مہینے کی کتاب میں بھی۔ نیا گاہک = سب سے بڑا نمبر + 1۔ کسی
+// گاہک کا حساب حذف ہو (اس نام کی کوئی جاری کتاب نہ رہے) تو سب سے آخری نمبر
+// والا گاہک خودکار اسی خالی نمبر پر آ جاتا ہے۔ نمبر کتاب پر (custNo) محفوظ
+// ہوتا ہے، اس لیے موبائل/کمپیوٹر دونوں پر ایک جیسا رہتا ہے۔
+function kataCustRoot(name){ return kataRootBookName(name || '').trim().toLowerCase(); }
+function kataEnsureCustomerNumbers(allBooks){
+  let changed = false;
+  const open = allBooks.filter(b=> !b.closed).sort((a,b)=> new Date(a.createdAt||0) - new Date(b.createdAt||0));
+  const rootNo = {}; // اسی گاہک کا پہلے سے نمبر (پرانی/بند کتاب سے بھی)
+  allBooks.forEach(b=>{ if(b.custNo){ const r = kataCustRoot(b.name); if(!rootNo[r] || !b.closed) rootNo[r] = b.custNo; } });
+  const used = {}; // نمبر → گاہک (صرف جاری گاہک)
+  let max = 0;
+  open.forEach(b=>{
+    const r = kataCustRoot(b.name);
+    let no = b.custNo || rootNo[r];
+    if(no && used[no] && used[no] !== r) no = null; // دو مختلف گاہک ایک ہی نمبر پر — بعد والے کو نیا نمبر
+    if(no){ used[no] = r; if(no > max) max = no; if(b.custNo !== no){ b.custNo = no; changed = true; } rootNo[r] = no; }
+  });
+  open.forEach(b=>{
+    if(b.custNo && used[b.custNo] === kataCustRoot(b.name)) return;
+    const r = kataCustRoot(b.name);
+    const no = (rootNo[r] && used[rootNo[r]] === r) ? rootNo[r] : ++max;
+    used[no] = r; rootNo[r] = no; b.custNo = no; changed = true;
+  });
+  // اسی گاہک کی پرانی (بند) کتابوں پر بھی وہی نمبر
+  allBooks.forEach(b=>{
+    if(!b.closed) return;
+    const r = kataCustRoot(b.name);
+    if(used[rootNo[r]] === r && b.custNo !== rootNo[r]){ b.custNo = rootNo[r]; changed = true; }
+  });
+  if(changed) kataLocalSaveBooks(allBooks);
+}
+function kataRenumberAfterDelete(deletedBook, remaining){
+  if(!deletedBook || !deletedBook.custNo || deletedBook.closed) return;
+  const r = kataCustRoot(deletedBook.name);
+  if(remaining.some(b=> !b.closed && kataCustRoot(b.name) === r)) return; // گاہک ابھی موجود ہے
+  const freed = deletedBook.custNo;
+  let maxBook = null;
+  remaining.forEach(b=>{ if(!b.closed && b.custNo && (!maxBook || b.custNo > maxBook.custNo)) maxBook = b; });
+  if(!maxBook || maxBook.custNo <= freed) return;
+  const moveRoot = kataCustRoot(maxBook.name);
+  remaining.forEach(b=>{ if(kataCustRoot(b.name) === moveRoot) b.custNo = freed; }); // اس گاہک کی سب کتابیں (پرانے مہینے بھی)
+  // حذف شدہ گاہک کی پرانی بند کتابوں کا نمبر ہٹا دیں تاکہ وہ نمبر واپس نہ کھینچیں
+  remaining.forEach(b=>{ if(kataCustRoot(b.name) === r) delete b.custNo; });
+}
 function kataLocalRenderList(){
   kataCheckMonthRolloverLocal();
   const container = document.getElementById('kataListContainer');
@@ -4520,7 +4568,8 @@ function kataLocalRenderList(){
   // چونکہ وہ رقم پہلے ہی نئے کھاتے کے carryForward میں شمار ہو چکی ہے،
   // ورنہ دونوں جگہ گنے جانے سے رقم دگنی ہو جاتی (2026-09-01، صارف کی
   // درخواست پر)۔
-  const books = allBooks.filter(b => !b.closed);
+  kataEnsureCustomerNumbers(allBooks);
+  const books = allBooks.filter(b => !b.closed).sort((a,b)=> (a.custNo||0) - (b.custNo||0));
   if(!books.length && !allBooks.some(b=>b.closed)){
     container.innerHTML = '<div class="note" style="text-align:center;">ابھی کوئی جاری کھاتہ موجود نہیں — اوپر بٹن سے نیا کھاتہ بنائیں۔</div>';
     if(totalBox) totalBox.innerHTML = '';
@@ -4550,7 +4599,7 @@ function kataLocalRenderList(){
     // Agency کھاتہ — صارف کی درخواست پر (2026-08-28): نام میں غلطی درست
     // کرنے کے لیے ✏️ بٹن (صرف Agency میں)۔ (2026-08-30 — ہر کھاتے کے اپنے
     // ڈبے کے اوپر اسی کھاتے کی آخری انٹری کی تاریخ۔)
-    card.innerHTML = `${lastEntryDate ? `<div class="note" style="text-align:center;font-size:11px;margin-bottom:2px;">آخری انٹری: ${lastEntryDate.toLocaleDateString('en-GB')}</div>` : ''}<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(kataBaseBookName(b.name || '(بلا نام)'))}${b.closed ? ' 🔒' : ''}${kataInstance === 'agency' ? ` <button type="button" class="kata-rename-book-btn" data-kata-book-id="${b.id}" style="font-size:14px;background:none;border:1px solid var(--line);border-radius:4px;padding:2px 6px;cursor:pointer;">✏️</button>` : ''}</h2>`;
+    card.innerHTML = `${lastEntryDate ? `<div class="note" style="text-align:center;font-size:11px;margin-bottom:2px;">آخری انٹری: ${lastEntryDate.toLocaleDateString('en-GB')}</div>` : ''}<h2 style="border:none;margin:0;font-size:18px;">${b.custNo ? `<span style="display:inline-block;min-width:30px;padding:0 6px;margin-left:6px;border-radius:14px;background:var(--maroon-deep);color:#fff;font-size:15px;">${b.custNo}</span>` : ''}${kataEscape(kataBaseBookName(b.name || '(بلا نام)'))}${b.closed ? ' 🔒' : ''}${kataInstance === 'agency' ? ` <button type="button" class="kata-rename-book-btn" data-kata-book-id="${b.id}" style="font-size:14px;background:none;border:1px solid var(--line);border-radius:4px;padding:2px 6px;cursor:pointer;">✏️</button>` : ''}</h2>`;
     card.addEventListener('click', (ev)=>{ if(ev.target.closest('.kata-rename-book-btn')) return; kataLocalOpen(b.id, b.name || ''); });
 
     container.appendChild(card);
@@ -5108,7 +5157,7 @@ function kataRenderDetail(name){
     prevItemData[item.key] = {totalT: (v && v.totalT) || 0, discount: (v && v.discount) || 0, weight: (v && v.weight != null) ? v.weight : null, krayaRate: (v && v.krayaRate) || 0, commissionRate: (v && v.commissionRate) || 0};
   });
 
-  let html = `<div class="card" style="text-align:center;">${kataDotsMenuHtml([{cls:'kata-close-book-btn', label:'📅 یہ ریکارڈ محفوظ کر کے نیا مہینہ شروع کریں'}, {cls:'kata-book-delete-btn', label:'🗑 یہ کھاتہ حذف کریں'}])}<h2 style="border:none;margin:0;">${kataEscape(kataBaseBookName(name))}${kataOpenClosed ? ' 🔒' : ''}</h2></div>`;
+  let html = `<div class="card" style="text-align:center;">${kataDotsMenuHtml([{cls:'kata-close-book-btn', label:'📅 یہ ریکارڈ محفوظ کر کے نیا مہینہ شروع کریں'}, {cls:'kata-book-delete-btn', label:'🗑 یہ کھاتہ حذف کریں'}])}<h2 style="border:none;margin:0;">${(()=>{ const ob = kataLocalMode ? kataLocalGetBooks().find(x=>x.id===kataOpenId) : null; return (ob && ob.custNo) ? `<span style="display:inline-block;min-width:30px;padding:0 6px;margin-left:6px;border-radius:14px;background:var(--maroon-deep);color:#fff;font-size:16px;">${ob.custNo}</span>` : ''; })()}${kataEscape(kataBaseBookName(name))}${kataOpenClosed ? ' 🔒' : ''}</h2></div>`;
 
   kataOpenEntries.forEach((entry, i)=>{
     const isLast = i === kataOpenEntries.length - 1;
@@ -6247,6 +6296,7 @@ function kataManualCloseBook(name){
     name: (book.name || 'کھاتہ') + ' - ' + kataMonthKey(),
     createdAt: new Date().toISOString(),
     carryForward: carryForward,
+    custNo: book.custNo,
   };
   books.push(newBook);
   kataLocalSaveBooks(books);
@@ -6262,7 +6312,10 @@ async function kataDeleteWholeBook(name){
   if(!(await askDeletePassword())) return;
   if(kataLocalMode){
     const deletedId = kataOpenId;
-    const remaining = kataLocalGetBooks().filter(x=>x.id !== deletedId);
+    const allBefore = kataLocalGetBooks();
+    const deletedBook = allBefore.find(x=> x.id === deletedId);
+    const remaining = allBefore.filter(x=>x.id !== deletedId);
+    kataRenumberAfterDelete(deletedBook, remaining);
     localStorage.setItem(kataLocalBooksKey(), JSON.stringify(remaining));
     if(window.firebaseSyncDeleteBook) window.firebaseSyncDeleteBook(kataLocalBooksKey(), deletedId, remaining);
     localStorage.removeItem(kataLocalEntriesKey(deletedId));
