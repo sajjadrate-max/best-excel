@@ -4971,6 +4971,10 @@ function kataRenderDetail(name){
   // bug سے متاثرہ Profit ہر کھاتے میں صرف ایک ہی بار خودکار درست کر دیں
   // (نیچے kataRepairRibnawazProfits کا نوٹ دیکھیں) — book کے فلیگ کی وجہ
   // سے دوبارہ نہیں چلتا۔
+  // Agency کھاتہ — پہلے سے محفوظ وہ انٹریاں جن میں Rent لکھا گیا مگر Price
+  // میں جمع نہیں ہوا (پرانے بگ کی وجہ سے) خودکار درست ہو جائیں (2026-10-01)۔
+  if(kataInstance === 'agency' && kataLocalMode && kataOpenId) kataHealAgencyRent();
+
   if(kataInstance === 'ribnawaz' && kataLocalMode && kataOpenId){
     const booksForFix = kataLocalGetBooks();
     const thisBookForFix = booksForFix.find(b=> b.id === kataOpenId);
@@ -5305,6 +5309,50 @@ function kataCascadeRecomputeFollowing(idx){
 // کھرچہ/Less منہا کر کے از سرِ نو بناتا ہے (وہی فارمولا جو ہمیشہ سے درست
 // ہونا چاہیے تھا)، پھر Sabka/Total/Bqaya پوری کتاب میں آگے تک درست کرتا
 // ہے۔ نئی/پرانی، چھیڑی گئی/نہ چھیڑی گئی — سب انٹریوں کے لیے یکساں محفوظ۔
+// Agency کھاتہ (2026-10-01): جس انٹری میں Rent (kharch) موجود ہو مگر
+// "New Bill" (today.price) ابھی تک صرف آئٹمز کے Total Price کے برابر ہو —
+// یعنی Rent جمع ہونے سے رہ گیا — اس میں Rent جمع کر کے Total/Remaining
+// اور اس کے بعد کی تمام انٹریوں کا Previous Bill درست کر دیتا ہے۔ ہر بار
+// کھاتہ کھلنے پر چلتا ہے مگر صرف واقعی خراب انٹری کو ہی چھیڑتا ہے، اس لیے
+// دوبارہ چلنے سے رقم دوگنی نہیں ہوتی۔
+function kataHealAgencyRent(){
+  let fixedAt = -1;
+  kataOpenEntries.forEach((entry, i)=>{
+    const kharch = Number(entry.kharch)||0;
+    if(!kharch || !entry.today) return;
+    let itemsSum = 0;
+    Object.values(entry.items||{}).forEach(v=>{ itemsSum += Number(v && v.price)||0; });
+    if(Math.abs((Number(entry.today.price)||0) - itemsSum) < 0.01){
+      entry.today.price = itemsSum + kharch;
+      if(fixedAt === -1) fixedAt = i;
+    }
+  });
+  if(fixedAt === -1) return;
+  for(let i = fixedAt; i < kataOpenEntries.length; i++){
+    const e = kataOpenEntries[i];
+    if(i > fixedAt){
+      const prev = kataOpenEntries[i-1];
+      e.sabka = e.sabka || {};
+      e.sabka.price = (prev.bqaya && prev.bqaya.price != null) ? prev.bqaya.price : ((prev.total && prev.total.price)||0);
+    }
+    e.total = e.total || {};
+    e.total.price = ((e.sabka && e.sabka.price)||0) + ((e.today && e.today.price)||0);
+    const jp = (e.jamah && e.jamah.price) || [0,0];
+    e.bqaya = e.bqaya || {};
+    e.bqaya.price = e.total.price - ((jp[0]||0)+(jp[1]||0));
+  }
+  kataLocalSaveEntries(kataOpenId, kataOpenEntries);
+  // اگر یہ بند کتاب ہے تو اگلے مہینے کی کھلی کتاب کا Previous Bill بھی درست کریں
+  if(kataOpenClosed){
+    const last = kataOpenEntries[kataOpenEntries.length-1];
+    const books = kataLocalGetBooks();
+    const sibling = books.find(b => !b.closed && b.name.indexOf(kataOpenName + ' - ') === 0);
+    if(sibling && last){
+      sibling.carryForward = Object.assign({}, sibling.carryForward||{}, {price: last.bqaya.price});
+      kataLocalSaveBooks(books);
+    }
+  }
+}
 function kataRepairRibnawazProfits(){
   const itemByKey = {};
   KATA_ITEMS.forEach(it=> itemByKey[it.key] = it);
@@ -5381,7 +5429,29 @@ function kataOnEntryEditExtraInput(input){
   // Bqaya Profit میں وہی فرق فوری لگا دیتے ہیں (اسکرین پر بھی، محفوظ
   // بٹن دبانے پر kataCascadeRecomputeFollowing آگے کی انٹریوں تک بھی لے
   // جائے گا)۔
-  if(field === 'kharch' || field === 'less'){
+  // Agency کھاتہ — صارف کی رپورٹ (2026-10-01): ترمیم موڈ میں "Total Rent"
+  // بدلنے پر رقم Price/Total/Remaining میں جمع ہی نہیں ہوتی تھی (اوپر والا
+  // ربنواز کا Profit-منہا والا کوڈ غلطی سے Agency پر بھی چل رہا تھا)۔
+  // Agency میں Rent ہمیشہ Price میں جمع ہوتا ہے، Profit سے اس کا کوئی تعلق نہیں۔
+  if(field === 'kharch' && kataInstance === 'agency'){
+    const oldVal = entry.kharch || 0;
+    entry.kharch = num;
+    entry.today.price = (entry.today.price||0) + (num - oldVal);
+    entry.total.price = ((entry.sabka && entry.sabka.price)||0) + (entry.today.price||0);
+    const jamahPrice = (entry.jamah && entry.jamah.price) || [0,0];
+    entry.bqaya = entry.bqaya || {};
+    entry.bqaya.price = entry.total.price - ((jamahPrice[0]||0)+(jamahPrice[1]||0));
+    const card = input.closest('.card');
+    if(card){
+      const todayPriceInp = card.querySelector(`[data-kata-edit-sumrow="${idx}:today:price"]`);
+      if(todayPriceInp) todayPriceInp.value = kataIndianNumberFormat(entry.today.price);
+      const totalPriceEl = card.querySelector(`[data-kata-entry-total-price="${idx}"]`);
+      if(totalPriceEl) totalPriceEl.textContent = kataIndianNumberFormat(entry.total.price);
+      const bqayaEl = card.querySelector(`[data-kata-entry-bqaya="${idx}"]`);
+      if(bqayaEl) bqayaEl.textContent = kataIndianNumberFormat(entry.bqaya.price);
+    }
+  }
+  else if(field === 'kharch' || field === 'less'){
     const oldVal = entry[field] || 0;
     entry[field] = num;
     entry.today.profit = (entry.today.profit||0) - (num - oldVal);
