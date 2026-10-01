@@ -4223,7 +4223,24 @@ function kataLocalSaveBooks(arr){
 function kataLocalGetEntries(bookId){
   try{ return JSON.parse(localStorage.getItem(kataLocalEntriesKey(bookId))) || []; }catch(e){ return []; }
 }
-function kataLocalSaveEntries(bookId, arr){ (window.firebaseSyncSet || ((k,v)=>localStorage.setItem(k,v)))(kataLocalEntriesKey(bookId), JSON.stringify(arr)); }
+// 2026-10-01: انٹریاں اب کبھی سیدھا overwrite نہیں ہوتیں — کلاؤڈ اور اس ڈیوائس
+// دونوں کی انٹریاں id کے مطابق ملا کر محفوظ ہوتی ہیں، تاکہ ایک ڈیوائس دوسری
+// کا ریکارڈ کبھی مٹا نہ سکے (firebaseSyncMergeEntriesSet دیکھیں)۔
+function kataLocalSaveEntries(bookId, arr){
+  const key = kataLocalEntriesKey(bookId);
+  if(window.firebaseSyncMergeEntriesSet){
+    window.firebaseSyncMergeEntriesSet(key, arr, ()=>{
+      if(kataOpenId === bookId && kataLocalMode && document.getElementById('kataDetailView').style.display !== 'none'){
+        const active = document.activeElement;
+        if(active && active.closest && active.closest('#kataNewEntryCard')) return;
+        kataOpenEntries = kataLocalGetEntries(bookId);
+        kataRenderDetail(kataOpenName);
+      }
+    });
+  } else {
+    localStorage.setItem(key, JSON.stringify(arr));
+  }
+}
 
 // موبائل/Whatsapp پرنٹ کے لیے (2026-09-26، صارف کی درخواست پر): اسی نام کے
 // کسٹمر/کھاتے کی، مہینہ بہ مہینہ auto-rollover سے بننے والی تمام کتابوں
@@ -6016,7 +6033,8 @@ async function kataDeleteEntry(){
   if(!confirm('کیا آپ واقعی یہ انٹری حذف کرنا چاہتے ہیں؟ یہ واپس نہیں ہو سکتا۔')) return;
   if(kataLocalMode){
     const entries = kataLocalGetEntries(kataOpenId);
-    entries.pop(); // delete is only ever offered on the last entry, so just drop it — no id matching needed (older entries may lack one)
+    const removed = entries.pop(); // delete is only ever offered on the last entry, so just drop it — no id matching needed (older entries may lack one)
+    if(removed && window.firebaseSyncRecordTombstone) window.firebaseSyncRecordTombstone(kataLocalEntriesKey(kataOpenId), kataEntryMergeKey(removed));
     kataLocalSaveEntries(kataOpenId, entries);
     kataOpenEntries = entries;
     kataRenderDetail(kataOpenName);
@@ -7708,14 +7726,139 @@ async function firebaseSyncDeleteBook(key, bookId, remainingArr, onDone){
 }
 window.firebaseSyncDeleteBook = firebaseSyncDeleteBook;
 
+// ---------- کھاتہ انٹریوں کا محفوظ ملاپ (2026-10-01) ----------
+// پہلے انٹریوں کی فہرست ہر بار پوری کی پوری overwrite ہوتی تھی (save، صفحہ
+// کھلنے پر pull، اور لائیو اپڈیٹ — تینوں جگہ)۔ اگر کسی ڈیوائس پر پرانی یا
+// خالی فہرست ہو تو وہ کلاؤڈ کا اصل ریکارڈ ہمیشہ کے لیے مٹا دیتی تھی۔ اب
+// تینوں جگہ دونوں طرف کی انٹریاں id کے مطابق ملائی جاتی ہیں — کوئی انٹری
+// صرف اسی وقت ہٹتی ہے جب اسے خود "🗑 حذف کریں" سے حذف کیا جائے (tombstone)۔
+function kataIsEntriesKey(k){
+  return typeof k === 'string' && k.indexOf('kataLocalEntries_') === 0 && !/_deletedIds$/.test(k);
+}
+function kataEntryMergeKey(e){
+  if(!e) return '';
+  if(e.id) return 'id:' + e.id;
+  return 'ts:' + (typeof e.createdAt === 'string' ? e.createdAt : JSON.stringify(e.createdAt || ''));
+}
+// primary کی ترتیب برقرار، secondary کی صرف وہی انٹریاں شامل ہوں جو primary
+// میں نہیں — انہیں secondary میں اپنی پچھلی ہمسایہ انٹری کے فوراً بعد رکھا
+// جاتا ہے (تاریخ سے دوبارہ ترتیب نہیں، تاکہ Sabka کی زنجیر نہ ٹوٹے)۔
+function kataMergeEntryArrays(primary, secondary, tomb){
+  tomb = tomb || [];
+  const alive = (e)=> e && !tomb.includes(kataEntryMergeKey(e));
+  const result = (primary || []).filter(alive);
+  const have = new Set(result.map(kataEntryMergeKey));
+  (secondary || []).forEach((e, i)=>{
+    if(!alive(e)) return;
+    const k = kataEntryMergeKey(e);
+    if(have.has(k)) return;
+    let insertAt = result.length;
+    for(let j = i-1; j >= 0; j--){
+      const pos = result.findIndex(x=> kataEntryMergeKey(x) === kataEntryMergeKey(secondary[j]));
+      if(pos !== -1){ insertAt = pos + 1; break; }
+    }
+    result.splice(insertAt, 0, e);
+    have.add(k);
+  });
+  return result;
+}
+function kataReadLocalTomb(key){
+  try{ return JSON.parse(localStorage.getItem(key + '_deletedIds') || '[]') || []; }catch(e){ return []; }
+}
+async function firebaseSyncRecordTombstone(key, mergeKey){
+  const tKey = key + '_deletedIds';
+  const tomb = kataReadLocalTomb(key);
+  if(!tomb.includes(mergeKey)) tomb.push(mergeKey);
+  localStorage.setItem(tKey, JSON.stringify(tomb));
+  if(!window.db) return;
+  try{
+    const cloudTomb = await firebaseSyncFetchTombstones(key);
+    const all = Array.from(new Set([...cloudTomb, ...tomb]));
+    localStorage.setItem(tKey, JSON.stringify(all));
+    await window.db.collection('localSync').doc(tKey).set({ value: JSON.stringify(all), updatedAt: Date.now() });
+  } catch(err){ console.warn('tombstone save failed', err); }
+}
+window.firebaseSyncRecordTombstone = firebaseSyncRecordTombstone;
+
+const KATA_ENTRY_SYNC_PENDING_KEY = 'kataEntrySyncPendingKeys';
+function kataEntryPendingList(){ try{ return JSON.parse(localStorage.getItem(KATA_ENTRY_SYNC_PENDING_KEY) || '[]'); }catch(e){ return []; } }
+function kataEntryMarkPending(key, on){
+  let l = kataEntryPendingList().filter(k=> k !== key);
+  if(on) l.push(key);
+  localStorage.setItem(KATA_ENTRY_SYNC_PENDING_KEY, JSON.stringify(l));
+}
+async function firebaseSyncMergeEntriesSet(key, localArr, onMerged){
+  const tombLocal = kataReadLocalTomb(key);
+  const cleanLocal = (localArr || []).filter(e=> !tombLocal.includes(kataEntryMergeKey(e)));
+  localStorage.setItem(key, JSON.stringify(cleanLocal)); // فوراً اسی ڈیوائس پر
+  scheduleGmailBackup();
+  if(!window.db){ kataEntryMarkPending(key, true); return; }
+  try{
+    const doc = await window.db.collection('localSync').doc(key).get();
+    let cloudArr = [];
+    if(doc.exists){
+      const data = doc.data();
+      if(data && typeof data.value === 'string'){ try{ cloudArr = JSON.parse(data.value) || []; }catch(e){ cloudArr = []; } }
+    }
+    const tomb = Array.from(new Set([...(await firebaseSyncFetchTombstones(key)), ...tombLocal]));
+    const merged = kataMergeEntryArrays(cleanLocal, cloudArr, tomb);
+    const json = JSON.stringify(merged);
+    localStorage.setItem(key, json);
+    await window.db.collection('localSync').doc(key).set({
+      value: json,
+      updatedAt: (typeof firebase !== 'undefined' && firebase.firestore) ? firebase.firestore.FieldValue.serverTimestamp() : Date.now()
+    });
+    kataEntryMarkPending(key, false);
+    if(merged.length !== cleanLocal.length && typeof onMerged === 'function') onMerged();
+  } catch(err){
+    console.warn('entries merge-save failed for', key, '— will retry', err);
+    kataEntryMarkPending(key, true);
+  }
+}
+window.firebaseSyncMergeEntriesSet = firebaseSyncMergeEntriesSet;
+function kataEntrySyncRetryPending(){
+  if(!window.db) return;
+  kataEntryPendingList().forEach(key=>{
+    let arr = [];
+    try{ arr = JSON.parse(localStorage.getItem(key) || '[]') || []; }catch(e){}
+    firebaseSyncMergeEntriesSet(key, arr); // دوبارہ کوشش بھی ہمیشہ ملاپ سے، کبھی سادہ overwrite نہیں
+  });
+}
+window.addEventListener('online', kataEntrySyncRetryPending);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'visible') kataEntrySyncRetryPending(); });
+// کلاؤڈ سے آنے والی انٹریوں کو اس ڈیوائس کی انٹریوں سے ملاتا ہے (کلاؤڈ کا ورژن
+// ترجیحی، مگر اس ڈیوائس کی وہ انٹریاں بھی رہتی ہیں جو ابھی کلاؤڈ تک نہیں پہنچیں)۔
+// اگر اس ڈیوائس کے پاس اضافی انٹریاں تھیں تو انہیں کلاؤڈ پر بھی بھیج دیا جاتا ہے۔
+function kataApplyCloudEntries(key, cloudJson, tombFromCloud){
+  let cloudArr = [], localArr = [];
+  try{ cloudArr = JSON.parse(cloudJson) || []; }catch(e){}
+  try{ localArr = JSON.parse(localStorage.getItem(key) || '[]') || []; }catch(e){}
+  const tomb = Array.from(new Set([...(tombFromCloud || []), ...kataReadLocalTomb(key)]));
+  const merged = kataMergeEntryArrays(cloudArr, localArr, tomb);
+  localStorage.setItem(key, JSON.stringify(merged));
+  if(merged.length > cloudArr.filter(e=> !tomb.includes(kataEntryMergeKey(e))).length){
+    firebaseSyncMergeEntriesSet(key, merged); // اس ڈیوائس کی اضافی انٹریاں کلاؤڈ تک
+  }
+}
+
 async function firebaseSyncPullAll(){
   if(!window.db) return;
   try{
     const snap = await window.db.collection('localSync').get();
+    const tombs = {};
+    snap.forEach(docSnap=>{
+      if(/_deletedIds$/.test(docSnap.id)){
+        const d = docSnap.data();
+        try{ tombs[docSnap.id.replace(/_deletedIds$/, '')] = JSON.parse(d.value) || []; }catch(e){}
+      }
+    });
     snap.forEach(docSnap=>{
       const data = docSnap.data();
-      if(data && typeof data.value === 'string') localStorage.setItem(docSnap.id, data.value);
+      if(!(data && typeof data.value === 'string')) return;
+      if(kataIsEntriesKey(docSnap.id)) kataApplyCloudEntries(docSnap.id, data.value, tombs[docSnap.id]);
+      else localStorage.setItem(docSnap.id, data.value);
     });
+    kataEntrySyncRetryPending();
   } catch(err){ console.warn('cloud sync pull failed — staying with this device\'s existing data', err); }
 }
 
@@ -7738,6 +7881,8 @@ function firebaseSyncListenLive(){
       if(data && typeof data.value === 'string'){
         if(change.doc.id === SITE_DATA_KEY){
           siteDataCloudJson = data.value; // ابھی localStorage میں نہیں لکھتے — نیچے merge کے بعد لکھیں گے
+        } else if(kataIsEntriesKey(change.doc.id)){
+          kataApplyCloudEntries(change.doc.id, data.value, null); // انٹریاں: ملاپ، کبھی overwrite نہیں
         } else {
           localStorage.setItem(change.doc.id, data.value);
         }
