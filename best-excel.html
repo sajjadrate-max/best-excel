@@ -6838,11 +6838,8 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <div class="note" style="text-align:center;margin-top:6px;">
         <div style="margin-bottom:4px;">تاریخ (اختیاری — خالی چھوڑیں تو آج کی تاریخ استعمال ہوگی؛ بند/تالے والے کھاتے میں پرانی تاریخ لکھی جا سکتی ہے)</div>
         <input type="date" id="kataEntryDateInput" class="cell-input" style="border:1px solid var(--line);text-align:center;">
-        <!-- 2026-09-29: پہلے تاریخ لکھنے پر ٹائم ہمیشہ خودکار PM 12:00 لگتا تھا،
-             صارف کی درخواست پر اب ٹائم بھی اپنی مرضی سے لکھا جا سکتا ہے — خالی
-             چھوڑیں تو پہلے کی طرح PM 12:00 ہی استعمال ہوگا۔ -->
-        <div style="margin:6px 0 4px;">ٹائم (اختیاری — خالی چھوڑیں تو PM 12:00 استعمال ہوگا)</div>
-        <input type="time" id="kataEntryTimeInput" class="cell-input" style="border:1px solid var(--line);text-align:center;">
+        <!-- 2026-10-03: صارف کی درخواست پر ٹائم والا خانہ تمام کھاتوں سے ہٹا دیا
+             گیا — تاریخ لکھنے پر ٹائم خودکار PM 12:00 ہی لگتا ہے۔ -->
       </div>
       <div class="kata-ref-title">Iqbal chemical</div>
       <div class="edit-table wide-table kata-ref-style">
