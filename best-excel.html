@@ -3008,9 +3008,14 @@ function msShowList(){
 // اصل/جڑ نام تک پہنچتا ہے — ایک ہی کھاتہ ایک سے زیادہ دفعہ بند ہو چکا ہو
 // تب بھی سابقہ/جانشین کھاتوں کا درست میچ ہو سکے (2026-09-01)۔
 function msRootName(n){
-  let cur = n || ''; let prev;
-  do{ prev = cur; cur = cur.replace(/ - \d{4}-\d{2}$/, ''); } while(cur !== prev);
-  return cur;
+  // تاریخ (YYYY-MM) نام میں کہیں بھی ہو، ڈسپلے سے ہمیشہ ہٹے (2026-10-03)
+  return String(n || '')
+    .replace(/\s*-?\s*\b\d{4}-\d{2}\b(?!-\d)/g, '')
+    .replace(/\s+\)/g, ')')
+    .replace(/\(\s*\)/g, '')
+    .replace(/\s*-\s*$/, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 function msCheckMonthRollover(){
   const books = msLocalGetBooks();
@@ -4875,7 +4880,7 @@ window.initKataModule = function(uid){
       card.style.cursor = 'pointer';
       card.style.textAlign = 'center';
       card.dataset.kataBookCard = docSnap.id;
-      card.innerHTML = `<div class="note kata-book-last-entry-date" style="text-align:center;font-size:11px;margin-bottom:2px;"></div><h2 style="border:none;margin:0;font-size:18px;">${kataEscape(data.name || '(بلا نام)')}${data.closed ? ' 🔒' : ''}${kataInstance === 'agency' ? ` <button type="button" class="kata-rename-book-btn" data-kata-book-id="${docSnap.id}" style="font-size:14px;background:none;border:1px solid var(--line);border-radius:4px;padding:2px 6px;cursor:pointer;">✏️</button>` : ''}</h2>`;
+      card.innerHTML = `<div class="note kata-book-last-entry-date" style="text-align:center;font-size:11px;margin-bottom:2px;"></div><h2 style="border:none;margin:0;font-size:18px;">${kataEscape(kataBaseBookName(data.name || '(بلا نام)'))}${data.closed ? ' 🔒' : ''}${kataInstance === 'agency' ? ` <button type="button" class="kata-rename-book-btn" data-kata-book-id="${docSnap.id}" style="font-size:14px;background:none;border:1px solid var(--line);border-radius:4px;padding:2px 6px;cursor:pointer;">✏️</button>` : ''}</h2>`;
       card.addEventListener('click', (ev)=>{ if(ev.target.closest('.kata-rename-book-btn')) return; kataOpen(docSnap.id, data.name || ''); });
 
       container.appendChild(card);
@@ -4987,14 +4992,24 @@ function kataEscape(s){
 // لیے استعمال ہوتا ہے (نئی انٹری فارم میں سیلزمین/Agency کا نام)، کھاتے کا
 // اصل محفوظ شدہ نام (kataOpenName) نہیں بدلتا (2026-09-01، صارف کی درخواست
 // پر — تاریخ صرف کھاتے کے عنوان میں رہے، نام کے خانے میں نہ آئے)۔
+// تاریخ (YYYY-MM) نام میں کہیں بھی ہو — آخر میں، قوسین ")" سے پہلے، "-" کے
+// ساتھ یا بغیر — ہمیشہ کیلئے ڈسپلے سے ہٹا دی جاتی ہے (2026-10-03، صارف کی
+// پختہ ہدایت: "یہاں صرف نام ہونا چاہیے")۔ محفوظ شدہ نام نہیں بدلتا۔
+function kataStripDateSuffix(name){
+  return String(name || '')
+    .replace(/\s*-?\s*\b\d{4}-\d{2}\b(?!-\d)/g, '')
+    .replace(/\s+\)/g, ')')
+    .replace(/\(\s*\)/g, '')
+    .replace(/\s*-\s*$/, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
 function kataBaseBookName(name){
-  return (name || '').replace(/ - \d{4}-\d{2}$/, '');
+  return kataStripDateSuffix(name);
 }
 // تمام " - YYYY-MM" (جتنی بار بھی لگے ہوں) ہٹا کر اصل/جڑ نام
 function kataRootBookName(name){
-  let cur = name || '', prev;
-  do{ prev = cur; cur = cur.replace(/ - \d{4}-\d{2}$/, ''); } while(cur !== prev);
-  return cur;
+  return kataStripDateSuffix(name);
 }
 
 // پرانی محفوظ شدہ انٹریوں میں "Khula Special"/"Khula sada" کا وزن "20.000"
@@ -6542,7 +6557,7 @@ function kataRenderEntryCard(entry, isLast, idx){
     <div class="card kata-entry-card" id="${entryDomId}">
       ${dotsMenuItems.length ? kataDotsMenuHtml(dotsMenuItems) : ''}
       <div class="note" style="text-align:center;font-weight:400;">${kataFormatWhen(entry.createdAt)}</div>
-      ${entry.salesman ? `<div class="note kata-entry-name-line" style="text-align:center;direction:ltr;unicode-bidi:embed;font-size:20px;font-weight:400;color:var(--maroon-deep);">${kataEscape(entry.salesman)}${(kataInstance === 'agency' && isLast) ? ` <button type="button" class="kata-rename-entry-name-btn" style="font-size:12px;background:none;border:1px solid var(--line);border-radius:4px;padding:1px 5px;cursor:pointer;">✏️</button>` : ''}</div>` : ''}
+      ${entry.salesman ? `<div class="note kata-entry-name-line" style="text-align:center;direction:ltr;unicode-bidi:embed;font-size:20px;font-weight:400;color:var(--maroon-deep);">${kataEscape(kataBaseBookName(entry.salesman))}${(kataInstance === 'agency' && isLast) ? ` <button type="button" class="kata-rename-entry-name-btn" style="font-size:12px;background:none;border:1px solid var(--line);border-radius:4px;padding:1px 5px;cursor:pointer;">✏️</button>` : ''}</div>` : ''}
       <div class="kata-ref-title">Iqbal chemical</div>
       <div class="edit-table wide-table kata-ref-style">
         <table dir="ltr">
