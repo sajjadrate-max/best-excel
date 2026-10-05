@@ -2386,7 +2386,10 @@ async function shareCardAsImage(tier, btn){
     const el = card.querySelector('.edit-table');
     const cardRect = el.getBoundingClientRect();
     const canvas = await renderTierCanvas(btn);
-    const baseName = tier.title.replace(/\s+/g,'_');
+    // 2026-10-05 صارف کی درخواست: PDF فائل کے نام میں A/B/C/Salesman جیسے
+    // الفاظ نہ لکھے جائیں — صرف "کمپنی ریٹ لسٹ"، "ایجنسی ریٹ لسٹ" وغیرہ۔
+    const pdfTitle = tier.title.replace(/\b(?:A|B|C|Salesman|Salman)\b/gi,'').replace(/\s{2,}/g,' ').trim() || 'ریٹ لسٹ';
+    const baseName = pdfTitle.replace(/\s+/g,'_');
 
     if(typeof jspdf === 'undefined' || !jspdf.jsPDF){
       throw new Error('jsPDF-not-loaded');
@@ -2423,9 +2426,9 @@ async function shareCardAsImage(tier, btn){
     if(btn.dataset.printMode === 'computer'){
       printPdfBlob(blob);
     } else if(btn.dataset.printMode === 'whatsapp'){
-      await whatsappShareBlob(blob, fileName, tier.title);
+      await whatsappShareBlob(blob, fileName, pdfTitle);
     } else {
-      await sharePdfDirectly(blob, fileName, tier.title);
+      await sharePdfDirectly(blob, fileName, pdfTitle);
     }
   } catch(err){
     alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
