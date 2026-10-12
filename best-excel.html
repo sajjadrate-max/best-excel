@@ -6005,6 +6005,16 @@ async function kataCaptureCardForPrint(card, scale){
         });
       });
     }
+    // Sabka/Today/Total/Jamah/Jamah/Bqaya سمری ٹیبل کا Discount کالم (آخری
+    // کالم) بھی پرنٹ/PDF میں نظر نہ آئے (صارف کی دوبارہ درخواست، 2026-10-12)
+    // — یہ صرف پرنٹ پر اثر کرتا ہے، ویب سائٹ پر یہ کالم ویسے ہی رہے گا۔
+    const totalsTable = card.querySelector('.edit-table:not(.wide-table) table');
+    if(totalsTable){
+      totalsTable.querySelectorAll('tr > *:nth-child(4)').forEach(cell=>{
+        hiddenPrintCells.push({cell, prev: cell.style.display});
+        cell.style.display = 'none';
+      });
+    }
   }
   // Agency کھاتہ — "کمیشن" کے دونوں کالم (ریٹ + ٹوٹل) اور "کل کمیشن" باکس
   // پرنٹ/PDF میں کبھی نظر نہ آئیں (صارف کی واضح درخواست، 2026-08-30) — یہ
@@ -6089,6 +6099,16 @@ function kataPrepareCardHtmlForExport(card){
           hiddenPrintCells.push({cell: col, prev: col.style.display});
           col.style.display = 'none';
         });
+      });
+    }
+    // Sabka/Today/Total/Jamah/Jamah/Bqaya سمری ٹیبل کا Discount کالم (آخری
+    // کالم) بھی پرنٹ/PDF میں نظر نہ آئے (صارف کی دوبارہ درخواست، 2026-10-12)
+    // — یہ صرف پرنٹ پر اثر کرتا ہے، ویب سائٹ پر یہ کالم ویسے ہی رہے گا۔
+    const totalsTable = card.querySelector('.edit-table:not(.wide-table) table');
+    if(totalsTable){
+      totalsTable.querySelectorAll('tr > *:nth-child(4)').forEach(cell=>{
+        hiddenPrintCells.push({cell, prev: cell.style.display});
+        cell.style.display = 'none';
       });
     }
   }
