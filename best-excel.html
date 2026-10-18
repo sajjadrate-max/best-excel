@@ -2298,6 +2298,11 @@ function formulationActivateTab(btn){
   document.querySelectorAll('main section').forEach(s=>s.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById(btn.dataset.tab).classList.add('active');
+  // اوپر والی بڑی "BEST Excel" ہیڈر تصویر صرف Best Excel official سیکشن
+  // میں چھپی رہے — براہ راست JS سے (صرف CSS :has() پر انحصار کرنے کی
+  // بجائے، تاکہ ہر فون/براؤزر پر یکساں کام کرے)۔
+  const headerEl = document.querySelector('header');
+  if(headerEl) headerEl.style.display = (btn.dataset.tab === 'formulation') ? 'none' : '';
 }
 document.getElementById('formulationPwSubmit').addEventListener('click', ()=>{
   if(formulationPwInput.value === 'Bestexcel'){
