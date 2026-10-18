@@ -325,6 +325,12 @@ window.loadAuthSDKs = async function(){
   #ajzaSazWidget .card::before{
     content:none;
   }
+  /* صارف کی درخواست پر — اوپر والی بڑی "BEST Excel" ہیڈر تصویر صرف
+     Best Excel official سیکشن میں نظر آنے پر غائب رہے، باقی ہر صفحے
+     (کھاتے، ریٹ لسٹ، ماہانہ ریکارڈ) پر ہمیشہ کی طرح نظر آتی رہے۔ */
+  body:has(#formulation.active) header{
+    display:none;
+  }
   .card > *{
     position:relative;
     z-index:1;
