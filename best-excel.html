@@ -3561,27 +3561,26 @@ function msRenderDetail(name){
     html += msRenderNewEntryForm(prevTotal, prevItemData);
   }
 
-  // نئی انٹری کے بلکل نیچے: اسی نام کے پرانے بند شدہ کھاتے کا ڈبہ (کھاتہ
-  // کی طرح یہاں بھی، 2026-09-01، صارف کی درخواست پر)۔ نام کے آخر سے
-  // " - YYYY-MM" بار بار (جتنی دفعہ بھی لگ چکا ہو) ہٹا کر اصل/جڑ نام تک
-  // پہنچتے ہیں، پھر اسی جڑ نام والا بند کھاتہ ڈھونڈتے ہیں — ایک ہی کھاتہ
-  // ایک سے زیادہ دفعہ بند ہو چکا ہو تب بھی درست میچ ہو (2026-09-01، صارف کی
-  // نشاندہی پر — دو الگ کھاتے ایک جیسے نام کے ساتھ نظر آ رہے تھے)۔
-  let msPrevClosedBook = null;
-  if(!msOpenClosed){
-    const msBaseName = msRootName(name);
-    if(msBaseName !== name){
-      const msSiblingBooks = msLocalGetBooks();
-      msPrevClosedBook = msSiblingBooks
-        .filter(b => b.closed && b.id !== msOpenId && msRootName(b.name) === msBaseName)
-        .sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt))[0] || null;
-    }
-  }
-  if(msPrevClosedBook){
-    const msPrevEntries = msLocalGetEntries(msPrevClosedBook.id);
-    const msPrevLastEntry = msPrevEntries.length ? msPrevEntries[msPrevEntries.length-1] : null;
-    const msPrevLastEntryDate = msPrevLastEntry ? kataEntryDateOnly(msPrevLastEntry.createdAt) : null;
-    html += `<div class="card" style="cursor:pointer;text-align:center;" data-ms-prev-closed-book-id="${msPrevClosedBook.id}" data-ms-prev-closed-book-name="${kataEscape(msPrevClosedBook.name)}">${msPrevLastEntryDate ? `<div class="note" style="text-align:center;font-size:11px;margin-bottom:2px;">آخری انٹری: ${msPrevLastEntryDate.toLocaleDateString('en-GB')}</div>` : ''}<h2 style="border:none;margin:0;font-size:18px;">${kataEscape(msRootName(msPrevClosedBook.name))} 🔒</h2></div>`;
+  // نئی انٹری کے بلکل نیچے: اسی نام کے دوسرے مہینوں کے تمام کھاتے (کھلے ہوں
+  // یا بند) — کھاتہ کی طرح یہاں بھی (2026-11-02، صارف کی درخواست — سابقہ
+  // ریکارڈ ہر وقت، ہر کھاتے سے دیکھا جا سکے، صرف آخری/ایک ہی پچھلا کھاتہ
+  // نہیں)۔ نام کے آخر سے " - YYYY-MM" ہٹا کر اصل/جڑ نام تک پہنچتے ہیں، پھر
+  // اسی جڑ نام والے باقی تمام کھاتے تاریخ وار دکھاتے ہیں۔
+  const msRootKey = (n)=> msRootName(n).trim().toLowerCase();
+  const msThisRoot = msRootKey(name);
+  const msOtherMonthBooks = msLocalGetBooks()
+    .filter(b => b.id !== msOpenId && msRootKey(b.name) === msThisRoot)
+    .sort((a,b)=> new Date(b.createdAt||0) - new Date(a.createdAt||0));
+  if(msOtherMonthBooks.length){
+    html += `<div class="card" style="text-align:center;"><h2 style="border:none;margin:0 0 8px;font-size:16px;">📂 دوسرے مہینوں کا ریکارڈ</h2>`;
+    msOtherMonthBooks.forEach(ob=>{
+      const obEntries = msLocalGetEntries(ob.id);
+      const obLast = obEntries.length ? obEntries[obEntries.length-1] : null;
+      const obDate = obLast ? kataEntryDateOnly(obLast.createdAt) : null;
+      const obMonth = kataMonthKey(obDate || new Date(ob.createdAt||Date.now()));
+      html += `<div class="card" style="cursor:pointer;text-align:center;margin:6px 0;" data-ms-prev-closed-book-id="${ob.id}" data-ms-prev-closed-book-name="${kataEscape(ob.name)}"><div class="note" style="text-align:center;font-size:11px;margin-bottom:2px;">مہینہ: ${obMonth}${obDate ? ' — آخری انٹری: ' + obDate.toLocaleDateString('en-GB') : ''}</div><h2 style="border:none;margin:0;font-size:17px;">${kataEscape(msRootName(ob.name))}${ob.closed ? ' 🔒' : ''}</h2></div>`;
+    });
+    html += `</div>`;
   }
 
   container.innerHTML = html;
@@ -3607,12 +3606,12 @@ function msRenderDetail(name){
       });
     });
   }
-  const msPrevClosedBookCard = container.querySelector('[data-ms-prev-closed-book-id]');
-  if(msPrevClosedBookCard){
-    msPrevClosedBookCard.addEventListener('click', ()=>{
-      msOpen(msPrevClosedBookCard.dataset.msPrevClosedBookId, msPrevClosedBookCard.dataset.msPrevClosedBookName);
+  container.querySelectorAll('[data-ms-prev-closed-book-id]').forEach(prevClosedBookCard=>{
+    prevClosedBookCard.addEventListener('click', ()=>{
+      msOpen(prevClosedBookCard.dataset.msPrevClosedBookId, prevClosedBookCard.dataset.msPrevClosedBookName);
+      window.scrollTo({top:0});
     });
-  }
+  });
 
   container.querySelectorAll('.ms-delete-entry-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> msDeleteEntry());
