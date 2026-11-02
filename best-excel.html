@@ -6756,16 +6756,19 @@ function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx, editUn
   function sumRow(rowKey, obj, label){
     const editable = entryIdx != null && editUnlocked && rowKey !== 'total';
     const staticAttr = (idxPart)=> rowKey === 'total' && entryIdx != null ? ` data-kata-entry-total-${idxPart}="${entryIdx}"` : '';
+    // "Today"/"New Bill" قطار بولڈ — صارف کی درخواست (2026-11-02)۔
+    const boldInline = rowKey === 'today' ? bqayaBoldStyle : '';
+    const labelBoldStyle = rowKey === 'today' ? `text-align:right;padding-right:6px;${bqayaBoldStyle}` : 'text-align:right;padding-right:6px;';
     const priceCell = editable
-      ? `<td><input type="text" inputmode="decimal" class="cell-input" data-kata-edit-sumrow="${entryIdx}:${rowKey}:price" style="border:1px solid var(--line);" value="${obj.price||0}"></td>`
-      : `<td${staticAttr('price')}>${obj.price||0}</td>`;
+      ? `<td><input type="text" inputmode="decimal" class="cell-input" data-kata-edit-sumrow="${entryIdx}:${rowKey}:price" style="border:1px solid var(--line);${boldInline}" value="${obj.price||0}"></td>`
+      : `<td${staticAttr('price')} style="${boldInline}">${obj.price||0}</td>`;
     const profitCell = agencySimple ? '' : (editable
-      ? `<td><input type="text" inputmode="decimal" class="cell-input" data-kata-edit-sumrow="${entryIdx}:${rowKey}:profit" style="border:1px solid var(--line);" value="${obj.profit||0}"></td>`
-      : `<td${staticAttr('profit')}>${obj.profit||0}</td>`);
+      ? `<td><input type="text" inputmode="decimal" class="cell-input" data-kata-edit-sumrow="${entryIdx}:${rowKey}:profit" style="border:1px solid var(--line);${boldInline}" value="${obj.profit||0}"></td>`
+      : `<td${staticAttr('profit')} style="${boldInline}">${obj.profit||0}</td>`);
     const discountCell = !showDiscount ? '' : (editable
-      ? `<td><input type="text" inputmode="decimal" class="cell-input" data-kata-edit-sumrow="${entryIdx}:${rowKey}:discount" style="border:1px solid var(--line);" value="${obj.discount||0}"></td>`
-      : `<td${staticAttr('discount')}>${obj.discount||0}</td>`);
-    return `<tr><td style="text-align:right;padding-right:6px;">${label}</td>${priceCell}${profitCell}${discountCell}</tr>`;
+      ? `<td><input type="text" inputmode="decimal" class="cell-input" data-kata-edit-sumrow="${entryIdx}:${rowKey}:discount" style="border:1px solid var(--line);${boldInline}" value="${obj.discount||0}"></td>`
+      : `<td${staticAttr('discount')} style="${boldInline}">${obj.discount||0}</td>`);
+    return `<tr><td style="${labelBoldStyle}">${label}</td>${priceCell}${profitCell}${discountCell}</tr>`;
   }
   return `
       <div class="edit-table" style="margin-top:8px;">
