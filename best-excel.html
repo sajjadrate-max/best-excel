@@ -6571,7 +6571,7 @@ function kataRenderEntryCard(entry, isLast, idx, entriesArr){
       <td style="${kataColorStyleFor(cc, item.key+'-commissionrate')}" class="kata-commission-col">${editField(v.commissionRate||0,'commissionRate',item.key,5) || `<span class="cell-val${numClass}">${v.commissionRate||0}</span>`}</td>
       <td style="${kataColorStyleFor(cc, item.key+'-commissiontotal')}" class="kata-commission-col">${editField(v.commissionTotal||0,'commissionTotal',item.key,6) || `<span class="cell-val${numClass}">${v.commissionTotal||0}</span>`}</td>` : '';
     rows += `<tr>
-      <td style="${kataColorStyleFor(cc, item.key+'-idx')}">${editField((v.idx != null && v.idx !== '') ? v.idx : (idx+1),'idx',item.key,3) || `<span class="cell-val${numClass}${thinClass}">${(v.idx != null && v.idx !== '') ? kataEscape(v.idx) : (idx+1)}</span>`}</td>
+      <td style="${kataColorStyleFor(cc, item.key+'-idx')}">${editField((v.idx != null && v.idx !== '') ? v.idx : (idx+1),'idx',item.key,3) || `<span class="cell-val${numClass}${thinClass}" style="font-weight:700 !important;-webkit-text-stroke:.4px currentColor !important;">${(v.idx != null && v.idx !== '') ? kataEscape(v.idx) : (idx+1)}</span>`}</td>
       <td style="text-align:left;padding-left:6px;${nameColor}${kataColorStyleFor(cc, item.key+'-name')}">${editField(name,'name',item.key,10) || `<span class="cell-val${numClass}${thinClass}" style="font-weight:700 !important;-webkit-text-stroke:.4px currentColor !important;">${kataEscape(name)}</span>`}</td>
       <td class="kata-t-cell" style="${kataColorStyleFor(cc, item.key+'-t') || 'background-color:#d9f2d9;'}">${editField(v.t,'t',item.key,4) || `<span class="cell-val${numClass}">${v.t}</span>`}${v.sabkaNote ? `<span style="font-size:6px;color:#8a6d00;margin-right:2px;">(${kataEscape(v.sabkaNote)})</span>` : ''}</td>
       <td style="${kataColorStyleFor(cc, item.key+'-weight')}">${editField(kataDisplayWeight(weight),'weight',item.key,6) || `<span class="cell-val${numClass}">${kataEscape(kataDisplayWeight(weight))}</span>`}</td>
@@ -6850,9 +6850,9 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
       <td data-color-key="${item.key}-commissionrate" class="kata-commission-col"><input type="text" inputmode="decimal" class="cell-input${numClass}" data-kata-field="commissionRate" data-kata-item="${item.key}" style="border:1px solid var(--line);" value="${stickyCommissionRate}"></td>
       <td data-color-key="${item.key}-commissiontotal" class="kata-commission-col"><span class="cell-val${numClass}" data-kata-commissiontotal="${item.key}">0</span></td>` : '';
     rows += `<tr>
-      <td data-color-key="${item.key}-idx" class="cell-val${numClass}${thinClass}" style="${kataInstance === 'salesman' ? 'padding:2px;' : ''}">${
+      <td data-color-key="${item.key}-idx" class="cell-val${numClass}${thinClass}" style="${kataInstance === 'salesman' ? 'padding:2px;' : ''}font-weight:700 !important;-webkit-text-stroke:.4px currentColor !important;">${
         kataInstance === 'salesman'
-          ? `<input type="text" inputmode="numeric" class="cell-input${numClass}${thinClass}" data-kata-field="idx" data-kata-item="${item.key}" style="border:1px solid var(--line);width:100%;box-sizing:border-box;" value="${idx+1}">`
+          ? `<input type="text" inputmode="numeric" class="cell-input${numClass}${thinClass}" data-kata-field="idx" data-kata-item="${item.key}" style="border:1px solid var(--line);width:100%;box-sizing:border-box;font-weight:700 !important;-webkit-text-stroke:.4px currentColor !important;" value="${idx+1}">`
           : (idx+1)
       }</td>
       <td data-color-key="${item.key}-name" style="text-align:left;padding-left:6px;"><input type="text" class="cell-input${numClass}${thinClass}" data-kata-field="name" data-kata-item="${item.key}" style="border:1px solid var(--line);text-align:left;${nameColor}font-weight:700 !important;-webkit-text-stroke:.4px currentColor !important;" value="${kataEscape(liveName)}"></td>
