@@ -6795,6 +6795,10 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
   // ہمیشہ اسی لمحے کی تازہ ترین B لسٹ ہی نظر آئے۔
   const showDiscount = kataShowDiscount();
   const showKraya = kataShowKraya();
+  // "Today"/"New Bill" اور "Bqaya"/"Remaining Price" قطاریں بولڈ — صارف کی
+  // درخواست (2026-11-02)۔ سائٹ کا عالمی font-weight:400 !important اصول
+  // اوورائیڈ کرنے کے لیے خود بھی !important ضروری ہے۔
+  const kataBoldRowStyle = 'font-weight:700 !important;-webkit-text-stroke:.6px currentColor !important;';
   // Agency کھاتہ — صارف کی درخواست پر (2026-08-22) نئی انٹری فارم سے بھی
   // Profit اور T.Profit کالم مکمل ہٹا دیے۔ صرف Agency میں۔
   const agencySimple = kataInstance === 'agency';
@@ -7001,12 +7005,12 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           ${agencySimple ? '<colgroup><col style="width:25%"><col style="width:37%"><col style="width:38%"></colgroup>' : ''}
           <thead><tr><th></th><th>Price</th>${agencySimple ? '' : '<th>Profit</th>'}${showDiscount ? '<th>Discount</th>' : ''}</tr></thead>
           <tbody>
-            <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'New Bill' : 'Today'}</td><td data-kata-today-price>0</td>${agencySimple ? '' : '<td data-kata-today-profit>0</td>'}${showDiscount ? '<td data-kata-today-discount>0</td>' : ''}</tr>
+            <tr><td style="text-align:right;padding-right:6px;${kataBoldRowStyle}">${agencySimple ? 'New Bill' : 'Today'}</td><td data-kata-today-price style="${kataBoldRowStyle}">0</td>${agencySimple ? '' : `<td data-kata-today-profit style="${kataBoldRowStyle}">0</td>`}${showDiscount ? `<td data-kata-today-discount style="${kataBoldRowStyle}">0</td>` : ''}</tr>
             ${sabkaRow}
             <tr><td style="text-align:right;padding-right:6px;">Total</td><td data-kata-tot-price>${prevTotal.price}</td>${agencySimple ? '' : `<td data-kata-tot-profit>${prevTotal.profit||0}</td>`}${showDiscount ? `<td data-kata-tot-discount>${prevTotal.discount||0}</td>` : ''}</tr>
             <tr><td style="text-align:right;padding-right:6px;"><span class="kata-jamah-label" data-jamah-label="0">${agencySimple ? 'Cash' : 'Jamah'}</span> <button type="button" class="kata-jamah-label-edit-btn" data-jamah-label-edit="0" title="نام تبدیل کریں" style="font-size:10px;background:none;border:none;cursor:pointer;padding:0 1px;">✏️</button></td><td><input type="text" inputmode="numeric" class="cell-input" data-jamah="price0" style="border:1px solid var(--line);" value="0"></td>${agencySimple ? '' : '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="profit0" style="border:1px solid var(--line);" value="0"></td>'}${showDiscount ? '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="discount0" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>
             <tr><td style="text-align:right;padding-right:6px;"><span class="kata-jamah-label" data-jamah-label="1">${agencySimple ? 'Cash' : 'Jamah'}</span> <button type="button" class="kata-jamah-label-edit-btn" data-jamah-label-edit="1" title="نام تبدیل کریں" style="font-size:10px;background:none;border:none;cursor:pointer;padding:0 1px;">✏️</button></td><td><input type="text" inputmode="numeric" class="cell-input" data-jamah="price1" style="border:1px solid var(--line);" value="0"></td>${agencySimple ? '' : '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="profit1" style="border:1px solid var(--line);" value="0"></td>'}${showDiscount ? '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="discount1" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>
-            <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Remaining Price' : 'Bqaya'}</td><td data-kata-bqaya-price>${prevTotal.price}</td>${agencySimple ? '' : `<td data-kata-bqaya-profit>${prevTotal.profit||0}</td>`}${showDiscount ? `<td data-kata-bqaya-discount>${prevTotal.discount||0}</td>` : ''}</tr>
+            <tr><td style="text-align:right;padding-right:6px;${kataBoldRowStyle}">${agencySimple ? 'Remaining Price' : 'Bqaya'}</td><td data-kata-bqaya-price style="${kataBoldRowStyle}">${prevTotal.price}</td>${agencySimple ? '' : `<td data-kata-bqaya-profit style="${kataBoldRowStyle}">${prevTotal.profit||0}</td>`}${showDiscount ? `<td data-kata-bqaya-discount style="${kataBoldRowStyle}">${prevTotal.discount||0}</td>` : ''}</tr>
           </tbody>
         </table>
       </div>
