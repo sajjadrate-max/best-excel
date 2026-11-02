@@ -5253,7 +5253,7 @@ function kataRenderDetail(name){
 
   kataOpenEntries.forEach((entry, i)=>{
     const isLast = i === kataOpenEntries.length - 1;
-    html += kataRenderEntryCard(entry, isLast, i);
+    html += kataRenderEntryCard(entry, isLast, i, kataOpenEntries);
   });
 
   // بند/تالے والا کھاتہ اب بھی نئی (پرانی تاریخ والی) انٹری قبول کرتا ہے —
@@ -6268,7 +6268,7 @@ async function kataPrintFullHistory(btn){
     offscreen.style.width = containerWidth + 'px';
     offscreen.style.background = '#F4EFE2';
     document.body.appendChild(offscreen);
-    offscreen.innerHTML = entries.map((entry, i)=> kataRenderEntryCard(entry, i === entries.length - 1, i)).join('');
+    offscreen.innerHTML = entries.map((entry, i)=> kataRenderEntryCard(entry, i === entries.length - 1, i, entries)).join('');
     kataApplyIndianFormattingToReadonly(offscreen);
     try{ await document.fonts.ready; } catch(e){ /* proceed anyway */ }
     const cards = Array.from(offscreen.querySelectorAll('.kata-entry-card'));
@@ -6462,25 +6462,31 @@ function kataColorStyleFor(cellColors, key){
 // درست تھا) — اگر خود entry میں محفوظ قدر موجود ہو تو وہی استعمال ہوتی
 // ہے (بشمول ایڈٹ موڈ کی دستی تبدیلی)، ورنہ پچھلی انٹری سے (ری کرسو
 // طریقے سے) خود بخود حساب لگا لیا جاتا ہے۔
-function kataResolveEntryTotalWeightKg(idx){
-  const arr = kataOpenEntries || [];
+// "arr" پیرامیٹر اختیاری ہے (ڈیفالٹ kataOpenEntries) — Whatsapp/موبائل
+// پرنٹ کی "مکمل تاریخ" فہرست (kataGetFullHistoryEntries) کھلے ہوئے کھاتے
+// سے الگ/لمبی array ہوتی ہے، وہاں idx اسی مکمل array میں ہوتا ہے، اس
+// لیے وہاں سے صحیح array خود پاس کی جاتی ہے — ورنہ idx غلط اندراج سے
+// میچ ہو کر Total Weight ہمیشہ 0.00 دکھا رہا تھا (2026-11-02، صارف کی
+// رپورٹ پر: پرنٹ میں Total Weight 0 آ رہا تھا جبکہ کھاتے میں درست تھا)۔
+function kataResolveEntryTotalWeightKg(idx, arr){
+  arr = arr || kataOpenEntries || [];
   const e = arr[idx];
   if(!e) return 0;
   if(e.total && e.total.weightKg != null) return e.total.weightKg;
   let prevWeight;
   if(e.sabka && e.sabka.weightKg != null) prevWeight = e.sabka.weightKg;
-  else if(idx > 0) prevWeight = kataResolveEntryTotalWeightKg(idx-1);
+  else if(idx > 0) prevWeight = kataResolveEntryTotalWeightKg(idx-1, arr);
   else prevWeight = 0;
   return prevWeight + (Number(e.weightKg)||0);
 }
-function kataResolveEntrySabkaWeightKg(idx){
-  const arr = kataOpenEntries || [];
+function kataResolveEntrySabkaWeightKg(idx, arr){
+  arr = arr || kataOpenEntries || [];
   const e = arr[idx];
   if(e && e.sabka && e.sabka.weightKg != null) return e.sabka.weightKg;
-  return idx > 0 ? kataResolveEntryTotalWeightKg(idx-1) : 0;
+  return idx > 0 ? kataResolveEntryTotalWeightKg(idx-1, arr) : 0;
 }
 
-function kataRenderEntryCard(entry, isLast, idx){
+function kataRenderEntryCard(entry, isLast, idx, entriesArr){
   const showDiscount = kataShowDiscount();
   // Agency کھاتہ — صارف کی درخواست پر (2026-08-22) آئٹم ٹیبل سے Profit اور
   // T.Profit کالم بھی مکمل ہٹا دیے۔ صرف Agency میں، سیلزمین/ربنواز میں یہ
@@ -6659,11 +6665,11 @@ function kataRenderEntryCard(entry, isLast, idx){
       </div>${kataInstance === 'agency' ? `
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          ${editBox((Number(kataResolveEntryTotalWeightKg(idx))).toFixed(2),'totalWeightKg',6) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(kataResolveEntryTotalWeightKg(idx))).toFixed(2)}</div>`}
+          ${editBox((Number(kataResolveEntryTotalWeightKg(idx, entriesArr))).toFixed(2),'totalWeightKg',6) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(kataResolveEntryTotalWeightKg(idx, entriesArr))).toFixed(2)}</div>`}
           <div style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Total Weight (kg)</span></div>
         </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(kataResolveEntrySabkaWeightKg(idx))).toFixed(2)}</div>
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(kataResolveEntrySabkaWeightKg(idx, entriesArr))).toFixed(2)}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Previous Weight (kg)</span></div>
         </div>
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
