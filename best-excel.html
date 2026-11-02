@@ -6632,6 +6632,20 @@ function kataRenderEntryCard(entry, isLast, idx, entriesArr){
           ${editBox((entry.today && entry.today.t) || 0,'todayT',5) || `<div style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(entry.today && entry.today.t) || 0}</div>`}
           <div style="font-size:7px;color:#5b5346;margin-top:1px;">Today CTN</div>
         </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          ${editBox((Number(kataResolveEntryTotalWeightKg(idx, entriesArr))).toFixed(2),'totalWeightKg',6) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(kataResolveEntryTotalWeightKg(idx, entriesArr))).toFixed(2)}</div>`}
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Total Weight (kg)</span></div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(kataResolveEntrySabkaWeightKg(idx, entriesArr))).toFixed(2)}</div>
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Previous Weight (kg)</span></div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          ${editBox((Number(entry.weightKg)||0).toFixed(2),'weightKg',6) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>`}
+          <div style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Today Weight (kg)</span></div>
+        </div>
       </div>` : `
       <div style="display:flex;gap:10px;margin-top:8px;">${kataInstance === 'ribnawaz' ? `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
@@ -6662,7 +6676,7 @@ function kataRenderEntryCard(entry, isLast, idx, entriesArr){
           <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${kataIndianNumberFormat((entry.bqaya && entry.bqaya.commission) || (entry.total && entry.total.commission) || 0)}</div>
           <div style="font-size:11px;color:#5b5346;margin-top:2px;">Total Commission</div>
         </div>` : ''}
-      </div>${kataInstance === 'agency' ? `
+      </div>
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           ${editBox((Number(kataResolveEntryTotalWeightKg(idx, entriesArr))).toFixed(2),'totalWeightKg',6) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(kataResolveEntryTotalWeightKg(idx, entriesArr))).toFixed(2)}</div>`}
@@ -6676,17 +6690,7 @@ function kataRenderEntryCard(entry, isLast, idx, entriesArr){
           ${editBox((Number(entry.weightKg)||0).toFixed(2),'weightKg',6) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>`}
           <div style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Today Weight (kg)</span></div>
         </div>
-      </div>` : `
-      <div style="display:flex;gap:10px;margin-top:8px;">
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          ${editBox((Number(entry.weightKg)||0).toFixed(2),'weightKg',6) || `<div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(Number(entry.weightKg)||0).toFixed(2)}</div>`}
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
-        </div>
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${((Number(entry.weightKg)||0)/40).toFixed(2)}</div>
-          <div style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
-        </div>
-      </div>`}`}
+      </div>`}
       ${kataTotalsBlockHtml(entry.sabka, entry.today, entry.total, entry.jamah, entry.bqaya, idx, editUnlocked)}
       ${editUnlocked ? `<div class="kata-edit-ui-only">
       <button type="button" data-kata-edit-save-btn="${entryIdx}" disabled style="opacity:.6;width:100%;margin-top:10px;padding:10px;border:none;border-radius:5px;background:#1a7a3c;color:#fff;font-size:15px;font-weight:600;">💾 تبدیلیاں محفوظ کریں</button>
@@ -6771,8 +6775,8 @@ function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx, editUn
           ${agencySimple ? '<colgroup><col style="width:30%"><col style="width:70%"></colgroup>' : ''}
           <thead><tr><th></th><th>Price</th>${agencySimple ? '' : '<th>Profit</th>'}${showDiscount ? '<th>Discount</th>' : ''}</tr></thead>
           <tbody>
-            ${sumRow('sabka', sabka, agencySimple ? 'Previous Bill' : 'Sabka')}
             ${sumRow('today', today, agencySimple ? 'New Bill' : 'Today')}
+            ${sumRow('sabka', sabka, agencySimple ? 'Previous Bill' : 'Sabka')}
             ${sumRow('total', total, 'Total')}
             ${jamahRow(0)}
             ${jamahRow(1)}
@@ -6922,6 +6926,20 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <div class="n" data-kata-sum-today-t style="font-family:'Courier Prime',monospace;font-size:11px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:7px;color:#5b5346;margin-top:1px;">Today CTN</div>
         </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div class="n" data-kata-sum-weight-total style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(prevTotal.weightKg||0).toFixed(2)}</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Total Weight (kg)</span></div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div class="n" style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(prevTotal.weightKg||0).toFixed(2)}</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Previous Weight (kg)</span></div>
+        </div>
+        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
+          <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
+          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Today Weight (kg)</span></div>
+        </div>
       </div>` : `
       <div style="display:flex;gap:10px;margin-top:8px;">${kataInstance === 'ribnawaz' ? `
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;box-sizing:border-box;">
@@ -6962,7 +6980,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <div class="n" data-kata-sum-price style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">Total Price</div>
         </div>
-      </div>` : ''}${kataInstance === 'agency' ? `
+      </div>` : ''}
       <div style="display:flex;gap:10px;margin-top:8px;">
         <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
           <div class="n" data-kata-sum-weight-total style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">${(prevTotal.weightKg||0).toFixed(2)}</div>
@@ -6976,24 +6994,14 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
           <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
           <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;"><span dir="ltr" style="unicode-bidi:isolate;">Today Weight (kg)</span></div>
         </div>
-      </div>` : `
-      <div style="display:flex;gap:10px;margin-top:8px;">
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-weight style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (کلوگرام)</div>
-        </div>
-        <div style="flex:1;background:var(--paper-dark);border:1px solid var(--line);border-radius:3px;padding:7px 5px;text-align:center;">
-          <div class="n" data-kata-sum-weight-mann style="font-family:'Courier Prime',monospace;font-size:17px;font-weight:400;color:var(--maroon-deep);direction:ltr;">0.00</div>
-          <div class="l" style="font-size:11px;color:#5b5346;margin-top:2px;">کل وزن (من)</div>
-        </div>
-      </div>`}`}
+      </div>`}
       <div class="edit-table" style="margin-top:8px;">
         <table dir="ltr">
           ${agencySimple ? '<colgroup><col style="width:25%"><col style="width:37%"><col style="width:38%"></colgroup>' : ''}
           <thead><tr><th></th><th>Price</th>${agencySimple ? '' : '<th>Profit</th>'}${showDiscount ? '<th>Discount</th>' : ''}</tr></thead>
           <tbody>
-            ${sabkaRow}
             <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'New Bill' : 'Today'}</td><td data-kata-today-price>0</td>${agencySimple ? '' : '<td data-kata-today-profit>0</td>'}${showDiscount ? '<td data-kata-today-discount>0</td>' : ''}</tr>
+            ${sabkaRow}
             <tr><td style="text-align:right;padding-right:6px;">Total</td><td data-kata-tot-price>${prevTotal.price}</td>${agencySimple ? '' : `<td data-kata-tot-profit>${prevTotal.profit||0}</td>`}${showDiscount ? `<td data-kata-tot-discount>${prevTotal.discount||0}</td>` : ''}</tr>
             <tr><td style="text-align:right;padding-right:6px;"><span class="kata-jamah-label" data-jamah-label="0">${agencySimple ? 'Cash' : 'Jamah'}</span> <button type="button" class="kata-jamah-label-edit-btn" data-jamah-label-edit="0" title="نام تبدیل کریں" style="font-size:10px;background:none;border:none;cursor:pointer;padding:0 1px;">✏️</button></td><td><input type="text" inputmode="numeric" class="cell-input" data-jamah="price0" style="border:1px solid var(--line);" value="0"></td>${agencySimple ? '' : '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="profit0" style="border:1px solid var(--line);" value="0"></td>'}${showDiscount ? '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="discount0" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>
             <tr><td style="text-align:right;padding-right:6px;"><span class="kata-jamah-label" data-jamah-label="1">${agencySimple ? 'Cash' : 'Jamah'}</span> <button type="button" class="kata-jamah-label-edit-btn" data-jamah-label-edit="1" title="نام تبدیل کریں" style="font-size:10px;background:none;border:none;cursor:pointer;padding:0 1px;">✏️</button></td><td><input type="text" inputmode="numeric" class="cell-input" data-jamah="price1" style="border:1px solid var(--line);" value="0"></td>${agencySimple ? '' : '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="profit1" style="border:1px solid var(--line);" value="0"></td>'}${showDiscount ? '<td><input type="text" inputmode="numeric" class="cell-input" data-jamah="discount1" style="border:1px solid var(--line);" value="0"></td>' : ''}</tr>
