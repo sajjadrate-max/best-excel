@@ -3269,7 +3269,6 @@ function msRenderEntryCard(entry, isLast){
         </table>
       </div>
       <div class="ms-entry-actions kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
-        <button type="button" class="kata-print-entry-btn kata-print-mobile-btn" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 موبائل پرنٹ</button>
         <button type="button" class="kata-print-entry-btn kata-print-computer-btn" data-print-mode="computer" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 کمپیوٹر پرنٹ</button>
         <button type="button" class="kata-print-entry-btn kata-print-whatsapp-btn" data-print-mode="whatsapp" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 Whatsapp پرنٹ</button>
       </div>
@@ -6696,7 +6695,6 @@ function kataRenderEntryCard(entry, isLast, idx, entriesArr){
       <div style="text-align:center;font-size:11px;color:#8a6d00;margin-top:4px;">جو خانے سفید/قابلِ ترمیم ہیں انہیں تبدیل کریں، پھر اوپر والا سبز بٹن دبا کر محفوظ کریں — ٹائپ کرتے ہی خودکار محفوظ نہیں ہوتا۔</div>
       </div>` : ''}
       <div class="kata-entry-actions" style="display:flex;gap:6px;margin-top:10px;justify-content:center;">
-        <button type="button" class="kata-print-entry-btn kata-print-mobile-btn" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 موبائل پرنٹ</button>
         <button type="button" class="kata-print-entry-btn kata-print-computer-btn" data-print-mode="computer" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 کمپیوٹر پرنٹ</button>
         <button type="button" class="kata-print-entry-btn kata-print-whatsapp-btn" data-print-mode="whatsapp" style="padding:5px 10px;font-size:11px;border:none;border-radius:4px;color:#fff;background:var(--maroon);cursor:pointer;">🖨 Whatsapp پرنٹ</button>
       </div>
@@ -6739,15 +6737,16 @@ function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx, editUn
   const jamahRow = (i)=> entryIdx != null
     ? `<tr><td style="text-align:right;padding-right:6px;"><span class="kata-jamah-label" data-kata-entry-jamah-label="${entryIdx}:${i}">${kataEscape(jamahLabelText(i))}</span> <button type="button" class="kata-jamah-label-edit-btn" data-kata-entry-jamah-label-edit="${entryIdx}:${i}" title="نام تبدیل کریں" style="font-size:10px;background:none;border:none;cursor:pointer;padding:0 1px;">✏️</button></td><td><input type="text" inputmode="numeric" class="cell-input" data-kata-entry-jamah="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${kataIndianNumberFormat(jamah.price[i]||0)}"></td>${agencySimple ? '' : `<td><input type="text" inputmode="numeric" class="cell-input" data-kata-entry-jamah-profit="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${kataIndianNumberFormat(jamahProfit[i]||0)}"></td>`}${showDiscount ? `<td><input type="text" inputmode="numeric" class="cell-input" data-kata-entry-jamah-discount="${entryIdx}:${i}" style="border:1px solid var(--line);" value="${kataIndianNumberFormat(jamahDiscount[i]||0)}"></td>` : ''}</tr>`
     : `<tr><td style="text-align:right;padding-right:6px;">${kataEscape(jamahLabelText(i))}</td><td>${jamah.price[i]||0}</td>${agencySimple ? '' : `<td>${jamahProfit[i]||0}</td>`}${showDiscount ? `<td>${jamahDiscount[i]||0}</td>` : ''}</tr>`;
+  const bqayaBoldStyle = 'font-weight:700 !important;-webkit-text-stroke:.6px currentColor !important;';
   const bqayaCell = entryIdx != null
-    ? `<td data-kata-entry-bqaya="${entryIdx}">${bqaya.price}</td>`
-    : `<td>${bqaya.price}</td>`;
+    ? `<td data-kata-entry-bqaya="${entryIdx}" style="${bqayaBoldStyle}">${bqaya.price}</td>`
+    : `<td style="${bqayaBoldStyle}">${bqaya.price}</td>`;
   const bqayaProfitCell = entryIdx != null
-    ? `<td data-kata-entry-bqaya-profit="${entryIdx}">${bqaya.profit||0}</td>`
-    : `<td>${bqaya.profit||0}</td>`;
+    ? `<td data-kata-entry-bqaya-profit="${entryIdx}" style="${bqayaBoldStyle}">${bqaya.profit||0}</td>`
+    : `<td style="${bqayaBoldStyle}">${bqaya.profit||0}</td>`;
   const bqayaDiscountCell = entryIdx != null
-    ? `<td data-kata-entry-bqaya-discount="${entryIdx}">${bqaya.discount||0}</td>`
-    : `<td>${bqaya.discount||0}</td>`;
+    ? `<td data-kata-entry-bqaya-discount="${entryIdx}" style="${bqayaBoldStyle}">${bqaya.discount||0}</td>`
+    : `<td style="${bqayaBoldStyle}">${bqaya.discount||0}</td>`;
   // Sabka اور Today قطاریں — ترمیم موڈ میں (پرانی محفوظ انٹری، پاس ورڈ سے
   // کھلی ہوئی) یہ Jamah جیسے ہی براہِ راست قابلِ ترمیم <input> بن جاتی ہیں۔
   // Total ہمیشہ خودکار حساب (Sabka+Today) سے بنتا ہے — کبھی خود نہیں لکھا
@@ -6779,7 +6778,7 @@ function kataTotalsBlockHtml(sabka, today, total, jamah, bqaya, entryIdx, editUn
             ${sumRow('total', total, 'Total')}
             ${jamahRow(0)}
             ${jamahRow(1)}
-            <tr><td style="text-align:right;padding-right:6px;">${agencySimple ? 'Remaining Price' : 'Bqaya'}</td>${bqayaCell}${agencySimple ? '' : bqayaProfitCell}${showDiscount ? bqayaDiscountCell : ''}</tr>
+            <tr><td style="text-align:right;padding-right:6px;${bqayaBoldStyle}">${agencySimple ? 'Remaining Price' : 'Bqaya'}</td>${bqayaCell}${agencySimple ? '' : bqayaProfitCell}${showDiscount ? bqayaDiscountCell : ''}</tr>
           </tbody>
         </table>
       </div>`;
