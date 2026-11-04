@@ -6638,7 +6638,7 @@ function kataRenderEntryCard(entry, isLast, idx, entriesArr){
             : agencySimple
             ? '<col style="width:6%"><col style="width:14%"><col style="width:9%"><col style="width:9%"><col style="width:11%"><col style="width:12%"><col class="kata-krayarate-col" style="width:9%"><col style="width:10%"><col class="kata-commission-col" style="width:9%"><col class="kata-commission-col" style="width:11%">'
             : '<col style="width:6%"><col style="width:24%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:15%">'}</colgroup>
-          <thead><tr><th>#</th><th>Items</th><th>CTN</th><th>Net Weight (gram)</th><th>Price</th><th>Total Price</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th><th class="kata-commission-col">Commission Rate</th><th class="kata-commission-col">Commission</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
+          <thead><tr><th>#</th><th>Items</th><th>CTN</th><th>Net Weight (gram)</th><th>Price</th><th>Total Price</th>${agencySimple ? '' : '<th>Profit</th><th>Total Price</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th><th class="kata-commission-col">Commission Rate</th><th class="kata-commission-col">Commission</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}</tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -6938,7 +6938,7 @@ function kataRenderNewEntryForm(prevTotal, prevSaleMahana, prevSalesman, isFirst
             <th>CTN</th>
             <th>Net Weight (gram)</th>
             <th>Price</th>
-            <th>Total Price</th>${agencySimple ? '' : '<th>Profit</th><th>T.Profit</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th><th class="kata-commission-col">Commission Rate</th><th class="kata-commission-col">Commission</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}
+            <th>Total Price</th>${agencySimple ? '' : '<th>Profit</th><th>Total Price</th>'}${agencySimple ? '<th class="kata-krayarate-col">Rent</th><th>T.Rent</th><th class="kata-commission-col">Commission Rate</th><th class="kata-commission-col">Commission</th>' : ''}${showDiscount ? '<th>Discount</th><th>D.Total</th><th>Sabka CTN</th><th>Total CTN</th>' : ''}
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
