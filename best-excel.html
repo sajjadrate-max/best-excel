@@ -5994,17 +5994,17 @@ async function kataCaptureCardForPrint(card, scale){
   const editUiPrevDisplay = [];
   editUiEls.forEach(el=>{ editUiPrevDisplay.push(el.style.display); el.style.display = 'none'; });
   let inputSwaps = [];
-  // سیلزمین اور ربنواز دونوں کھاتوں — آئٹم ٹیبل سے Profit، D.Total، Sabka
-  // CTN پرنٹ میں ہمیشہ کی طرح غائب رہیں (2026-08-25 کو واپس بحال کیا گیا)۔
-  // Rate/Price اور Discount صارف کی درخواست پر (2026-11-04) پرنٹ میں واپس
-  // شامل کر دیے — یہ دونوں اب چھپائے نہیں جائیں گے۔ یہ صرف پرنٹ/PDF پر اثر
-  // انداز ہوتا ہے، خود ویب سائٹ پر یہ کالمز ویسے ہی نظر آتے رہیں گے۔
+  // سیلزمین اور ربنواز دونوں کھاتوں — آئٹم ٹیبل سے Profit، Discount،
+  // D.Total، Sabka CTN پرنٹ میں ہمیشہ کی طرح غائب رہیں (2026-08-25 کو واپس
+  // بحال کیا گیا، Discount 2026-11-04 کو دوبارہ چھپایا گیا)۔ Rate/Price
+  // صارف کی درخواست پر (2026-11-04) پرنٹ میں دکھتا رہے گا۔ یہ صرف پرنٹ/PDF
+  // پر اثر انداز ہوتا ہے، خود ویب سائٹ پر یہ کالمز ویسے ہی نظر آتے رہیں گے۔
   // (Sabka/Today/Total والی ٹوٹلز ٹیبل کی الگ چھپاؤ 2026-09-03 کو ہٹا دی
   // گئی — نیچے دیکھیں۔)
   if(kataInstance === 'salesman' || kataInstance === 'ribnawaz'){
     const itemTable = card.querySelector('.wide-table table');
     if(itemTable){
-      [7,10,11].forEach(pos=>{
+      [7,9,10,11].forEach(pos=>{
         itemTable.querySelectorAll(`tr > *:nth-child(${pos})`).forEach(cell=>{
           hiddenPrintCells.push({cell, prev: cell.style.display});
           cell.style.display = 'none';
@@ -6097,12 +6097,12 @@ function kataPrepareCardHtmlForExport(card){
   const editUiEls = card.querySelectorAll('.kata-edit-ui-only, .kata-dots-wrap');
   const editUiPrevDisplay = [];
   editUiEls.forEach(el=>{ editUiPrevDisplay.push(el.style.display); el.style.display = 'none'; });
-  // Rate/Price اور Discount صارف کی درخواست پر (2026-11-04) پرنٹ میں واپس
-  // شامل کر دیے — صرف Profit/D.Total/Sabka CTN اب بھی چھپیں گے۔
+  // Rate/Price صارف کی درخواست پر (2026-11-04) پرنٹ میں واپس شامل کر دیا —
+  // Profit/Discount/D.Total/Sabka CTN اب بھی چھپیں گے۔
   if(kataInstance === 'salesman' || kataInstance === 'ribnawaz'){
     const itemTable = card.querySelector('.wide-table table');
     if(itemTable){
-      [7,10,11].forEach(pos=>{
+      [7,9,10,11].forEach(pos=>{
         itemTable.querySelectorAll(`tr > *:nth-child(${pos})`).forEach(cell=>{
           hiddenPrintCells.push({cell, prev: cell.style.display});
           cell.style.display = 'none';
