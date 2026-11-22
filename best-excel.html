@@ -2442,7 +2442,10 @@ async function shareCardAsImage(tier, btn){
       await sharePdfDirectly(blob, fileName, pdfTitle);
     }
   } catch(err){
-    alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
+    // صارف کی رپورٹ پر (2026-11-22) تفصیلی خرابی کا پیغام بھی ساتھ دکھائیں
+    // — تاکہ اگلی بار صحیح وجہ معلوم ہو سکے۔
+    alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔\n(' + ((err && err.message) || err) + ')');
+    console.warn(err);
   } finally {
     btn.textContent = originalLabel;
     btn.disabled = false;
@@ -6252,7 +6255,9 @@ async function kataPrintEntry(btn){
     if(!blob) throw new Error('no-blob');
     printPdfBlob(blob);
   } catch(err){
-    alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔');
+    // صارف کی رپورٹ پر (2026-11-22) تفصیلی خرابی کا پیغام بھی ساتھ دکھائیں
+    // — تاکہ اگلی بار صحیح وجہ معلوم ہو سکے۔
+    alert('PDF بنانے میں مسئلہ ہوا، دوبارہ کوشش کریں۔\n(' + ((err && err.message) || err) + ')');
     console.warn(err);
   } finally {
     card.classList.remove('kata-print-no-watermark');
