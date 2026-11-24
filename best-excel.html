@@ -1129,50 +1129,88 @@ function askDeletePassword(){
   });
 }
 </script>
-<div id="siteAccessGate" style="position:fixed;inset:0;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:rgba(0,0,0,.9);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
-  <div class="auth-box" style="text-align:center;">
-    <h2 style="text-align:center;font-size:18px;">🔒 یہ ویب سائٹ محفوظ ہے</h2>
-    <label>کوڈ درج کریں</label>
-    <!-- 2026-09-29: صارف کی شکایت — براؤزر/کی بورڈ اس خانے کے اوپر پہلے سے
-         محفوظ شدہ (غلط/پرانے) "پاس ورڈ" تجویز کرتا تھا (کسٹمر کے ناموں جیسے
-         عجیب اندراجات، اسکرین شاٹ میں نظر آئے) — چونکہ یہ خانہ type="password"
-         تھا اور براؤزر اسے عام لاگ اِن سمجھ کر اپنی محفوظ شدہ فہرست دکھا رہا
-         تھا۔ autocomplete="new-password" اور name کی وجہ سے اب براؤزر اسے
-         "نیا پاس ورڈ بنانے" والا خانہ سمجھے گا، پرانی تجاویز خودکار نہیں
-         دکھائے گا (موبائل اور کمپیوٹر دونوں پر)۔ اگر پہلے سے کوئی غلط اندراج
-         براؤزر کے اپنے پاس ورڈ مینیجر میں محفوظ ہو چکا ہے تو وہ صرف براؤزر کی
-         اپنی سیٹنگز (پاس ورڈز کی فہرست) سے دستی حذف کیا جا سکتا ہے، یہ فکس
-         صرف آئندہ کے لیے نئی تجاویز روکتا ہے۔ -->
-    <input type="password" id="siteAccessInput" name="ic-access-code" autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" autocapitalize="off" autocorrect="off" spellcheck="false" style="text-align:center;" autofocus>
-    <div id="siteAccessError" class="note" style="color:#B23;text-align:center;"></div>
-    <button type="button" id="siteAccessSubmit" class="lock-btn" style="width:100%;">کھولیں</button>
+<div id="siteAccessGate" style="position:fixed;inset:0;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:radial-gradient(ellipse at top, #1b5e42 0%, #0a2e20 75%);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+  <div style="text-align:center;max-width:320px;width:100%;">
+    <div style="width:72px;height:72px;margin:0 auto 18px;border-radius:20px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:34px;box-shadow:0 4px 16px rgba(0,0,0,.3);">🔒</div>
+    <h2 style="border:none;margin:0;font-family:'Baloo 2','Noto Nastaliq Urdu',sans-serif;font-size:28px;font-weight:800;color:#fff;">Best Excel</h2>
+    <div class="note" style="color:rgba(255,255,255,.75);margin:8px 0 22px;font-size:13px;">کھولنے کے لیے 4 ہندسوں کا کوڈ لکھیں</div>
+    <div id="siteAccessDots" dir="ltr" style="display:flex;gap:14px;justify-content:center;margin-bottom:28px;">
+      <span class="site-access-dot" style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.6);box-sizing:border-box;display:inline-block;"></span>
+      <span class="site-access-dot" style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.6);box-sizing:border-box;display:inline-block;"></span>
+      <span class="site-access-dot" style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.6);box-sizing:border-box;display:inline-block;"></span>
+      <span class="site-access-dot" style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.6);box-sizing:border-box;display:inline-block;"></span>
+    </div>
+    <div id="siteAccessError" class="note" style="color:#ffb3b3;text-align:center;min-height:18px;margin-bottom:8px;"></div>
+    <div dir="ltr" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;justify-items:center;">
+      <button type="button" class="site-access-key" data-key="1">1</button>
+      <button type="button" class="site-access-key" data-key="2">2</button>
+      <button type="button" class="site-access-key" data-key="3">3</button>
+      <button type="button" class="site-access-key" data-key="4">4</button>
+      <button type="button" class="site-access-key" data-key="5">5</button>
+      <button type="button" class="site-access-key" data-key="6">6</button>
+      <button type="button" class="site-access-key" data-key="7">7</button>
+      <button type="button" class="site-access-key" data-key="8">8</button>
+      <button type="button" class="site-access-key" data-key="9">9</button>
+      <button type="button" class="site-access-key" data-key="clear" style="background:transparent;box-shadow:none;font-size:16px;">C</button>
+      <button type="button" class="site-access-key" data-key="0">0</button>
+      <button type="button" class="site-access-key" data-key="back" style="background:transparent;box-shadow:none;font-size:20px;">⌫</button>
+    </div>
   </div>
 </div>
+<style>
+  .site-access-key{
+    width:68px;height:68px;border-radius:50%;border:none;background:rgba(255,255,255,.12);
+    color:#fff;font-family:'Courier Prime',monospace;font-size:24px;font-weight:700;
+    cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2);
+  }
+  .site-access-key:active{background:rgba(255,255,255,.24);}
+  .site-access-dot.filled{background:#fff;}
+  #siteAccessGate.shake{animation:siteAccessShake .4s;}
+  @keyframes siteAccessShake{
+    0%,100%{transform:translateX(0);}
+    20%,60%{transform:translateX(-8px);}
+    40%,80%{transform:translateX(8px);}
+  }
+</style>
 <script>
-// ---------- پوری ویب سائٹ کوڈ سے محفوظ (2026-08-15) ----------
-// صفحہ کھلتے ہی سب سے پہلے یہ سیاہ پردہ نظر آتا ہے (باقی سائٹ کے کسی بھی
-// دوسرے اسکرپٹ سے پہلے چلتا ہے، چاہے وہ سست ہوں یا فیل ہو جائیں) — درست
-// کوڈ کے بغیر آگے نہیں بڑھا جا سکتا۔ بالکل "Best Excel official" ٹیب کے
-// پاس ورڈ گیٹ جیسا طریقہ (وہی in-page modal پیٹرن، window.prompt() نہیں —
-// یہ انسٹالڈ PWA میں خاموشی سے دب جاتا ہے)، لیکن یہ پورے صفحے کے لیے ہے
-// اور ہر بار (session بھر یاد نہیں رکھتا) کھلتے وقت پوچھتا ہے۔
+// ---------- پوری ویب سائٹ کوڈ سے محفوظ (2026-08-15، PIN کوڈ لاک 2026-11-24) ----------
+// صفحہ کھلتے ہی سب سے پہلے یہ پردہ نظر آتا ہے (باقی سائٹ کے کسی بھی دوسرے
+// اسکرپٹ سے پہلے چلتا ہے، چاہے وہ سست ہوں یا فیل ہو جائیں) — درست کوڈ کے
+// بغیر آگے نہیں بڑھا جا سکتا۔ صارف کی درخواست پر (2026-11-24) پرانے متن
+// پاس ورڈ خانے کی بجائے 4 ہندسوں کے PIN کوڈ والا کی پیڈ لاک — ہر بار
+// (session بھر یاد نہیں رکھتا) کھلتے وقت پوچھتا ہے۔
 (function(){
   var gate = document.getElementById('siteAccessGate');
-  var input = document.getElementById('siteAccessInput');
   var err = document.getElementById('siteAccessError');
-  var btn = document.getElementById('siteAccessSubmit');
+  var dots = document.querySelectorAll('.site-access-dot');
+  var entered = '';
+  var SITE_ACCESS_PIN = '0300';
+  function renderDots(){
+    dots.forEach(function(d, i){ d.classList.toggle('filled', i < entered.length); });
+  }
   function trySubmit(){
-    if(input.value === 'Bhatti'){
+    if(entered === SITE_ACCESS_PIN){
       gate.style.display = 'none';
     } else {
       err.textContent = 'غلط کوڈ۔';
-      input.value = '';
-      input.focus();
+      gate.classList.add('shake');
+      setTimeout(function(){ gate.classList.remove('shake'); }, 400);
+      entered = '';
+      renderDots();
     }
   }
-  btn.addEventListener('click', trySubmit);
-  input.addEventListener('keydown', function(e){ if(e.key === 'Enter') trySubmit(); });
-  input.focus();
+  document.querySelectorAll('.site-access-key').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var key = btn.dataset.key;
+      if(key === 'clear'){ entered = ''; err.textContent=''; renderDots(); return; }
+      if(key === 'back'){ entered = entered.slice(0,-1); err.textContent=''; renderDots(); return; }
+      if(entered.length >= 4) return;
+      entered += key;
+      err.textContent = '';
+      renderDots();
+      if(entered.length === 4) setTimeout(trySubmit, 150);
+    });
+  });
 })();
 </script>
 
