@@ -1338,15 +1338,30 @@ function askDeletePassword(){
     // بالکل کچھ نہ کرے — یہی اصول ہمیشہ برقرار رکھیں، چاہے فائل کو کتنی بار
     // بھی دوبارہ لکھا جائے۔
     let wasOffline = false;
+    // صارف کی رپورٹ پر (2026-11-24): کمپیوٹر پر انٹرنیٹ صرف سست ہونے پر بھی
+    // "No internet" بلاک دکھ رہا تھا — وجہ: fetch() پر کوئی ٹائم آؤٹ نہیں
+    // تھا، اور ایک ہی ناکام/سست چیک پر فوراً بلاک دکھا دیا جاتا تھا۔ اب
+    // fetch 6 سیکنڈ بعد خود بخود روک دی جاتی ہے (AbortController) تاکہ سست
+    // کنکشن پر لامحدود انتظار نہ ہو، اور بلاک صرف اسی وقت نظر آئے گا جب
+    // لگاتار 3 چیک (تقریباً 15 سیکنڈ) ناکام ہوں — ایک آدھ سست/ناکام چیک
+    // (عارضی سستی) اکیلے بلاک نہیں دکھائے گی، صرف حقیقی/مستقل انٹرنیٹ بندش۔
+    let consecutiveFailures = 0;
+    const OFFLINE_FAILURE_THRESHOLD = 3;
 
     async function isReallyOnline(){
       if(!navigator.onLine) return false;
       if(location.protocol !== 'http:' && location.protocol !== 'https:') return true; // لوکل فائل — fetch پر بھروسہ نہیں کیا جا سکتا
       try{
-        await fetch('https://www.gstatic.com/generate_204', { method:'GET', mode:'no-cors', cache:'no-store' });
-        return true;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(()=> controller.abort(), 6000);
+        try{
+          await fetch('https://www.gstatic.com/generate_204', { method:'GET', mode:'no-cors', cache:'no-store', signal: controller.signal });
+          return true;
+        } finally {
+          clearTimeout(timeoutId);
+        }
       }catch(e){
-        return false; // نیٹ ورک جڑا ہے مگر اصل انٹرنیٹ نہیں — یہی کمپیوٹر والا کیس
+        return false; // نیٹ ورک جڑا ہے مگر اصل انٹرنیٹ نہیں (یا بہت سست/ٹائم آؤٹ) — یہی کمپیوٹر والا کیس
       }
     }
 
@@ -1356,7 +1371,8 @@ function askDeletePassword(){
       const online = await isReallyOnline();
       checking = false;
       if(!online){
-        if(!wasOffline){
+        consecutiveFailures++;
+        if(!wasOffline && consecutiveFailures >= OFFLINE_FAILURE_THRESHOLD){
           // ابھی ابھی آف لائن ہوا — موجودہ ویو یاد رکھیں تاکہ نیٹ آنے پر واپس وہیں جا سکیں
           savedView = (detailView.style.display !== 'none') ? 'detail' : 'list';
           listView.style.display = 'none';
@@ -1366,6 +1382,7 @@ function askDeletePassword(){
         }
         // پہلے سے ہی آف لائن ہے — کچھ نہ کریں، ہر ٹک پر دوبارہ display سیٹ نہ کریں
       } else {
+        consecutiveFailures = 0;
         if(wasOffline){
           block.style.display = 'none';
           if(savedView === 'detail'){
