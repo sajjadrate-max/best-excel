@@ -1129,19 +1129,29 @@ function askDeletePassword(){
   });
 }
 </script>
-<div id="siteAccessGate" style="position:fixed;inset:0;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:radial-gradient(ellipse at top, #1b5e42 0%, #0a2e20 75%);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+<div id="siteAccessGate" style="position:fixed;inset:0;top:0;left:0;right:0;bottom:0;width:100%;height:100%;background:radial-gradient(ellipse at top, #1b5e42 0%, #0a2e20 75%);z-index:100000;overflow-y:auto;box-sizing:border-box;">
+  <!-- صارف کی رپورٹ پر (2026-11-28): چھوٹی/غیر میکسیمائزڈ براؤزر ونڈو میں
+       کی پیڈ کی نچلی قطاریں (7،8،9،C،0،⌫) سکرین سے نیچے کٹ جاتی تھیں اور
+       اسکرول کا کوئی راستہ نہیں تھا (display:flex;align-items:center پر
+       overflow ہونے والا مواد اوپر/نیچے سے رسائی سے باہر ہو جاتا ہے — یہی
+       اصل وجہ تھی)۔ اب باہر والا div صرف عام اسکرول کنٹینر ہے، اندر والا
+       min-height:100vh کے ساتھ خود کو درمیان میں رکھتا ہے جب تک جگہ کافی
+       ہو، ورنہ عام اوپر سے نیچے ترتیب میں آ جاتا ہے اور پورا مواد اسکرول
+       کر کے نظر آ سکتا ہے۔ ساتھ ہی خانے/فاصلے تھوڑے چھوٹے کر دیے تاکہ
+       عام حالت میں اسکرول کی ضرورت ہی کم پڑے۔ -->
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
   <div style="text-align:center;max-width:320px;width:100%;">
-    <div style="width:72px;height:72px;margin:0 auto 18px;border-radius:20px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:34px;box-shadow:0 4px 16px rgba(0,0,0,.3);">🔒</div>
-    <h2 style="border:none;margin:0;font-family:'Baloo 2','Noto Nastaliq Urdu',sans-serif;font-size:28px;font-weight:800;color:#fff;">Best Excel</h2>
-    <div class="note" style="color:rgba(255,255,255,.75);margin:8px 0 22px;font-size:13px;">کھولنے کے لیے 4 ہندسوں کا کوڈ لکھیں</div>
-    <div id="siteAccessDots" dir="ltr" style="display:flex;gap:14px;justify-content:center;margin-bottom:28px;">
-      <span class="site-access-dot" style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.6);box-sizing:border-box;display:inline-block;"></span>
-      <span class="site-access-dot" style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.6);box-sizing:border-box;display:inline-block;"></span>
-      <span class="site-access-dot" style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.6);box-sizing:border-box;display:inline-block;"></span>
-      <span class="site-access-dot" style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.6);box-sizing:border-box;display:inline-block;"></span>
+    <div style="width:56px;height:56px;margin:0 auto 14px;border-radius:16px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 16px rgba(0,0,0,.3);">🔒</div>
+    <h2 style="border:none;margin:0;font-family:'Baloo 2','Noto Nastaliq Urdu',sans-serif;font-size:22px;font-weight:800;color:#fff;">Best Excel</h2>
+    <div class="note" style="color:rgba(255,255,255,.75);margin:6px 0 16px;font-size:12px;">کھولنے کے لیے 4 ہندسوں کا کوڈ لکھیں</div>
+    <div id="siteAccessDots" dir="ltr" style="display:flex;gap:12px;justify-content:center;margin-bottom:18px;">
+      <span class="site-access-dot" style="width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.6);box-sizing:border-box;display:inline-block;"></span>
+      <span class="site-access-dot" style="width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.6);box-sizing:border-box;display:inline-block;"></span>
+      <span class="site-access-dot" style="width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.6);box-sizing:border-box;display:inline-block;"></span>
+      <span class="site-access-dot" style="width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.6);box-sizing:border-box;display:inline-block;"></span>
     </div>
-    <div id="siteAccessError" class="note" style="color:#ffb3b3;text-align:center;min-height:18px;margin-bottom:8px;"></div>
-    <div dir="ltr" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;justify-items:center;">
+    <div id="siteAccessError" class="note" style="color:#ffb3b3;text-align:center;min-height:16px;margin-bottom:6px;font-size:12px;"></div>
+    <div dir="ltr" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;justify-items:center;">
       <button type="button" class="site-access-key" data-key="1">1</button>
       <button type="button" class="site-access-key" data-key="2">2</button>
       <button type="button" class="site-access-key" data-key="3">3</button>
@@ -1151,16 +1161,17 @@ function askDeletePassword(){
       <button type="button" class="site-access-key" data-key="7">7</button>
       <button type="button" class="site-access-key" data-key="8">8</button>
       <button type="button" class="site-access-key" data-key="9">9</button>
-      <button type="button" class="site-access-key" data-key="clear" style="background:transparent;box-shadow:none;font-size:16px;">C</button>
+      <button type="button" class="site-access-key" data-key="clear" style="background:transparent;box-shadow:none;font-size:14px;">C</button>
       <button type="button" class="site-access-key" data-key="0">0</button>
-      <button type="button" class="site-access-key" data-key="back" style="background:transparent;box-shadow:none;font-size:20px;">⌫</button>
+      <button type="button" class="site-access-key" data-key="back" style="background:transparent;box-shadow:none;font-size:17px;">⌫</button>
     </div>
+  </div>
   </div>
 </div>
 <style>
   .site-access-key{
-    width:68px;height:68px;border-radius:50%;border:none;background:rgba(255,255,255,.12);
-    color:#fff;font-family:'Courier Prime',monospace;font-size:24px;font-weight:700;
+    width:54px;height:54px;border-radius:50%;border:none;background:rgba(255,255,255,.12);
+    color:#fff;font-family:'Courier Prime',monospace;font-size:20px;font-weight:700;
     cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2);
   }
   .site-access-key:active{background:rgba(255,255,255,.24);}
